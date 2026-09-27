@@ -54,10 +54,21 @@ class RateLimitMiddleware(Middleware):
     Pass clock= for deterministic tests.
     """
 
-    def __init__(self, per_minute: int = 120, clock: Any = None):
+    def __init__(self, per_minute: int = 120, clock: Any = None, max_buckets: int = 50_000):
         self.limit = per_minute
         self._clock = clock or time.time
         self._hits: dict[str, tuple[int, float]] = {}
+        # Buckets are per-IP: cap the table so a distributed scan can't
+        # grow memory without bound; oldest windows are evicted first.
+        self.max_buckets = max_buckets
+
+    def _evict(self, now: float) -> None:
+        # expired windows first; then oldest starts (least likely active)
+        for ip in [ip for ip, (_, start) in self._hits.items() if now - start >= 60]:
+            self._hits.pop(ip, None)
+        while len(self._hits) > self.max_buckets:
+            oldest = min(self._hits, key=lambda ip: self._hits[ip][1])
+            self._hits.pop(oldest, None)
 
     def _headers(self, count: int, reset_in: float) -> dict[str, str]:
         return {
@@ -74,6 +85,8 @@ class RateLimitMiddleware(Middleware):
             count, start = 0, now
         count += 1
         self._hits[ip] = (count, start)
+        if len(self._hits) > self.max_buckets:
+            self._evict(now)
         reset_in = 60 - (now - start)
         if count > self.limit:
             resp = JSONResponse({"detail": "rate limit exceeded"}, status_code=429)

@@ -4,6 +4,25 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning follows
 [SemVer](https://semver.org/). Releases are cut from Conventional Commits.
 
+## [Unreleased]
+
+### Added
+- DB-aware `/readyz` readiness probe (503 when the database is down).
+- `Request.body(max_bytes)` streaming cap; `Request.json()` capped at 10MB
+  by default.
+
+### Changed
+- Probes (`/healthz`, `/readyz`, `/metrics`) mount even with
+  `enable_docs=False`; only `/openapi.json` + `/docs` honor the flag.
+- `MemoryCache(maxsize)` and `RateLimitMiddleware(max_buckets)` evict
+  expired entries and bound table growth.
+
+### Fixed
+- Static file symlink escape + prefix-collision bypass (realpath guard).
+- Multipart crash on non-latin-1 content-types (now 413).
+- `WebSocket.receive_text` consumed the connect handshake; disconnects now
+  raise instead of returning empty strings.
+
 ## [0.3.0] — 2026-09-27
 
 ### Added

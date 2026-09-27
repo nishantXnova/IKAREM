@@ -27,6 +27,7 @@ class Ikarem:
         self._shutdown: list[Callable] = []
         self._started = False
         self._docs_mounted = False
+        self._system_mounted = False
         self._enable_docs = enable_docs
         from .websocket import WSRouter
 
@@ -68,12 +69,18 @@ class Ikarem:
         self.router.add(url_path.rstrip("/") + "/{path:path}", {"GET"}, static_handler(directory))
 
     def _ensure_system_routes(self) -> None:
+        # Probes (/healthz, /readyz, /metrics) are always mounted: monitoring
+        # must not vanish because docs were disabled. Only /openapi.json and
+        # /docs honor enable_docs.
+        from .observability import mount_system_routes
+
+        if not self._system_mounted:
+            mount_system_routes(self)
+            self._system_mounted = True
         if self._docs_mounted or not self._enable_docs:
             return
-        from .observability import mount_system_routes
         from .openapi import mount_docs
 
-        mount_system_routes(self)
         mount_docs(self)
         self._docs_mounted = True
 

@@ -18,8 +18,13 @@ class CacheBackend(abc.ABC):
 
 
 class MemoryCache(CacheBackend):
-    def __init__(self) -> None:
+    """Bounded in-memory TTL cache: expired entries are swept on write,
+    and the oldest-expiring entries are evicted past maxsize. Never grows
+    without bound, even under adversarial key cardinality."""
+
+    def __init__(self, maxsize: int = 10_000) -> None:
         self._d: dict[str, tuple[Any, float]] = {}
+        self.maxsize = maxsize
 
     async def get(self, key: str) -> Any | None:
         v = self._d.get(key)
@@ -32,7 +37,17 @@ class MemoryCache(CacheBackend):
         return val
 
     async def set(self, key: str, value: Any, ttl: int = 60) -> None:
-        self._d[key] = (value, time.time() + ttl)
+        now = time.time()
+        self._d[key] = (value, now + ttl)
+        if len(self._d) > self.maxsize:
+            # sweep expired first (common case: all TTL'd anyway)
+            expired = [k for k, (_, exp) in self._d.items() if exp < now]
+            for k in expired:
+                self._d.pop(k, None)
+            # still over: evict soonest-expiring (closest to worthless)
+            while len(self._d) > self.maxsize:
+                oldest = min(self._d, key=lambda k: self._d[k][1])
+                self._d.pop(oldest, None)
 
     async def delete(self, key: str) -> None:
         self._d.pop(key, None)

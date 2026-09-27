@@ -39,25 +39,36 @@ class Request:
                 out[k] = v
         return out
 
-    async def body(self) -> bytes:
+    async def body(self, max_bytes: int | None = None) -> bytes:
         if self._body is None:
+            from .errors import PayloadTooLarge
+
             chunks: list[bytes] = []
+            total = 0
             while True:
                 msg = await self._receive()
                 if msg["type"] == "http.request":
-                    chunks.append(msg.get("body", b""))
+                    chunk = msg.get("body", b"")
+                    total += len(chunk)
+                    if max_bytes is not None and total > max_bytes:
+                        raise PayloadTooLarge(f"body exceeds {max_bytes} bytes")
+                    chunks.append(chunk)
                     if not msg.get("more_body"):
                         break
                 elif msg["type"] == "http.disconnect":
                     break
             self._body = b"".join(chunks)
+        elif max_bytes is not None and len(self._body) > max_bytes:
+            from .errors import PayloadTooLarge
+
+            raise PayloadTooLarge(f"body exceeds {max_bytes} bytes")
         return self._body
 
-    async def json(self) -> Any:
-        return json.loads((await self.body()).decode() or "null")
+    async def json(self, max_bytes: int = 10 * 1024 * 1024) -> Any:
+        return json.loads((await self.body(max_bytes)).decode() or "null")
 
-    async def text(self) -> str:
-        return (await self.body()).decode()
+    async def text(self, max_bytes: int | None = None) -> str:
+        return (await self.body(max_bytes)).decode()
 
     async def form(
         self,
@@ -71,9 +82,7 @@ class Request:
         """
         from .errors import PayloadTooLarge
 
-        raw = await self.body()
-        if len(raw) > max_form_size:
-            raise PayloadTooLarge(f"form exceeds {max_form_size} bytes")
+        raw = await self.body(max_form_size)
         ctype = self.headers.get("content-type", "")
         mime = ctype.split(";")[0].strip().lower()
         if mime == "multipart/form-data":
@@ -171,7 +180,10 @@ def _parse_multipart(raw: bytes, content_type: str, max_file_size: int) -> FormD
 
     from .errors import PayloadTooLarge
 
-    head = b"Content-Type: " + content_type.encode("latin-1") + b"\r\nMIME-Version: 1.0\r\n\r\n"
+    try:
+        head = b"Content-Type: " + content_type.encode("latin-1") + b"\r\nMIME-Version: 1.0\r\n\r\n"
+    except (UnicodeEncodeError, ValueError):
+        raise PayloadTooLarge("multipart content-type is not decodable")
     try:
         msg = BytesParser(policy=HTTP).parsebytes(head + raw)
     except Exception:

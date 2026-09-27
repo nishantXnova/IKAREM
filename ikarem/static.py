@@ -51,14 +51,18 @@ class FileResponse:
 
 
 def static_handler(directory: str) -> Any:
-    directory = os.path.abspath(directory)
+    root = os.path.realpath(os.path.abspath(directory))
 
     async def _h(request: Any) -> Any:
         from .errors import NotFound
 
         rel = (request.path_params.get("path") or "").lstrip("/")
-        full = os.path.abspath(os.path.join(directory, rel))
-        if not full.startswith(directory) or not os.path.isfile(full):
+        # realpath on BOTH sides: abspath alone is fooled by a symlink
+        # inside the directory pointing outside it.
+        full = os.path.realpath(os.path.join(root, rel))
+        if full != root and not full.startswith(root + os.sep):
+            raise NotFound("static file not found")
+        if not os.path.isfile(full):
             raise NotFound("static file not found")
         return FileResponse(full)
 

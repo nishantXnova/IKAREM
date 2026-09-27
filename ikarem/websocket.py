@@ -18,8 +18,14 @@ class WebSocket:
         await self._send({"type": "websocket.accept"})
 
     async def receive_text(self) -> str:
-        msg = await self._receive()
-        return msg.get("text", "")
+        while True:
+            msg = await self._receive()
+            t = msg.get("type", "")
+            if t in ("websocket.disconnect", "websocket.close"):
+                raise RuntimeError("websocket disconnected")
+            if "text" in msg:
+                return msg["text"]
+            # skip handshake/control frames (e.g. websocket.connect)
 
     async def receive_json(self) -> Any:
         import json

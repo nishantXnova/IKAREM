@@ -45,10 +45,25 @@ class MetricsMiddleware(Middleware):
 
 
 def mount_system_routes(app: Any) -> None:
-    from .http import TextResponse
+    from .http import JSONResponse, TextResponse
 
     async def _health(req: Any) -> Any:
         return {"status": "ok", "framework": "ikarem"}
+
+    async def _ready(req: Any) -> Any:
+        """Readiness: 200 only when optional dependencies are actually up.
+
+        Today that means the database (when DatabasePlugin is registered):
+        a failed ping returns 503 so load balancers stop sending traffic.
+        """
+        db = getattr(req.app, "state_db", None)
+        if db is None:
+            return {"status": "ready", "db": "none"}
+        try:
+            await db.fetch_one("SELECT 1")
+            return {"status": "ready", "db": "ok"}
+        except Exception as e:  # noqa: BLE001
+            return JSONResponse({"status": "not-ready", "db": str(e)[:200]}, status_code=503)
 
     async def _metrics(req: Any) -> Any:
         uptime = time.time() - _METRICS["start"]
@@ -57,8 +72,10 @@ def mount_system_routes(app: Any) -> None:
 
     _health._ikarem_internal = True  # type: ignore
     _metrics._ikarem_internal = True  # type: ignore
+    _ready._ikarem_internal = True  # type: ignore
     try:
         app.router.add("/healthz", {"GET"}, _health, name="healthz")
+        app.router.add("/readyz", {"GET"}, _ready, name="readyz")
         app.router.add("/metrics", {"GET"}, _metrics, name="metrics")
     except Exception:
         pass
