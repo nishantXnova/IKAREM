@@ -1,0 +1,30 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ledger
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+      POSTGRES_DB: ledger
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ledger"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app:
+    build: .
+    ports:
+      - "${PORT:-8000}:8000"
+    environment:
+      IKAREM_SESSION_SECRET: ${IKAREM_SESSION_SECRET:?set me}
+      IKAREM_AUTH_SECRET: ${IKAREM_AUTH_SECRET:?set me}
+      IKAREM_DB_URL: postgresql://ledger:${POSTGRES_PASSWORD:-change-me}@db:5432/ledger
+      IKAREM_DEMO: "false"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:

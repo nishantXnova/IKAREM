@@ -28,6 +28,34 @@ class MySQLConnector(DatabaseConnector):
         super().__init__(url, **options)
         self._pool: Any = None
         self._conn: Any = None
+        self._pool_loop: Any = None
+
+    async def _pool_for(self) -> Any:
+        """Loop-tracked pool (see PostgresConnector._pool_for for why)."""
+        import asyncio
+
+        import aiomysql  # type: ignore
+
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+        if self._pool is None or (
+            loop is not None and self._pool_loop is not None and self._pool_loop is not loop
+        ):
+            if self._pool is not None:
+                # close() alone is synchronous and safe from any loop;
+                # wait_closed() would need the pool's (now dead) loop.
+                try:
+                    self._pool.close()
+                except Exception:
+                    pass
+                self._pool = None
+            options = {"minsize": 1, **self.options}
+            self._pool = await aiomysql.create_pool(**{**self._kwargs(), **options})
+            self._pool_loop = loop
+            self.connected = True
+        return self._pool
 
     def _kwargs(self) -> dict:
         u = urlparse(self.url)
@@ -42,24 +70,26 @@ class MySQLConnector(DatabaseConnector):
 
     async def connect(self) -> None:
         try:
-            import aiomysql  # type: ignore
+            import aiomysql  # type: ignore  # noqa: F401
         except ImportError as e:
             raise RuntimeError("pip install ikarem[mysql] (needs aiomysql)") from e
-        self._pool = await aiomysql.create_pool(**self._kwargs())
-        self.connected = True
+        await self._pool_for()
 
     async def disconnect(self) -> None:
         if self._pool:
-            self._pool.close()
-            await self._pool.wait_closed()
+            try:
+                self._pool.close()
+                await self._pool.wait_closed()
+            except Exception:
+                pass
             self._pool = None
         self.connected = False
 
     async def _q(self, query: str, params: tuple, fetch: str) -> Any:
         import aiomysql  # type: ignore
 
-        assert self._pool, "Not connected"
-        async with self._pool.acquire() as conn:
+        pool = await self._pool_for()
+        async with pool.acquire() as conn:
             async with conn.cursor(aiomysql.DictCursor) as cur:
                 await cur.execute(query.replace("?", "%s"), params)
                 if fetch == "one":

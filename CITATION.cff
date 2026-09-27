@@ -5,7 +5,7 @@ type: software
 authors:
   - alias: nishantXnova
     website: https://github.com/nishantXnova
-version: 0.3.0
+version: 1.0.0
 license: MIT
 repository-code: https://github.com/nishantXnova/IKAREM
 url: https://pypi.org/project/ikarem/

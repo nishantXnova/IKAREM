@@ -61,10 +61,16 @@ CATEGORIES = {
 async def init_db():
     db = app.state_db
     await db.execute("CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, email TEXT UNIQUE, pw TEXT)")
-    await db.execute(
-        "CREATE TABLE IF NOT EXISTS txns (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT,"
-        " day TEXT, description TEXT, amount_cents INTEGER, kind TEXT, category TEXT, receipt TEXT)"
-    )
+    if getattr(db, "dialect", "sqlite") == "postgres":
+        await db.execute(
+            "CREATE TABLE IF NOT EXISTS txns (id SERIAL PRIMARY KEY, user_id TEXT,"
+            " day TEXT, description TEXT, amount_cents INTEGER, kind TEXT, category TEXT, receipt TEXT)"
+        )
+    else:
+        await db.execute(
+            "CREATE TABLE IF NOT EXISTS txns (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT,"
+            " day TEXT, description TEXT, amount_cents INTEGER, kind TEXT, category TEXT, receipt TEXT)"
+        )
     if str(app.config.get("demo", "true")).lower() in ("1", "true", "yes", "on"):
         if await db.fetch_one("SELECT id FROM users LIMIT 1") is None:
             await _seed_demo(db)
@@ -603,6 +609,11 @@ async def register(req, bg: BackgroundTasks):
             hash_password(data.password),
         )
     except Exception:
+        # Distinguish honestly: duplicate email is the user's mistake (400 +
+        # re-rendered form), anything else is ours (let it 500, loudly).
+        existing = await req.app.state_db.fetch_one("SELECT id FROM users WHERE email = ?", data.email)
+        if existing is None:
+            raise
         if is_json:
             raise BadRequest("email already registered")
         return _auth_page("register", req, "email already registered", data.email)
@@ -688,8 +699,8 @@ async def api_list(req, uid=Depends(current_user)):
 async def api_create(req, txn: TxnIn, uid=Depends(current_user)):
     """Create a transaction (JSON)."""
     day = txn.day or date.today().isoformat()
-    cur = await req.app.state_db.execute(
-        "INSERT INTO txns (user_id, day, description, amount_cents, kind, category) VALUES (?, ?, ?, ?, ?, ?)",
+    db = req.app.state_db
+    args = (
         uid,
         day,
         txn.description,
@@ -697,6 +708,18 @@ async def api_create(req, txn: TxnIn, uid=Depends(current_user)):
         txn.kind,
         txn.category,
     )
+    if getattr(db, "dialect", "sqlite") == "postgres":
+        row = await db.fetch_one(
+            "INSERT INTO txns (user_id, day, description, amount_cents, kind, category)"
+            " VALUES (?, ?, ?, ?, ?, ?) RETURNING id",
+            *args,
+        )
+        cur = row["id"] if row else None
+    else:
+        cur = await db.execute(
+            "INSERT INTO txns (user_id, day, description, amount_cents, kind, category) VALUES (?, ?, ?, ?, ?, ?)",
+            *args,
+        )
     return {
         "id": cur,
         "day": day,

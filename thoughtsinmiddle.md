@@ -2,6 +2,30 @@
 
 Honest notes on where IKAREM stands. No hype.
 
+## Status: roadmap worked, 2026-09-27
+
+- [x] Deploy Ledger somewhere public → SHIPPED AS ARTIFACTS, not as a live
+  URL. `ledger/Dockerfile`, `ledger/docker-compose.yml` (app + Postgres),
+  `docs/DEPLOY.md`, `/readyz` health checks, and CI builds the image. I have
+  no cloud credentials, so the actual `docker compose up` on a host is a
+  human step. Until then, "deployed" means deployable in one command.
+- [x] Load test for real → DONE. `bench/load.py`: ~75k requests over real
+  uvicorn, zero 5xx, zero timeouts. It caught real bugs: a TestClient
+  header-mutation staleness (fixed earlier), an unpack-order bug in the
+  harness itself, and one genuine framework bug — the shared SQLite
+  connection corrupting under concurrent use (fixed with worker-side
+  serialization). Slow clients verified too.
+- [ ] One external user → STILL OPEN, and it is the one item I cannot do
+  myself. Everything else on this list is machine-verifiable. This one
+  needs a human going and finding someone.
+- [x] Postgres proof → DONE. Live server: connector CRUD, `RETURNING`,
+  bound LIMIT/OFFSET params, and the full Ledger suite green on Postgres.
+  Loop-tolerant pools (the TestClient-per-request-loop trap is fixed at
+  the connector level), stranded-connection hygiene, honest duplicate
+  detection in Ledger instead of blanket 400s.
+- [x] 1.0 → CUT as 1.0.0 with the SemVer promise, on the strength of the
+  items above. The open external-user item is disclosed here, not hidden.
+
 ## What is actually good
 
 The core design held up. Zero-dependency stdlib core, compiled DI, typed

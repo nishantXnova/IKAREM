@@ -140,7 +140,7 @@ Your app runs unchanged (same routes, middleware, 404/405 bodies) on the
 IKAREM engine — then migrate handler-by-handler. Full guide:
 [`docs/MIGRATING_FROM_MERAKI.md`](docs/MIGRATING_FROM_MERAKI.md) ·
 honest benchmarks: [`bench/RESULTS.md`](bench/RESULTS.md) ·
-install: `pip install ikarem` (`dist/ikarem-0.3.0-py3-none-any.whl` builds offline).
+install: `pip install ikarem` (`dist/ikarem-1.0.0-py3-none-any.whl` builds offline).
 
 ## Why IKAREM beats Meraki Phase 1 — and the industry
 
@@ -166,7 +166,7 @@ install: `pip install ikarem` (`dist/ikarem-0.3.0-py3-none-any.whl` builds offli
 
 ## Verification
 
-82 tests, all green — including exhaustive branch matrices:
+108 tests, all green — including exhaustive branch matrices:
 
 ```
 tests/test_di.py         Depends() x12 (nesting, cache on/off, sync/async/yield,
@@ -188,14 +188,14 @@ tests/test_fields.py       Field() ranges/lengths/patterns/emails, json_schema o
 ```
 
 ```bash
-python -m pytest tests/ -q   # 82 passed
+python -m pytest tests/ -q   # 108 passed
 ```
 
 ## Layout
 
 ```
 ikarem/
-  __init__.py     public exports (v0.3.0)
+  __init__.py     public exports (v1.0.0)
   app.py          Ikarem core + ASGI callable + DI/background/cleanup wiring
   routing.py      compiled routes + converters
   http.py         Request (+forms/uploads) + Response family (+cookies)
@@ -222,7 +222,7 @@ ikarem/
   mcp.py          routes-as-MCP-tools + stdio server
   openapi.py      OpenAPI 3.1 builder + /openapi.json + /docs
   scaffold.py     `ikarem new` starter generator
-tests/            82-test suite (see Verification)
+tests/            108-test suite (see Verification)
 examples/basic.py CRUD + DB plugin app
 docs/PHASE1.md    Phase 1 spec (rival crusher)
 ```

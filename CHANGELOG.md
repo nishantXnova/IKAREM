@@ -6,6 +6,25 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
+## [1.0.0] — 2026-09-27
+
+Stability promise: SemVer from here. `0.x` was the proving ground; `1.x`
+keeps the public API (`ikarem/__init__.py` exports, ASGI behavior, CLI
+commands) backward-compatible. Provenance for the promise below.
+
+Proven since 0.3.0 (all verified, not claimed):
+- Sustained load: ~75k requests over real uvicorn (healthz 1567 rps,
+  authed SQLite reads 1178 rps, concurrent writes 991 rps), zero 5xx,
+  zero timeouts — plus a slow-client trickle POST. Harness: `bench/load.py`.
+- Live Postgres: connector CRUD + full Ledger suite green against a real
+  server; loop-tolerant pools; `min_size=1` stranded-connection hygiene.
+- SQLite: serialized shared connection (fixed cross-thread corruption),
+  WAL mode, honest single-lane tradeoff documented.
+- Hardening: bounded cache/rate-limit tables, static realpath guard,
+  streaming body caps, DB-aware `/readyz`, websocket handshake fix.
+- 108 tests green across CPython 3.10–3.13 × Linux/macOS/Windows (CI),
+  ruff lint + format clean.
+
 ### Added
 - DB-aware `/readyz` readiness probe (503 when the database is down).
 - `Request.body(max_bytes)` streaming cap; `Request.json()` capped at 10MB

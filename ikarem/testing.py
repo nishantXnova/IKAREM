@@ -3,8 +3,43 @@
 from __future__ import annotations
 
 import asyncio
+import atexit
 import json
+import threading
 from typing import Any
+
+_tls = threading.local()
+_all_loops: list = []
+_loops_lock = threading.Lock()
+
+
+def _client_loop() -> Any:
+    """One event loop per thread, shared by all TestClients on it.
+
+    Loop-bound resources (asyncpg pools, sqlite WAL state) survive across
+    requests instead of churning per request — closer to a real server,
+    and pooled drivers stop leaking a pool per call. Use one TestClient
+    per thread (the normal pattern).
+    """
+    loop = getattr(_tls, "loop", None)
+    if loop is None or loop.is_closed():
+        loop = asyncio.new_event_loop()
+        _tls.loop = loop
+        with _loops_lock:
+            _all_loops.append(loop)
+    return loop
+
+
+@atexit.register
+def _close_client_loops() -> None:
+    with _loops_lock:
+        loops, _all_loops[:] = list(_all_loops), []
+    for loop in loops:
+        try:
+            if not loop.is_closed():
+                loop.close()
+        except Exception:
+            pass
 
 
 class TestResponse:
@@ -48,7 +83,7 @@ class TestClient:
     ) -> TestResponse:
         # Copy: never mutate the caller's dicts (a shared headers dict must
         # not freeze a stale Cookie across login/logout in the same test).
-        return asyncio.run(
+        return _client_loop().run_until_complete(
             self._do(
                 method,
                 path,

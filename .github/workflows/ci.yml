@@ -27,3 +27,38 @@ jobs:
         run: python -m pytest tests/ ledger/tests -q
       - name: Static handler audit
         run: python -m ikarem.cli check ledger.app:app
+
+  postgres:
+    name: live Postgres strategy
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install (+ asyncpg)
+        run: pip install -e . asyncpg pytest
+      - name: Live strategy tests
+        run: python -m pytest tests/test_postgres_live.py -q
+        env:
+          IKAREM_TEST_PG_URL: postgresql://postgres:postgres@localhost:5432/postgres
+
+  docker:
+    name: showcase image builds
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build ledger image
+        run: docker build ./ledger -t ledger:ci
