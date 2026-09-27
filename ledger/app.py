@@ -22,6 +22,8 @@ from ikarem import (
     Unauthorized,
     check_password,
     csrf_token,
+    flash,
+    get_flashed_messages,
     hash_password,
     verify_token,
 )
@@ -182,7 +184,9 @@ def esc(s: object) -> str:
     return str(s).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
 
 
-def layout(title: str, body: str, active: str = "", email: str | None = None, csrf: str = "") -> HTMLResponse:
+def layout(
+    title: str, body: str, active: str = "", email: str | None = None, csrf: str = "", req=None
+) -> HTMLResponse:
     nav = "".join(
         f'<a href="{href}" class="{"on" if active == key else ""}">{label}</a>'
         for key, href, label in [
@@ -200,11 +204,18 @@ def layout(title: str, body: str, active: str = "", email: str | None = None, cs
         if email
         else '<a href="/login">Login</a>'
     )
+    flashes = ""
+    if req is not None:
+        msgs = get_flashed_messages(req)
+        if msgs:
+            flashes = (
+                '<div class="flashes">' + "".join(f'<p class="flash">{esc(m)}</p>' for m in msgs) + "</div>"
+            )
     return HTMLResponse(f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{esc(title)} · Ledger</title><link rel="stylesheet" href="/static/style.css"><link rel="icon" href="/static/favicon.svg"></head>
 <body><div class="app"><aside><div class="brand">◈ Ledger</div><nav>{nav}</nav>
-<div class="side-foot">{user}</div></aside><main><h1>{esc(title)}</h1>{body}</main></div></body></html>""")
+<div class="side-foot">{user}</div></aside><main><h1>{esc(title)}</h1>{flashes}{body}</main></div></body></html>""")
 
 
 def month_bars(monthly: list[dict]) -> str:
@@ -359,7 +370,7 @@ async def dashboard(req, uid=Depends(current_user)):
         f'<div class="panel"><h2>Spending by category</h2>{donut(cats, exp_total)}</div></div>'
         f'<div class="panel"><h2>Recent</h2><table>{_txn_rows(recent)}</table></div>'
     )
-    return layout("Dashboard", body, "dash", email, csrf_token(req))
+    return layout("Dashboard", body, "dash", email, csrf_token(req), req=req)
 
 
 @app.get("/txns")
@@ -378,6 +389,7 @@ async def txns_page(req, uid=Depends(current_user)):
         "txns",
         await _user_email(req, uid),
         csrf_token(req),
+        req=req,
     )
 
 
@@ -428,6 +440,7 @@ async def txn_new(req, uid=Depends(current_user)):
         "new",
         await _user_email(req, uid),
         csrf_token(req),
+        req=req,
     )
 
 
@@ -451,6 +464,7 @@ async def txn_create(req, uid=Depends(current_user)):
             "new",
             await _user_email(req, uid),
             csrf_token(req),
+            req=req,
         )
     day = data.day or date.today().isoformat()
     receipt = await _save_receipt(form)
@@ -465,6 +479,7 @@ async def txn_create(req, uid=Depends(current_user)):
         data.category,
         receipt,
     )
+    flash(req, "Transaction added.")
     return RedirectResponse("/txns", status_code=303)
 
 
@@ -482,6 +497,7 @@ async def txn_edit_page(req, tid: int, uid=Depends(current_user)):
         "txns",
         await _user_email(req, uid),
         csrf_token(req),
+        req=req,
     )
 
 
@@ -508,6 +524,7 @@ async def txn_edit(req, tid: int, uid=Depends(current_user)):
             "txns",
             await _user_email(req, uid),
             csrf_token(req),
+            req=req,
         )
     receipt = await _save_receipt(form) or row["receipt"]
     await req.app.state_db.execute(
@@ -619,6 +636,7 @@ async def register(req, bg: BackgroundTasks):
         return _auth_page("register", req, "email already registered", data.email)
     req.session["uid"] = uid
     bg.add(print, f"welcome {data.email}")
+    flash(req, f"Account created — welcome, {data.email}.")
     if "text/html" in req.headers.get("accept", ""):
         return RedirectResponse("/", status_code=303)
     return {"uid": uid, "email": data.email}, 201
@@ -644,6 +662,7 @@ async def login(req):
             raise Unauthorized("bad credentials")
         return _auth_page("login", req, "Invalid email or password.", email)
     req.session["uid"] = row["id"]
+    flash(req, f"Welcome back, {row['email']}.")
     if "text/html" in req.headers.get("accept", ""):
         return RedirectResponse("/", status_code=303)
     return {"uid": row["id"], "email": row["email"]}
@@ -652,6 +671,7 @@ async def login(req):
 @app.post("/logout")
 async def logout(req):
     req.session.clear()
+    flash(req, "Logged out.")
     if "text/html" in req.headers.get("accept", "") or "multipart/form-data" in req.headers.get(
         "content-type", ""
     ):

@@ -6,6 +6,14 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
+### Added
+- `Blueprint` (prefixed groups with own before/after hooks + error handlers,
+  namespaced `url_for`, zero per-request overhead).
+- `Templates` (Jinja2 via `ikarem[jinja]`, autoescaped, lazy optional import).
+- `flash()` / `get_flashed_messages()` (session-backed one-shot notifications).
+- `MethodView` (class-based views, full DI per method via compiled plans).
+- `abort(status, detail)` (terse errors through the normal pipeline).
+
 ## [1.0.0] — 2026-09-27
 
 Stability promise: SemVer from here. `0.x` was the proving ground; `1.x`

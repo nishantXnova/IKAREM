@@ -3,6 +3,7 @@
 from .app import Ikarem
 from .auth import BearerAuth, check_password, create_token, hash_password, require_roles, verify_token
 from .background import BackgroundTasks
+from .blueprints import Blueprint
 from .cache import CacheBackend, MemoryCache, cached
 from .config import Config
 from .di import Depends
@@ -15,7 +16,9 @@ from .errors import (
     NotFound,
     PayloadTooLarge,
     Unauthorized,
+    abort,
 )
+from .flashing import flash, get_flashed_messages
 from .http import (
     FormData,
     HTMLResponse,
@@ -35,7 +38,9 @@ from .routing import Router
 from .security import CORSMiddleware, RateLimitMiddleware, SecurityHeadersMiddleware
 from .session import CSRFMiddleware, SessionMiddleware, csrf_token
 from .static import FileResponse
+from .templating import Templates
 from .validation import Field, FieldInfo, Schema, ValidationError
+from .views import MethodView
 from .websocket import WebSocket
 
 __all__ = [
@@ -56,6 +61,7 @@ __all__ = [
     "BasePlugin",
     "Config",
     "HTTPException",
+    "abort",
     "NotFound",
     "MethodNotAllowed",
     "BadRequest",
@@ -63,6 +69,11 @@ __all__ = [
     "Forbidden",
     "InternalError",
     "PayloadTooLarge",
+    "Blueprint",
+    "MethodView",
+    "Templates",
+    "flash",
+    "get_flashed_messages",
     "Schema",
     "ValidationError",
     "Field",

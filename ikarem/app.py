@@ -63,6 +63,18 @@ class Ikarem:
         for r in router.routes:
             self.router.add(prefix + r.path, r.methods, r.handler, r.name)
 
+    def register_blueprint(self, blueprint: Any, url_prefix: str | None = None) -> None:
+        """Mount a Blueprint: routes get prefixed paths, namespaced names
+        (``blueprint.route``), and the blueprint's own before/after hooks +
+        error handlers. Hooks wrap once at registration — compiled plans
+        stay reflection-free per request."""
+        prefix = url_prefix if url_prefix is not None else blueprint.url_prefix
+        prefix = (prefix or "").rstrip("/")
+        for path, methods, handler, _name in blueprint._routes:
+            full = (prefix + path) or "/"
+            name = f"{blueprint.name}.{getattr(handler, '__name__', full)}"
+            self.router.add(full, methods, blueprint._wrap(handler), name)
+
     def mount_static(self, url_path: str, directory: str) -> None:
         from .static import static_handler
 

@@ -202,3 +202,22 @@ def test_form_register_duplicate_rerenders_with_error():
     assert dup.status_code == 200
     assert "email already registered" in dup.text
     assert email in dup.text
+
+
+def test_flash_shows_once_after_login():
+    c = TestClient(app)
+    tok = c.get("/api/csrf").json()["csrf"]
+    # register via form to exercise the browser flash path
+    import time
+
+    email = f"flash{time.time_ns()}@ex.co"
+    r = c.post(
+        "/register",
+        body=f"email={email}&password=s3cretpw&_csrf_token={tok}",
+        content_type="application/x-www-form-urlencoded",
+        headers={"accept": "text/html"},
+    )
+    assert r.status_code == 303
+    dash = c.get("/", headers={"accept": "text/html"})
+    assert "Account created" in dash.text
+    assert "Account created" not in c.get("/", headers={"accept": "text/html"}).text

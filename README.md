@@ -125,6 +125,37 @@ async def add(req, note: NoteIn):  # validates JSON *and* HTML form bodies
 `get/post/put/patch/delete`. `ikarem check` audits handlers, `ikarem mcp`
 serves every route as an LLM tool.
 
+## Flask's best, taken
+
+```python
+from ikarem import Blueprint, MethodView, Templates, abort, flash
+
+api = Blueprint("api", url_prefix="/api")
+
+
+@api.get("/items/{uid:int}")  # own hooks, own errors, url_for("api.x")
+async def one(req, uid: int): ...
+
+
+app.register_blueprint(api)  # hooks wrap once — still zero per-request reflection
+
+abort(403, "owner only")  # terse errors through the normal pipeline
+
+
+class Items(MethodView):  # one class per resource, full DI per method
+    async def get(self, req): ...
+    async def post(self, req, item: Item): ...
+
+
+app.route("/items", Items.methods())(Items.as_view("items"))
+
+flash(req, "Saved.")  # session-backed, shown once in templates
+Templates("templates/").response("hi.html", name="amy")  # Jinja2 via ikarem[jinja]
+```
+
+Deliberately *not* taken: context locals (`g`, global `request` proxies) and signals —
+explicit `req` params plus plugins and middleware cover that ground without the magic.
+
 Live proof it all works: [`ledger/`](ledger/) — a personal-finance app
 (auth, dashboard with SVG charts, CRUD, receipt uploads, CSV export, JSON API)
 running on stock IKAREM + uvicorn.
