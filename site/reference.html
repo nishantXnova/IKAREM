@@ -3,8 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Reference — IKAREM</title>
-<meta name="description" content="IKAREM API reference: modules, CLI, config, errors.">
+<title>IKAREM API Reference — Routing, DI, Auth, DB, CLI</title>
+<meta name="description" content="Complete IKAREM API reference: app, request/response, Depends DI, Schema validation, JWT and RBAC, sessions, ops, CLI and config.">
+<meta name="theme-color" content="#0a0a0b">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="IKAREM">
+<meta property="og:title" content="IKAREM API Reference">
+<meta property="og:description" content="Routing, DI, validation, auth, sessions, DB strategies, CLI — the full surface, no fluff.">
+<meta property="og:image" content="https://raw.githubusercontent.com/nishantXnova/IKAREM/main/site/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="IKAREM API Reference">
+<meta name="twitter:image" content="https://raw.githubusercontent.com/nishantXnova/IKAREM/main/site/og.png">
 <link rel="icon" href="../assets/ikarem-icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="style.css">
 </head>
@@ -35,7 +44,7 @@
 <section id="app">
   <p class="secnum">REFERENCE</p>
   <h1>API, no fluff.</h1>
-  <h3><code>Ikarem(debug, enable_docs, version, **config)</code></h3>
+  <h2 class="sub"><code>Ikarem(debug, enable_docs, version, **config)</code></h2>
 <pre><code>app.get/post/put/patch/delete(path)  <span class="tok-c"># + .route(path, methods)</span>
 app.websocket(path)                   <span class="tok-c"># WSRouter</span>
 app.include_router(router, prefix=<span class="tok-s">""</span>)
@@ -47,7 +56,7 @@ app.exception_handler(ExcType)        <span class="tok-c"># MRO most-specific ma
 app.run(host, port, reload)           <span class="tok-c"># needs ikarem[server]</span>
 app.check()  app.compile_all()
 app.mcp_tools() / mcp_call() / mcp_server()</code></pre>
-  <h3>Routing</h3>
+  <h2 class="sub">Routing</h2>
   <p><code>/users/{uid:int}</code> — converters <code>str|int|float|uuid|path</code>, pre-compiled.
   Static routes resolve O(1). 404 vs 405 distinct. <code>router.url_for(name, **params)</code>.</p>
 </section>
@@ -98,7 +107,7 @@ app.use(CSRFMiddleware())      <span class="tok-c"># X-CSRF-Token header or _csr
 app.use(CORSMiddleware())
 app.use(SecurityHeadersMiddleware())
 app.use(RateLimitMiddleware(per_minute=<span class="tok-s">120</span>))   <span class="tok-c"># 429 + Retry-After, bounded buckets</span></code></pre>
-  <h3>Errors</h3>
+  <h2 class="sub">Errors</h2>
   <p><code>HTTPException</code> → <code>BadRequest Unauthorized Forbidden NotFound
   MethodNotAllowed PayloadTooLarge InternalError</code>. Custom handlers via
   <code>@app.exception_handler</code>; tracebacks only when <code>debug=True</code>.</p>
@@ -130,6 +139,6 @@ $ ikarem new mydir           <span class="tok-c"># production starter</span></co
   <span>IKAREM v1.0.0 — MIT. Meraki, reversed. And crushed.</span>
   <span style="margin-left:auto"><a href="https://github.com/nishantXnova/IKAREM">GitHub</a> · <a href="https://pypi.org/project/ikarem/">PyPI</a></span>
 </div></footer>
-<script src="script.js"></script>
+<script src="script.js" defer></script>
 </body>
 </html>

@@ -72,6 +72,7 @@ section { margin-bottom: 72px; scroll-margin-top: 90px; }
 .secnum { color: var(--red); font-size: 13px; letter-spacing: 2px; }
 h1 { font-size: clamp(44px, 7vw, 96px); line-height: 1.02; margin: 8px 0 20px; letter-spacing: -1px; font-weight: 900; }
 h2 { font-size: 26px; margin: 0 0 18px; letter-spacing: -0.5px; font-weight: 800; }
+h2.sub { font-size: 16px; margin: 30px 0 10px; letter-spacing: 0; }
 h3 { font-size: 16px; margin: 30px 0 10px; color: var(--ink); }
 p { margin: 0 0 16px; color: var(--ink); }
 .mut { color: var(--mut); }
