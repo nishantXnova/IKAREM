@@ -9,6 +9,9 @@
 *.css text eol=lf
 *.html text eol=lf
 *.cff text eol=lf
+Dockerfile text eol=lf
+docker-compose.yml text eol=lf
+.dockerignore text eol=lf
 *.db binary
 *.png binary
 *.jpg binary
