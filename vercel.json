@@ -1,9 +1,21 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "cp -r assets site/assets",
-  "outputDirectory": "site",
-  "cleanUrls": true,
-  "trailingSlash": false,
+  "version": 2,
+  "builds": [
+    { "src": "site/**", "use": "@vercel/static" },
+    { "src": "assets/**", "use": "@vercel/static" }
+  ],
+  "routes": [
+    { "src": "/", "dest": "/site/index.html" },
+    { "src": "/migrate", "dest": "/site/migrate.html" },
+    { "src": "/migrate.html", "dest": "/site/migrate.html" },
+    { "src": "/reference", "dest": "/site/reference.html" },
+    { "src": "/reference.html", "dest": "/site/reference.html" },
+    { "src": "/style.css", "dest": "/site/style.css" },
+    { "src": "/script.js", "dest": "/site/script.js" },
+    { "src": "/favicon.ico", "dest": "/assets/ikarem-icon.svg" },
+    { "src": "/assets/(.*)", "dest": "/assets/$1" }
+  ],
   "headers": [
     {
       "source": "/(.*)",
