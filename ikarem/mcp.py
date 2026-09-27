@@ -143,6 +143,37 @@ class MCPServer:
         self.build()
         return [e["tool"] for e in self._entries]
 
+    def list_resources(self) -> list[dict]:
+        self.build()
+        return [
+            {"uri": "ikarem://openapi.json", "name": "OpenAPI 3.1 spec", "mimeType": "application/json"},
+            {
+                "uri": "ikarem://manifest",
+                "name": "Compact route manifest for LLM context",
+                "mimeType": "application/json",
+            },
+        ]
+
+    def read_resource(self, uri: str) -> dict:
+        """Read a resource; always returns MCP {contents} or {isError} (never raises)."""
+        import json as _json
+
+        try:
+            self.build()
+            if uri == "ikarem://openapi.json":
+                from .openapi import build_openapi
+
+                text = _json.dumps(build_openapi(self.app, version=getattr(self.app, "_version", "0.1.0")))
+            elif uri == "ikarem://manifest":
+                from .compiled import describe_app
+
+                text = _json.dumps(describe_app(self.app))
+            else:
+                return {"isError": True, "content": [{"type": "text", "text": f"unknown resource '{uri}'"}]}
+            return {"contents": [{"uri": uri, "mimeType": "application/json", "text": text}]}
+        except Exception as e:  # noqa: BLE001
+            return {"isError": True, "content": [{"type": "text", "text": str(e)}]}
+
     async def call_tool(self, name: str, args: dict | None) -> dict:
         """Call a tool; always returns MCP {content, isError} (never raises)."""
         self.build()
@@ -264,7 +295,7 @@ class MCPServer:
             if method == "initialize":
                 result = {
                     "protocolVersion": "2024-11-05",
-                    "capabilities": {"tools": {}},
+                    "capabilities": {"tools": {}, "resources": {}},
                     "serverInfo": {"name": "ikarem", "version": getattr(self.app, "_version", "0.1.0")},
                 }
             elif method in ("notifications/initialized", "notifications/cancelled"):
@@ -277,6 +308,12 @@ class MCPServer:
                 if not isinstance(params, dict) or "name" not in params:
                     return None if is_notification else _rpc_error(mid, -32602, "missing tool 'name'")
                 result = await self.call_tool(params["name"], params.get("arguments") or {})
+            elif method == "resources/list":
+                result = {"resources": self.list_resources()}
+            elif method == "resources/read":
+                if not isinstance(params, dict) or "uri" not in params:
+                    return None if is_notification else _rpc_error(mid, -32602, "missing resource 'uri'")
+                result = self.read_resource(params["uri"])
             else:
                 return None if is_notification else _rpc_error(mid, -32601, f"Method not found: {method}")
         except Exception as e:  # noqa: BLE001

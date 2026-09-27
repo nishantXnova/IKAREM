@@ -1,4 +1,4 @@
-"""`ikarem run|check|mcp|new|migrate|worker ...`."""
+"""`ikarem run|check|mcp|new|migrate|worker|inspect ...`."""
 
 from __future__ import annotations
 
@@ -49,6 +49,7 @@ def main() -> None:
         "new",
         "migrate",
         "worker",
+        "inspect",
         "-h",
         "--help",
     ):
@@ -91,6 +92,10 @@ def main() -> None:
     pw.add_argument("target", nargs="?", default="examples.basic:app", help="module:attr")
     pw.add_argument("--poll", type=float, default=1.0)
 
+    pi = sub.add_parser("inspect", help="print a compact route manifest (built for LLM context)")
+    pi.add_argument("target", nargs="?", default="examples.basic:app", help="module:attr")
+    pi.add_argument("--format", choices=["json", "summary"], default="json")
+
     args = p.parse_args()
     if args.cmd == "new":
         from .scaffold import create_project
@@ -113,8 +118,30 @@ def main() -> None:
         raise SystemExit(_cmd_migrate(app, args))
     elif args.cmd == "worker":
         raise SystemExit(_cmd_worker(app, args))
+    elif args.cmd == "inspect":
+        raise SystemExit(_cmd_inspect(app, args))
     else:
         raise SystemExit(_cmd_check(app))
+
+
+def _cmd_inspect(app, args) -> int:
+    import json
+
+    from .compiled import describe_app
+
+    if hasattr(app, "_ensure_system_routes"):
+        app._ensure_system_routes()
+    if hasattr(app, "compile_all"):
+        app.compile_all()
+    manifest = describe_app(app)
+    if args.format == "summary":
+        print(f"{manifest['count']} route(s)")
+        for r in manifest["routes"]:
+            auth = f" [auth:{r['auth']['scheme']}]" if "auth" in r else ""
+            print(f"  {r['method']:6} {r['path']} -> {r['handler']}{auth}")
+    else:
+        print(json.dumps(manifest, indent=1))
+    return 0
 
 
 def _cmd_migrate(app, args) -> int:

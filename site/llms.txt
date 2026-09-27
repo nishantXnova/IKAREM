@@ -1,0 +1,73 @@
+# IKAREM — llms.txt
+
+IKAREM is an industry-grade Python ASGI backend framework (v1.0.0, MIT).
+Zero required dependencies; pure stdlib + ASGI core. Install: `pip install ikarem`
+(`ikarem[server]` for uvicorn, `ikarem[postgres]` for asyncpg, `ikarem[test]`,
+`ikarem[jinja]` for templates). Python >= 3.10. Docs: https://ikarem.vercel.app/
+Repo: https://github.com/nishantXnova/IKAREM
+
+## Minimal app
+
+from ikarem import Ikarem
+app = Ikarem()
+@app.get("/")                       # get/post/put/patch/delete, route(path, methods)
+async def home(req):
+    return {"hello": "ikarem"}      # dict/list/str/bytes/Response/(body, status)
+# run: uvicorn myapp:app   audit: ikarem check myapp:app
+
+## Routing
+
+- `/users/{uid:int}` — converters str/int/float/uuid/path; 404 vs 405 distinct
+- `router.url_for(name, **params)`; `app.include_router(r, prefix)`; blueprints:
+  `bp = Blueprint("api", url_prefix="/api")` + `app.register_blueprint(bp)`
+  (own before/after hooks + error handlers). Class views: `MethodView` +
+  `app.route(p, ItemView.methods())(ItemView.as_view("items"))`.
+- `app.mount_static(url, dir)`; `app.mount_asgi(prefix, asgi_app)` escape hatch.
+
+## Request/Response
+
+- `req.method/path/path_params/query/headers/cookies/state/session/app`
+- `await req.body()/json()/form()/text()`; forms = urlencoded + multipart + UploadFile
+- `JSONResponse/TextResponse/HTMLResponse/RedirectResponse/StreamingResponse/XMLResponse/FileResponse`
+- `resp.set_cookie(...)`; `to_response()` normalizes handler returns.
+
+## DI, validation, background
+
+- `def dep(req): ...` sync/async/generator; `param=Depends(dep)` (+`use_cache=False`);
+  nested Depends; yield deps finalize AFTER response send. Cycles rejected.
+- `class Item(Schema)` with `Field(..., ge/le/min_length/max_length/pattern/email=...)`;
+  `Schema(extra="forbid")` rejects unknown keys. Body params validate JSON and forms.
+- `bg: BackgroundTasks` runs after send. Durable instead: `QueuePlugin` +
+  `queue.enqueue("name", {...})` + `@task("name")` + `ikarem worker`.
+
+## Auth & security
+
+- JWT: `create_token/verify_token`, `BearerAuth(secret)`, `require_roles("admin")`,
+  `require_scopes("write")`, `require_if(predicate)`; `abort(403, "...")`.
+- `hash_password/check_password` (pbkdf2). `APIKeyAuth({...})` header keys.
+- Middleware: `SessionMiddleware` (signed cookies, `req.session`), `CSRFMiddleware`,
+  `CORSMiddleware`, `SecurityHeadersMiddleware`, `RateLimitMiddleware` (429s).
+- Config: `Ikarem(session_secret=..., auth_secret=...)` or `IKAREM_*` env.
+  Errors: `HTTPException` hierarchy + `@app.exception_handler(Exc)` (MRO match).
+
+## Data, ops, tooling
+
+- `DatabasePlugin(url)` → `req.app.state_db.execute/fetch_one/fetch_all/execute_many`
+  (sqlite/postgres/mysql/sqlserver, `?` placeholders, dict rows). Migrations:
+  `migrations/NNNN_name.sql` + `ikarem migrate up|down|status|new`.
+- `app.resource("/items", Item, table="items", owner_field="user_id")` = full CRUD.
+- `MemoryCache` + `@cached`; `app.cron("*/5 * * * *")` / `app.every(30)` +
+  `await app.start_scheduler(stop)`.
+- Probes: `/healthz /readyz /metrics`; docs: `/openapi.json /docs`.
+- Test: `TestClient(app)` (cookie jar, get/post/put/patch/delete; one loop per thread).
+- CLI: `run|check|mcp|new|migrate|worker|inspect`. `ikarem inspect myapp:app`
+  prints a compact JSON route manifest for LLM context.
+- AI: every route is an MCP tool (`ikarem mcp`, tools/list+call, resources
+  `ikarem://openapi.json` + `ikarem://manifest`). `Templates(dir)` renders Jinja2.
+
+## Rules (do not break)
+
+1. Handlers take `req` first; never touch raw ASGI. Type path params
+   (`uid: int`), validate bodies with Schema, never f-string SQL (always `?`).
+2. Owner data: scope by session uid; never trust body-supplied owner ids.
+3. `ikarem check` clean + `pytest` green before finishing. Zero-dep core stays stdlib-only.

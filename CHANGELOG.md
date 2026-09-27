@@ -7,6 +7,12 @@ All notable changes to this project are documented here. Format follows
 ## [Unreleased]
 
 ### Added
+- `ikarem inspect` compact route manifest (token-efficient LLM context).
+- MCP `resources/list` + `resources/read` (`ikarem://openapi.json`,
+  `ikarem://manifest`); capabilities now advertise tools + resources.
+- `site/llms.txt` one-page framework manual; `AGENTS.md` agent laws.
+
+### Added
 - Startup validation: default/missing secrets refused when auth routes exist,
   `validate_config()` middleware hook (sessions, CSRF order), debug route-table log.
 - `ikarem check` flags duplicate (method, path) routes as errors.

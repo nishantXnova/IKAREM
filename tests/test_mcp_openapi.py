@@ -137,7 +137,7 @@ def test_mcp_jsonrpc_protocol():
 
     async def _go():
         init = await srv.handle({"jsonrpc": "2.0", "id": 1, "method": "initialize"})
-        assert init["result"]["capabilities"] == {"tools": {}}
+        assert init["result"]["capabilities"] == {"tools": {}, "resources": {}}
         assert await srv.handle({"jsonrpc": "2.0", "method": "notifications/initialized"}) is None
         listed = await srv.handle({"jsonrpc": "2.0", "id": 2, "method": "tools/list"})
         assert {t["name"] for t in listed["result"]["tools"]} == {"get_user", "create_item", "admin"}

@@ -123,7 +123,10 @@ async def add(req, note: NoteIn):  # validates JSON *and* HTML form bodies
 
 `TestClient` keeps a cookie jar (login flows just work) and speaks
 `get/post/put/patch/delete`. `ikarem check` audits handlers, `ikarem mcp`
-serves every route as an LLM tool.
+serves every route as an LLM tool (plus `ikarem://openapi.json` and
+`ikarem://manifest` MCP resources), `ikarem inspect` prints a compact route
+manifest for LLM context, and `site/llms.txt` is the framework manual in one
+page. `AGENTS.md` holds the contributor laws for AI and human agents alike.
 
 ## Flask's best, taken
 
@@ -284,7 +287,7 @@ ikarem/
   static.py       FileResponse + static mounts
   observability.py  logging + request-ID + metrics + /healthz + /metrics
   db/             DatabaseConnector ABC + sqlite/postgres/mysql/sqlserver + plugin + factory
-  cli.py          `ikarem run|check|mcp|new` helper
+  cli.py          `ikarem run|check|mcp|new|migrate|worker|inspect` helper
   testing.py      TestClient (cookie jar, all verbs — no server needed)
   compiled.py     one-time handler plans (perf) + check/describe IR
   mcp.py          routes-as-MCP-tools + stdio server

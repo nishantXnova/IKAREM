@@ -647,6 +647,61 @@ def describe_route(route: Any) -> RouteDescription:
     return desc
 
 
+def describe_app(app: Any) -> dict:
+    """Token-efficient whole-app manifest for LLM context (inspect/MCP).
+
+    One entry per route+method; nulls omitted. An agent can plan every
+    call from this alone — path/query/body shapes plus auth boundaries.
+    """
+    from types import SimpleNamespace
+
+    router = getattr(app, "router", None)
+    routes = getattr(router, "routes", [])
+    out: list[dict] = []
+    for route in routes:
+        if getattr(route.handler, "_ikarem_internal", False):
+            continue
+        plan = get_plan(route.handler)
+        if plan.compile_error:
+            continue
+        for method in sorted(route.methods):
+            single = SimpleNamespace(
+                path=route.path, methods={method}, handler=route.handler, name=route.name
+            )
+            desc = describe_route(single)
+            entry: dict[str, Any] = {
+                "method": method,
+                "path": route.path,
+                "handler": plan.handler_name,
+            }
+            if desc.doc:
+                entry["summary"] = desc.doc.split("\n")[0][:140]
+            if desc.path_params:
+                entry["path_params"] = [
+                    {"name": n, "type": _conv_type(desc.path_converters.get(n))} for n in desc.path_params
+                ]
+            if desc.query:
+                entry["query"] = [
+                    {"name": q.name, "type": (q.schema or {}).get("type", "string"), "required": q.required}
+                    for q in desc.query
+                ]
+            if desc.body_schema:
+                entry["body"] = desc.body_schema
+            if desc.is_auth:
+                auth: dict[str, Any] = {"scheme": desc.auth_scheme or "bearer"}
+                if desc.auth_roles:
+                    auth["roles"] = list(desc.auth_roles)
+                entry["auth"] = auth
+            out.append(entry)
+    return {"routes": out, "count": len(out)}
+
+
+def _conv_type(converter: str | None) -> str:
+    return {"int": "integer", "float": "number", "uuid": "string", "path": "string"}.get(
+        converter or "str", "string"
+    )
+
+
 def check_app(app: Any) -> dict:
     """Statically compile every route; return {errors, warnings, routes}."""
     report: dict[str, Any] = {"errors": [], "warnings": [], "routes": []}
