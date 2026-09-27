@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Migrate from Meraki — IKAREM</title>
+<meta name="description" content="Move a Meraki app to IKAREM in five minutes. Two-line diff, then migrate handler by handler.">
+<link rel="icon" href="../assets/ikarem-icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="index.html"><img src="../assets/ikarem-icon.svg" alt="IKAREM"><b>IKAREM</b></a>
+  <span class="ver">v1.0.0</span>
+  <nav>
+    <a href="index.html">Docs</a>
+    <a href="migrate.html" class="on">Migrate</a>
+    <a href="reference.html">Reference</a>
+    <a href="https://github.com/nishantXnova/IKAREM" class="ext">GitHub</a>
+    <a href="https://pypi.org/project/ikarem/" class="ext">PyPI</a>
+  </nav>
+</header>
+
+<div class="wrap">
+<aside class="side"><ol>
+  <li><a href="#swap" class="on"><span class="n">00</span>The diff</a></li>
+  <li><a href="#map"><span class="n">01</span>API map</a></li>
+  <li><a href="#cash"><span class="n">02</span>Cash in</a></li>
+  <li><a href="#native"><span class="n">03</span>Go native</a></li>
+</ol></aside>
+
+<main>
+<section id="swap">
+  <p class="secnum">MIGRATE / 5 MINUTES</p>
+  <h1>Two lines.<br>Then lunch.</h1>
+<pre><code>$ pip uninstall meraki -y && pip install ikarem</code></pre>
+<pre><code><span class="tok-c">- from meraki import Meraki</span>
+<span class="tok-s">+ from ikarem.meraki_compat import Meraki</span></code></pre>
+  <p>That's the whole migration. Same decorators, same <code>add_middleware</code>, same 404/405
+  plain-text bodies, same byte-pair headers, same <code>Response(body, status_code)</code>.
+  Your <code>uvicorn example:app</code> invocation keeps working. Run your test suite — it passes
+  unchanged.</p>
+</section>
+
+<section id="map">
+  <p class="secnum">01 / API MAP</p>
+  <h2>Same shape. More underneath.</h2>
+  <table>
+    <tr><th>Meraki</th><th>IKAREM native</th></tr>
+    <tr><td><code>Response(body=b"…", status_code=201)</code></td><td>Same shape — or just <code>return {...}, 201</code></td></tr>
+    <tr><td><code>request.path</code>, <code>request.method</code></td><td>Same, plus <code>query</code>, <code>cookies</code>, <code>path_params</code>, <code>await body()/json()/form()</code></td></tr>
+    <tr><td><code>request.query_params</code> (tuples)</td><td><code>request.query</code> (dict)</td></tr>
+    <tr><td><code>request.headers</code> (byte pairs)</td><td><code>request.headers</code> (lowercased dict)</td></tr>
+    <tr><td>Static paths only</td><td><code>{uid:int/float/uuid/path}</code>, 404 vs 405, <code>url_for</code></td></tr>
+    <tr><td><code>pipeline.add(mw)</code></td><td><code>app.use(...)</code>: CORS, security headers, rate limit, sessions, CSRF</td></tr>
+    <tr><td><code>plugins/</code> (empty), <code>config/</code> (empty)</td><td>Working plugins + layered <code>Config</code> + <code>DatabasePlugin</code></td></tr>
+  </table>
+  <div class="note"><b>Note.</b> Meraki's <code>Request</code> never stores <code>receive</code>, so it
+  cannot read POST bodies at all. Any endpoint reading a body is new capability, not ported code.</div>
+</section>
+
+<section id="cash">
+  <p class="secnum">02 / CASH IN</p>
+  <h2>Highest ROI first.</h2>
+  <p><b>1. Path params.</b> Meraki has none — <code>GET /users/{uid:int}</code> starts working the
+  moment you use the compat layer (<code>request.ikarem.path_params</code> inside old handlers).</p>
+  <p><b>2. Return dicts.</b> Replace <code>Response(body=json.dumps(...).encode())</code> with
+  <code>return {...}</code>.</p>
+  <p><b>3. Kill validation boilerplate</b> with <code>Schema</code> + <code>Field()</code> — invalid
+  bodies become 400s and document themselves in OpenAPI.</p>
+  <p><b>4. Run <code>ikarem check myapp:app</code></b> — circular deps and bad <code>Depends()</code>
+  surface before traffic does.</p>
+</section>
+
+<section id="native">
+  <p class="secnum">03 / GO NATIVE</p>
+  <h2>One file at a time.</h2>
+<pre><code>app = Meraki().ikarem   <span class="tok-c"># the full Ikarem app under your compat app</span></code></pre>
+  <p><code>Meraki().ikarem</code> exposes the engine: <code>include_router</code>,
+  <code>exception_handler</code>, <code>mount_static</code>, <code>websocket</code>,
+  <code>mcp_tools()</code>. Both styles coexist on one app. You're done when
+  <code>grep -r meraki_compat</code> is empty. Worked example: the
+  <a href="index.html#ledger">Ledger</a> app was built exactly this way.</p>
+</main>
+</div>
+
+<footer><div class="wrap">
+  <span>IKAREM v1.0.0 — MIT. Meraki, reversed. And crushed.</span>
+  <span style="margin-left:auto"><a href="https://github.com/nishantXnova/IKAREM">GitHub</a> · <a href="https://pypi.org/project/ikarem/">PyPI</a></span>
+</div></footer>
+<script src="script.js"></script>
+</body>
+</html>

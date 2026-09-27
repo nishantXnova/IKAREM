@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reference — IKAREM</title>
+<meta name="description" content="IKAREM API reference: modules, CLI, config, errors.">
+<link rel="icon" href="../assets/ikarem-icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="index.html"><img src="../assets/ikarem-icon.svg" alt="IKAREM"><b>IKAREM</b></a>
+  <span class="ver">v1.0.0</span>
+  <nav>
+    <a href="index.html">Docs</a>
+    <a href="migrate.html">Migrate</a>
+    <a href="reference.html" class="on">Reference</a>
+    <a href="https://github.com/nishantXnova/IKAREM" class="ext">GitHub</a>
+    <a href="https://pypi.org/project/ikarem/" class="ext">PyPI</a>
+  </nav>
+</header>
+
+<div class="wrap">
+<aside class="side"><ol>
+  <li><a href="#app" class="on"><span class="n">00</span>App</a></li>
+  <li><a href="#io"><span class="n">01</span>Request/Response</a></li>
+  <li><a href="#di"><span class="n">02</span>DI + Schema</a></li>
+  <li><a href="#sec"><span class="n">03</span>Security</a></li>
+  <li><a href="#ops"><span class="n">04</span>Ops</a></li>
+  <li><a href="#cli"><span class="n">05</span>CLI + config</a></li>
+</ol></aside>
+
+<main>
+<section id="app">
+  <p class="secnum">REFERENCE</p>
+  <h1>API, no fluff.</h1>
+  <h3><code>Ikarem(debug, enable_docs, version, **config)</code></h3>
+<pre><code>app.get/post/put/patch/delete(path)  <span class="tok-c"># + .route(path, methods)</span>
+app.websocket(path)                   <span class="tok-c"># WSRouter</span>
+app.include_router(router, prefix=<span class="tok-s">""</span>)
+app.mount_static(url_path, directory)
+app.use(middleware)                   <span class="tok-c"># onion, short-circuitable</span>
+app.register(plugin)                  <span class="tok-c"># deps sorted, cycles rejected</span>
+app.on_startup / app.on_shutdown
+app.exception_handler(ExcType)        <span class="tok-c"># MRO most-specific match</span>
+app.run(host, port, reload)           <span class="tok-c"># needs ikarem[server]</span>
+app.check()  app.compile_all()
+app.mcp_tools() / mcp_call() / mcp_server()</code></pre>
+  <h3>Routing</h3>
+  <p><code>/users/{uid:int}</code> — converters <code>str|int|float|uuid|path</code>, pre-compiled.
+  Static routes resolve O(1). 404 vs 405 distinct. <code>router.url_for(name, **params)</code>.</p>
+</section>
+
+<section id="io">
+  <p class="secnum">01 / REQUEST · RESPONSE</p>
+<pre><code>req.method  req.path  req.path_params  req.query  req.headers  req.cookies
+req.state  req.session                 <span class="tok-c"># with SessionMiddleware</span>
+<span class="tok-k">await</span> req.body(max_bytes=<span class="tok-k">None</span>)   <span class="tok-c"># streams, capped on demand</span>
+<span class="tok-k">await</span> req.json(max_bytes=10MB)  <span class="tok-c"># 413 past the cap</span>
+<span class="tok-k">await</span> req.form()                <span class="tok-c"># urlencoded + multipart, UploadFile</span>
+<span class="tok-k">await</span> req.text()
+
+JSONResponse  TextResponse  HTMLResponse  RedirectResponse
+StreamingResponse  FileResponse(path, media_type, filename, status_code)
+resp.set_cookie(...) / resp.delete_cookie(...)</code></pre>
+  <p class="mut small">Handlers return dicts/lists/str/bytes, <code>(body, status)</code> tuples, or
+  Response objects — <code>to_response</code> normalizes. Errors render <i>inside</i> the middleware
+  pipeline, so 4xx/5xx keep request-ID, security, CORS and rate-limit headers.</p>
+</section>
+
+<section id="di">
+  <p class="secnum">02 / DI + SCHEMA</p>
+<pre><code><span class="tok-k">def</span> <span class="tok-s">get_db</span>(req): ...
+<span class="tok-k">async def</span> <span class="tok-s">h</span>(req, db=Depends(get_db), bg: BackgroundTasks):
+    ...
+
+<span class="tok-k">class</span> <span class="tok-s">Item</span>(Schema):
+    name: <span class="tok-s">str</span> = Field(..., min_length=<span class="tok-s">1</span>, max_length=<span class="tok-s">80</span>)
+    qty: <span class="tok-s">int</span> = Field(<span class="tok-s">1</span>, ge=<span class="tok-s">1</span>, le=<span class="tok-s">999</span>)
+    email: <span class="tok-s">str</span> = Field(..., email=<span class="tok-k">True</span>)</code></pre>
+  <p><code>Depends()</code>: nested, per-request cached (+ opt-out), sync/async/yield, finalizers run
+  <i>after</i> the response is sent and on the exception path, circular deps rejected at compile time.
+  <code>Schema</code> validates JSON <i>and</i> form bodies; failures are 400s; constraints flow into
+  OpenAPI and MCP schemas automatically.</p>
+</section>
+
+<section id="sec">
+  <p class="secnum">03 / SECURITY</p>
+<pre><code>create_token(sub, secret, expires_in, **claims)  <span class="tok-c"># HS256, sub required</span>
+verify_token(token, secret)                      <span class="tok-c"># alg-confusion resistant</span>
+hash_password / check_password                   <span class="tok-c"># pbkdf2</span>
+claims = Depends(require_roles(<span class="tok-s">"admin"</span>))      <span class="tok-c"># 401/403</span>
+claims = Depends(BearerAuth(secret))
+
+app.use(SessionMiddleware())   <span class="tok-c"># signed cookies: req.session</span>
+app.use(CSRFMiddleware())      <span class="tok-c"># X-CSRF-Token header or _csrf_token field</span>
+app.use(CORSMiddleware())
+app.use(SecurityHeadersMiddleware())
+app.use(RateLimitMiddleware(per_minute=<span class="tok-s">120</span>))   <span class="tok-c"># 429 + Retry-After, bounded buckets</span></code></pre>
+  <h3>Errors</h3>
+  <p><code>HTTPException</code> → <code>BadRequest Unauthorized Forbidden NotFound
+  MethodNotAllowed PayloadTooLarge InternalError</code>. Custom handlers via
+  <code>@app.exception_handler</code>; tracebacks only when <code>debug=True</code>.</p>
+</section>
+
+<section id="ops">
+  <p class="secnum">04 / OPS</p>
+<pre><code>GET /healthz    <span class="tok-c"># liveness</span>
+GET /readyz     <span class="tok-c"># readiness: 503 while the DB is down</span>
+GET /metrics    <span class="tok-c"># ikarem_requests / errors / uptime</span>
+GET /openapi.json  GET /docs   <span class="tok-c"># OpenAPI 3.1 + Swagger</span></code></pre>
+  <p><code>MemoryCache</code> + <code>@cached</code> (bounded, TTL, Redis-swappable
+  <code>CacheBackend</code>). <code>DatabasePlugin(url)</code> — SQLite (stdlib) / Postgres /
+  MySQL / SQLServer strategies, <code>state_db.execute/fetch_one/fetch_all/execute_many/transaction</code>.</p>
+</section>
+
+<section id="cli">
+  <p class="secnum">05 / CLI + CONFIG</p>
+<pre><code>$ ikarem run myapp:app [--host --port --reload]
+$ ikarem check myapp:app     <span class="tok-c"># gate deploys on this</span>
+$ ikarem mcp myapp:app       <span class="tok-c"># routes as MCP tools over stdio</span>
+$ ikarem new mydir           <span class="tok-c"># production starter</span></code></pre>
+  <p>Config precedence: defaults &lt; <code>Ikarem(**kwargs)</code> &lt; <code>load_dict</code> &lt;
+  <code>IKAREM_*</code> env. Typed reads: <code>config.get(key, default, cast=...)</code>.</p>
+</main>
+</div>
+
+<footer><div class="wrap">
+  <span>IKAREM v1.0.0 — MIT. Meraki, reversed. And crushed.</span>
+  <span style="margin-left:auto"><a href="https://github.com/nishantXnova/IKAREM">GitHub</a> · <a href="https://pypi.org/project/ikarem/">PyPI</a></span>
+</div></footer>
+<script src="script.js"></script>
+</body>
+</html>

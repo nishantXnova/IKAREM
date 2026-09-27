@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IKAREM — Meraki, reversed. And crushed.</title>
+<meta name="description" content="IKAREM: industry-grade Python ASGI backend framework. Zero-dep core. pip install ikarem.">
+<link rel="icon" href="../assets/ikarem-icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="index.html"><img src="../assets/ikarem-icon.svg" alt="IKAREM"><b>IKAREM</b></a>
+  <span class="ver">v1.0.0</span>
+  <nav>
+    <a href="index.html" class="on">Docs</a>
+    <a href="migrate.html">Migrate</a>
+    <a href="reference.html">Reference</a>
+    <a href="https://github.com/nishantXnova/IKAREM" class="ext">GitHub</a>
+    <a href="https://pypi.org/project/ikarem/" class="ext">PyPI</a>
+  </nav>
+</header>
+
+<div class="wrap">
+<aside class="side"><ol>
+  <li><a href="#top" class="on"><span class="n">00</span>IKAREM</a></li>
+  <li><a href="#install"><span class="n">01</span>Install</a></li>
+  <li><a href="#quickstart"><span class="n">02</span>Quickstart</a></li>
+  <li><a href="#why"><span class="n">03</span>Why switch</a></li>
+  <li><a href="#bench"><span class="n">04</span>Benchmarks</a></li>
+  <li><a href="#ledger"><span class="n">05</span>Live demo</a></li>
+  <li><a href="#stack"><span class="n">06</span>The stack</a></li>
+  <li><a href="#ops"><span class="n">07</span>Operate it</a></li>
+</ol></aside>
+
+<main>
+<section class="hero" id="top">
+  <p class="kicker"><span class="strike">MERAKI</span> &nbsp;<span class="r">→ reversed. And crushed.</span></p>
+  <h1>IKAREM</h1>
+  <p class="lede">Industry-grade Python ASGI backend framework. FastAPI-style DX (DI, validation,
+  OpenAPI, auth) plus Django/Nest-style structure (plugins, config, RBAC) — on a core that runs
+  on the standard library alone.</p>
+  <div class="heroimg" aria-label="IKAREM logo">
+    <svg viewBox="0 0 1400 520" xmlns="http://www.w3.org/2000/svg" role="img">
+      <rect x="56" y="56" width="408" height="408" rx="96" fill="#101016"/>
+      <g transform="translate(520,0) scale(-1,1)">
+        <text x="260" y="352" text-anchor="middle" font-family="Arial Black,Arial,sans-serif" font-size="252" font-weight="900" fill="#FFFFFF">K</text>
+      </g>
+      <line x1="100" y1="384" x2="420" y2="140" stroke="#FF2B2B" stroke-width="30" stroke-linecap="round"/>
+      <text x="540" y="290" font-family="'Arial Black',Arial,sans-serif" font-size="168" font-weight="900" letter-spacing="4" fill="#FFFFFF">IKAREM</text>
+      <g transform="translate(1450,0) scale(-1,1)">
+        <text x="725" y="392" text-anchor="middle" font-family="Arial,sans-serif" font-size="62" font-weight="700" letter-spacing="16" fill="#8f949e">MERAKI</text>
+      </g>
+      <line x1="560" y1="400" x2="890" y2="322" stroke="#FF2B2B" stroke-width="10" stroke-linecap="round"/>
+    </svg>
+  </div>
+  <div class="btnrow">
+    <a class="btn pri" href="#quickstart">Get started</a>
+    <a class="btn" href="migrate.html">Migrate from Meraki</a>
+  </div>
+  <div class="stats">
+    <div class="stat"><b class="g">108</b><span>tests, all green</span></div>
+    <div class="stat"><b>0</b><span>required dependencies</span></div>
+    <div class="stat"><b>~110k</b><span>in-process req/s</span></div>
+    <div class="stat"><b>21</b><span>routes on the live demo</span></div>
+  </div>
+</section>
+
+<section id="install">
+  <p class="secnum">01 / INSTALL</p>
+  <h2>One line. Zero required deps.</h2>
+<pre><code>$ pip install ikarem</code></pre>
+<pre><code>$ pip install "ikarem[server]"    # uvicorn to serve
+$ pip install "ikarem[postgres]"  # asyncpg strategy
+$ pip install "ikarem[test]"      # pytest + httpx</code></pre>
+  <p class="mut small">Python ≥3.10. Uvicorn, asyncpg, aiomysql and friends are optional extras —
+  the core is pure stdlib + ASGI and runs anywhere.</p>
+</section>
+
+<section id="quickstart">
+  <p class="secnum">02 / QUICKSTART</p>
+  <h2>Thirty seconds to a running app.</h2>
+<pre><code><span class="tok-k">from</span> ikarem <span class="tok-k">import</span> Ikarem
+
+app = Ikarem(debug=<span class="tok-k">True</span>)
+
+<span class="tok-c"># dicts become JSON. path params are typed.</span>
+<span class="tok-k">@app.get</span>(<span class="tok-s">"/"</span>)
+<span class="tok-k">async def</span> <span class="tok-s">home</span>(req):
+    <span class="tok-k">return</span> {<span class="tok-s">"hello"</span>: <span class="tok-s">"ikarem"</span>}
+
+<span class="tok-k">@app.get</span>(<span class="tok-s">"/users/{uid:int}"</span>)
+<span class="tok-k">async def</span> <span class="tok-s">get_user</span>(req, uid: <span class="tok-s">int</span>):
+    <span class="tok-k">return</span> {<span class="tok-s">"uid"</span>: uid}</code></pre>
+<pre><code>$ uvicorn myapp:app            <span class="tok-c"># any ASGI server works</span>
+$ ikarem check myapp:app       <span class="tok-c"># static audit: deps, cycles, auth gaps</span></code></pre>
+  <p>Every app ships with <code>GET /healthz</code>, <code>GET /readyz</code>,
+  <code>GET /metrics</code>, <code>GET /openapi.json</code> and <code>GET /docs</code> (Swagger UI).
+  Validation, JWT + RBAC, sessions + CSRF, rate limiting, caching, background tasks, websockets,
+  static files and an MCP server (<code>ikarem mcp</code>) are built in — see
+  <a href="reference.html">Reference</a>.</p>
+</section>
+
+<section id="why">
+  <p class="secnum">03 / WHY SWITCH</p>
+  <h2>Better than Meraki. Stated plainly.</h2>
+  <table>
+    <tr><th>Meraki</th><th>IKAREM answer</th></tr>
+    <tr><td>Hard-requires uvicorn</td><td><b>Zero required deps.</b> Core is stdlib + ASGI.</td></tr>
+    <tr><td>Static paths only, no params</td><td><b>Compiled</b> <code>{param:int/float/uuid/path}</code> routes, 404 vs 405, <code>url_for</code>.</td></tr>
+    <tr><td>Requests can't read bodies</td><td><code>await body()/json()/form()</code> — JSON <i>and</i> multipart uploads.</td></tr>
+    <tr><td>Plugin/config files are empty</td><td>Working plugin system (deps sorted, cycles caught) + layered config.</td></tr>
+    <tr><td>No validation, auth, or docs</td><td><code>Schema</code> + <code>Field()</code>, JWT + RBAC + sessions, OpenAPI + MCP tools.</td></tr>
+    <tr><td>No test story</td><td>Cookie-jar <code>TestClient</code>, 108-test suite, <code>ikarem check</code>.</td></tr>
+  </table>
+  <div class="note"><b>Honest footnote.</b> On empty-route micro-benchmarks Meraki is faster —
+  it does ~nothing per request (no header parsing, no body, no DI). Past ~50k in-process req/s both
+  frameworks are 10× beyond what a network + database app saturates. Full numbers: <a href="#bench">§04</a>.</div>
+  <p>Migration is a two-line diff (<a href="migrate.html">guide</a>):</p>
+<pre><code><span class="tok-c">- from meraki import Meraki</span>
+<span class="tok-s">+ from ikarem.meraki_compat import Meraki</span></code></pre>
+</section>
+
+<section id="bench">
+  <p class="secnum">04 / BENCHMARKS</p>
+  <h2>Same harness. Same process. No fairy dust.</h2>
+  <p class="mut small">N=3000 in-process ASGI req/s. Rerun: <code>python bench/bench_switch.py</code>.</p>
+  <table>
+    <tr><th>Route</th><th>App</th><th>req/s</th></tr>
+    <tr><td>GET /hello</td><td>meraki</td><td>~314,000</td></tr>
+    <tr><td>GET /hello</td><td>ikarem</td><td>~110,000</td></tr>
+    <tr><td>GET /missing (404)</td><td>meraki / ikarem</td><td>~347,000 / ~97,000</td></tr>
+    <tr><td>GET /users/{id} (params)</td><td>ikarem</td><td>~85,000 — meraki: no path params (404)</td></tr>
+    <tr><td>POST /echo 1KB JSON</td><td>ikarem</td><td>~71,000 — meraki: no body API</td></tr>
+  </table>
+  <p class="mut small">And the number that matters for production: <b>~75k sustained requests over real
+  uvicorn against the Ledger demo app — zero 5xx, zero timeouts</b> (healthz 1567 rps, authed SQLite
+  reads 1178 rps, concurrent writes 991 rps). Harness: <code>bench/load.py</code>.</p>
+</section>
+
+<section id="ledger">
+  <p class="secnum">05 / LIVE DEMO</p>
+  <h2>Ledger — a real app on stock IKAREM.</h2>
+  <p>Personal finance: session auth + CSRF, dashboard with SVG charts, full CRUD over HTML forms
+  <i>and</i> JSON API, receipt uploads, CSV export, rate limits, security headers. 21 routes,
+  all audited by <code>ikarem check</code>.</p>
+<pre><code>$ python -m uvicorn ledger.app:app     <span class="tok-c"># from the repo root</span>
+<span class="tok-c"># open http://127.0.0.1:8000 — demo: demo@example.com / demo1234</span></code></pre>
+  <p class="mut small">Production shape: <code>ledger/Dockerfile</code> +
+  <code>ledger/docker-compose.yml</code> (app + Postgres 16) + <code>docs/DEPLOY.md</code>.
+  The app runs on SQLite <i>or</i> Postgres via <code>IKAREM_DB_URL</code> — full suite green on both.</p>
+</section>
+
+<section id="stack">
+  <p class="secnum">06 / THE STACK</p>
+  <h2>Everything included. Nothing required.</h2>
+  <table>
+    <tr><th>Need</th><th>Answer</th></tr>
+    <tr><td>Routing</td><td>Compiled routes, converters, 404 vs 405, <code>include_router</code>, static mounts</td></tr>
+    <tr><td>Input</td><td><code>Schema</code> + <code>Field(ge/le/pattern/email…)</code> for JSON <i>and</i> forms; 400s automatic</td></tr>
+    <tr><td>Logic</td><td><code>Depends()</code> DI — nested, cached, sync/async/yield, cycle-checked, compiled once</td></tr>
+    <tr><td>Auth</td><td>HS256 JWT + RBAC, pbkdf2 passwords, signed-cookie sessions, CSRF</td></tr>
+    <tr><td>Ops</td><td>Rate limit, CORS, security headers, request IDs, <code>/healthz</code> <code>/readyz</code> <code>/metrics</code></td></tr>
+    <tr><td>Data</td><td>Async strategy interface: SQLite (stdlib) / Postgres / MySQL / SQLServer</td></tr>
+    <tr><td>Machine clients</td><td>OpenAPI 3.1 + Swagger UI; every route as an MCP tool (<code>ikarem mcp</code>)</td></tr>
+    <tr><td>CLI</td><td><code>ikarem run|check|mcp|new</code> — serve, audit, expose tools, scaffold</td></tr>
+  </table>
+</section>
+
+<section id="ops">
+  <p class="secnum">07 / OPERATE IT</p>
+  <h2>Boring in production. As it should be.</h2>
+<pre><code>$ ikarem new myapp && cd myapp   <span class="tok-c"># starter: auth + CRUD + tests + Dockerfile</span>
+$ pytest -q && uvicorn app:app
+$ ikarem check myapp:app          <span class="tok-c"># gate deploys on this</span></code></pre>
+  <p>Config is layered (defaults &lt; kwargs &lt; dict &lt; <code>IKAREM_*</code> env).
+  Health checks: liveness <code>/healthz</code>, readiness <code>/readyz</code> (503 while the DB is down).</p>
+</section>
+</main>
+</div>
+
+<footer><div class="wrap">
+  <span>IKAREM v1.0.0 — MIT. Meraki, reversed. And crushed.</span>
+  <span style="margin-left:auto"><a href="https://github.com/nishantXnova/IKAREM">GitHub</a> · <a href="https://pypi.org/project/ikarem/">PyPI</a></span>
+</div></footer>
+<script src="script.js"></script>
+</body>
+</html>
