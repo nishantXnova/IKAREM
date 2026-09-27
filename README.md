@@ -1,0 +1,228 @@
+# IKAREM — Meraki, reversed. And crushed.
+
+<img src="assets/ikarem-logo.svg" width="420" alt="IKAREM logo — a reversed K slashed through, over mirrored MERAKI, also slashed">
+
+[![CI](https://github.com/nishantXnova/IKAREM/actions/workflows/ci.yml/badge.svg)](https://github.com/nishantXnova/IKAREM/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/ikarem)](https://pypi.org/project/ikarem/)
+[![Python](https://img.shields.io/pypi/pyversions/ikarem)](https://pypi.org/project/ikarem/)
+[![License](https://img.shields.io/pypi/l/ikarem)](https://github.com/nishantXnova/IKAREM/blob/main/LICENSE)
+
+Industry-grade Python ASGI backend framework. Pip-installable, **zero-dep core**.
+
+FastAPI-style DX (DI, validation, OpenAPI, auth) + Django/Nest-style structure
+(plugins, config, RBAC) + a core that runs on stdlib alone.
+
+## Install
+
+```bash
+pip install -e .                  # core only, zero dependencies
+pip install -e ".[server,test]"   # uvicorn + pytest + httpx for dev
+pip install -e ".[postgres]"      # asyncpg strategy
+pip install -e ".[mysql]"         # aiomysql strategy
+pip install -e ".[sqlserver]"     # aioodbc strategy
+```
+
+## 30-second example
+
+```python
+from ikarem import Ikarem
+
+app = Ikarem(debug=True)
+
+
+@app.get("/")
+async def home(req):
+    return {"hello": "ikarem"}  # dict auto-becomes JSON
+
+
+@app.get("/users/{uid:int}")
+async def get_user(req):
+    return {"uid": req.path_params["uid"]}
+
+
+if __name__ == "__main__":
+    app.run()  # needs `pip install ikarem[server]`
+```
+
+```bash
+python examples/basic.py
+# or
+ikarem run examples.basic:app --reload
+```
+
+## Industry-grade example
+
+```python
+from ikarem import (
+    BackgroundTasks,
+    Depends,
+    Ikarem,
+    Schema,
+    CORSMiddleware,
+    RateLimitMiddleware,
+    create_token,
+    require_roles,
+)
+
+app = Ikarem(auth_secret="secret")
+app.use(CORSMiddleware())
+app.use(RateLimitMiddleware(per_minute=120))
+
+
+class Item(Schema):
+    name: str
+    qty: int = 1
+
+
+def get_prefix():
+    return "hi"
+
+
+@app.post("/items")
+async def create(req, item: Item, bg: BackgroundTasks, prefix=Depends(get_prefix)):
+    bg.add(print, f"created {item.name}")
+    return {"msg": f"{prefix} {item.name}", "qty": item.qty}  # validated + coerced
+
+
+tok = create_token("u1", "secret", roles=["admin"])
+
+
+@app.get("/admin")
+async def adm(req, claims=Depends(require_roles("admin"))):
+    return {"sub": claims["sub"]}  # 401 without token, 403 without role
+```
+
+Built-ins on every app: `GET /healthz`, `GET /metrics`,
+`GET /openapi.json` (OpenAPI 3.1 auto-gen), `GET /docs` (Swagger UI).
+
+## Production web apps
+
+```bash
+ikarem new myapp && cd myapp   # auth + sessions + SQLite CRUD (HTML + JSON), tests + Dockerfile
+pytest -q && uvicorn app:app
+```
+
+```python
+from ikarem import SessionMiddleware, CSRFMiddleware, Field, Schema
+
+app.use(SessionMiddleware())  # signed cookies: req.session["uid"] = ...
+app.use(CSRFMiddleware())  # unsafe routes need X-CSRF-Token or _csrf_token field
+
+
+class Signup(Schema):
+    email: str = Field(..., email=True, max_length=254)
+    password: str = Field(..., min_length=8, max_length=128)
+
+
+@app.post("/notes")
+async def add(req, note: NoteIn):  # validates JSON *and* HTML form bodies
+    form = await req.form()  # urlencoded + multipart, UploadFile files,
+    f = form.get("doc")  # 413 past size caps
+    await f.write(f"/uploads/{f.filename}")
+```
+
+`TestClient` keeps a cookie jar (login flows just work) and speaks
+`get/post/put/patch/delete`. `ikarem check` audits handlers, `ikarem mcp`
+serves every route as an LLM tool.
+
+Live proof it all works: [`ledger/`](ledger/) — a personal-finance app
+(auth, dashboard with SVG charts, CRUD, receipt uploads, CSV export, JSON API)
+running on stock IKAREM + uvicorn.
+
+## Switching from Meraki? 5 minutes
+
+```diff
+-from meraki import Meraki
++from ikarem.meraki_compat import Meraki
+```
+
+Your app runs unchanged (same routes, middleware, 404/405 bodies) on the
+IKAREM engine — then migrate handler-by-handler. Full guide:
+[`docs/MIGRATING_FROM_MERAKI.md`](docs/MIGRATING_FROM_MERAKI.md) ·
+honest benchmarks: [`bench/RESULTS.md`](bench/RESULTS.md) ·
+install: `pip install ikarem` (`dist/ikarem-0.3.0-py3-none-any.whl` builds offline).
+
+## Why IKAREM beats Meraki Phase 1 — and the industry
+
+| Rival feature | IKAREM answer |
+|---|---|
+| pip package, minimal deps | **Zero required deps.** `uvicorn`/`asyncpg`/etc are optional extras. Core is pure stdlib + ASGI. |
+| ASGI + Uvicorn boundary | Strict server boundary: `Ikarem` exposes `__call__(scope, receive, send)`. Any ASGI server works (uvicorn, hypercorn, daphne). HTTP + WebSocket + lifespan. |
+| Central app + lifecycle | `Ikarem()` + `on_startup` / `on_shutdown` + lifespan. Plugins hook in with priority + topological dependency order. |
+| Request/Response | Lazy `Request` (query, headers, cookies, `await body()/json()`), `Response` helpers (`JSON`, `text`, `html`, `stream`, `redirect`, `File`). Handlers never touch raw ASGI. |
+| Routing | **Compiled** routes with `{param}` + `{param:int/float/uuid/path}` converters, 404 vs 405 distinction, `url_for`, `include_router(prefix)`, static mounts. |
+| Middleware | Onion pipeline, short-circuitable, global + composable: CORS, security headers, rate limiting (429 + `Retry-After`), request-ID/timing, metrics. |
+| Plugins | `Plugin` protocol (`name`, `requires`, `priority`, `register`, `on_startup/shutdown/request/response`). Manager sorts dependencies, detects cycles. |
+| Config | Layered `Config`: defaults < kwargs < dict < `IKAREM_*` env vars. Typed `config.get(key, default, cast=...)`. |
+| Errors | `HTTPException` hierarchy + `@app.exception_handler(ExcType)` with MRO most-specific match. Tracebacks only when `debug=True`. |
+| DB Strategy (pg/mysql/sqlite/mssql) | `DatabaseConnector` async ABC (`connect/disconnect/execute/fetch_one/fetch_all/execute_many/transaction`). Lazy driver imports. SQLite runs on stdlib today. `DatabasePlugin` proves the extension model. |
+| DI (FastAPI parity) | `Depends()` with nesting, per-request cache (+ opt-out), sync/async/yield deps, finalizers guaranteed **after response send** and on the exception path, circular-dep rejection. |
+| Validation (Pydantic-lite) | `Schema` models from type hints: coercion, required/optional, nested models, `ValidationError` → 400. Zero deps. |
+| Auth | Stdlib HS256 JWT (algorithm-confusion resistant, `sub` required, expiry enforced), pbkdf2 passwords, `BearerAuth`, `require_roles()` RBAC. |
+| Caching | `MemoryCache` + `@cached` (Redis-swappable `CacheBackend` interface). |
+| Background work | `BackgroundTasks` param — runs after the response is sent, never fails the response. |
+| Realtime / files | `app.websocket(path)` + `WebSocket` helper; `mount_static()` + `FileResponse`. |
+| Observability | JSON logging, `x-request-id` + `x-process-time-ms`, `/healthz`, Prometheus-style `/metrics`. |
+
+## Verification
+
+82 tests, all green — including exhaustive branch matrices:
+
+```
+tests/test_di.py         Depends() x12 (nesting, cache on/off, sync/async/yield,
+                         cleanup after send — send-order proved — after exception,
+                         failure mapping, cycles)
+tests/test_jwt.py        JWT x7 (valid, expired, bad sig, malformed, alg=none +
+                         RS256-confusion attacks, missing sub, wrong secret)
+tests/test_ratelimit.py  Rate limit x7 (limit, 60s window reset, 429 + Retry-After,
+                         countdown, headers everywhere, per-IP, 10-way concurrency)
+tests/test_app.py        routing, converters, 405, echo
+tests/test_middleware.py after-hooks, short-circuit
+tests/test_plugins.py    hooks, dep order, missing dep, lifecycle
+tests/test_db.py         factory routing, SQLite CRUD, plugin lifecycle
+tests/test_industry.py   validation, DI+body, RBAC, security stack, background, cache, docs
+tests/test_mcp_openapi.py  requestBody/query/auth in OpenAPI, MCP list/call/errors/JSON-RPC
+tests/test_forms.py        urlencoded, multipart uploads, 413 caps
+tests/test_session.py      login cookies, tamper/expiry, CSRF allow/deny/exempt
+tests/test_fields.py       Field() ranges/lengths/patterns/emails, json_schema output
+```
+
+```bash
+python -m pytest tests/ -q   # 82 passed
+```
+
+## Layout
+
+```
+ikarem/
+  __init__.py     public exports (v0.3.0)
+  app.py          Ikarem core + ASGI callable + DI/background/cleanup wiring
+  routing.py      compiled routes + converters
+  http.py         Request (+forms/uploads) + Response family (+cookies)
+  session.py      signed-cookie sessions + CSRF
+  validation.py   Schema models + Field() constraints (zero-dep validation)
+  middleware.py   Middleware base + stack
+  plugins.py      Plugin protocol + dependency-sorted PluginManager
+  config.py       layered Config
+  errors.py       HTTPException hierarchy + handler registry
+  validation.py   Schema models (zero-dep validation)
+  di.py           Depends + cycle detection + run_cleanups
+  openapi.py      OpenAPI 3.1 builder + /openapi.json + /docs
+  auth.py         JWT + passwords + BearerAuth + require_roles
+  security.py     CORS + security headers + rate limiting
+  cache.py        CacheBackend + MemoryCache + @cached
+  background.py   BackgroundTasks
+  websocket.py    WebSocket + WSRouter
+  static.py       FileResponse + static mounts
+  observability.py  logging + request-ID + metrics + /healthz + /metrics
+  db/             DatabaseConnector ABC + sqlite/postgres/mysql/sqlserver + plugin + factory
+  cli.py          `ikarem run|check|mcp|new` helper
+  testing.py      TestClient (cookie jar, all verbs — no server needed)
+  compiled.py     one-time handler plans (perf) + check/describe IR
+  mcp.py          routes-as-MCP-tools + stdio server
+  openapi.py      OpenAPI 3.1 builder + /openapi.json + /docs
+  scaffold.py     `ikarem new` starter generator
+tests/            82-test suite (see Verification)
+examples/basic.py CRUD + DB plugin app
+docs/PHASE1.md    Phase 1 spec (rival crusher)
+```

@@ -1,0 +1,15 @@
+cff-version: 1.2.0
+title: IKAREM
+message: If you use this software, please cite it as below.
+type: software
+authors:
+  - alias: nishantXnova
+    website: https://github.com/nishantXnova
+version: 0.3.0
+license: MIT
+repository-code: https://github.com/nishantXnova/IKAREM
+url: https://pypi.org/project/ikarem/
+keywords:
+  - asgi
+  - web-framework
+  - python

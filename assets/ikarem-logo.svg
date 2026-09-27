@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 520">
+  <rect x="56" y="56" width="408" height="408" rx="96" fill="#0A0A0B"/>
+  <g transform="translate(520,0) scale(-1,1)">
+    <text x="260" y="352" text-anchor="middle" font-family="'Arial Black',Arial,sans-serif" font-size="252" font-weight="900" fill="#FFFFFF">K</text>
+  </g>
+  <line x1="100" y1="384" x2="420" y2="140" stroke="#FF2B2B" stroke-width="30" stroke-linecap="round"/>
+  <text x="540" y="290" font-family="'Arial Black',Arial,sans-serif" font-size="168" font-weight="900" letter-spacing="4" fill="#111111">IKAREM</text>
+  <g transform="translate(1450,0) scale(-1,1)">
+    <text x="725" y="392" text-anchor="middle" font-family="Arial,sans-serif" font-size="62" font-weight="700" letter-spacing="16" fill="#9AA0AE">MERAKI</text>
+  </g>
+  <line x1="560" y1="400" x2="890" y2="322" stroke="#FF2B2B" stroke-width="10" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect x="16" y="16" width="480" height="480" rx="112" fill="#0A0A0B"/>
+  <g transform="translate(512,0) scale(-1,1)">
+    <text x="256" y="356" text-anchor="middle" font-family="'Arial Black',Arial,sans-serif" font-size="300" font-weight="900" fill="#FFFFFF">K</text>
+  </g>
+  <line x1="96" y1="404" x2="416" y2="108" stroke="#FF2B2B" stroke-width="34" stroke-linecap="round"/>
+</svg>

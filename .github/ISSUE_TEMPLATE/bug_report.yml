@@ -1,0 +1,21 @@
+name: Bug report
+description: Something broken? Give us the reproducer.
+title: "fix: "
+labels: [bug]
+body:
+  - type: textarea
+    id: repro
+    attributes: {label: Reproducer, description: Minimal code that fails (handler + TestClient calls preferred).}
+    validations: {required: true}
+  - type: input
+    id: version
+    attributes: {label: ikarem version, description: "e.g. pip show ikarem"}
+    validations: {required: true}
+  - type: input
+    id: python
+    attributes: {label: Python + OS}
+    validations: {required: true}
+  - type: textarea
+    id: expected
+    attributes: {label: Expected vs actual}
+    validations: {required: true}
