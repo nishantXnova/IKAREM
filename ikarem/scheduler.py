@@ -175,8 +175,12 @@ class Scheduler:
                     if inspect.isawaitable(r):
                         await r
                     job.runs += 1
-                except Exception:  # noqa: BLE001 - a sick job must not kill the loop
+                except Exception as e:  # noqa: BLE001
+                    # Contained, never silent: counted AND logged with trace.
+                    from .observability import logger
+
                     job.errors += 1
+                    logger.exception(f"scheduler job '{job.name}' failed: {e}")
                 finally:
                     job.running = False
         return fired

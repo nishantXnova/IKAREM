@@ -16,6 +16,7 @@ from .background import BackgroundTasks
 from .blueprints import Blueprint
 from .cache import CacheBackend, MemoryCache, cached
 from .config import Config
+from .deprecation import deprecated
 from .di import Depends
 from .errors import (
     BadRequest,
@@ -49,6 +50,7 @@ from .migrations import Migrator
 from .observability import MetricsMiddleware, RequestIDMiddleware, configure_logging
 from .plugins import BasePlugin, Plugin, PluginManager
 from .queue import Queue, QueuePlugin, run_worker, task
+from .resources import resource
 from .routing import Router
 from .scheduler import Scheduler, parse_cron, run_scheduler
 from .security import CORSMiddleware, RateLimitMiddleware, SecurityHeadersMiddleware
@@ -98,6 +100,8 @@ __all__ = [
     "Scheduler",
     "parse_cron",
     "run_scheduler",
+    "resource",
+    "deprecated",
     "Schema",
     "ValidationError",
     "Field",

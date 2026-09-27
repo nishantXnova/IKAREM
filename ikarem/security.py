@@ -78,7 +78,14 @@ class RateLimitMiddleware(Middleware):
         }
 
     async def __call__(self, req: Any, call_next: Any) -> Any:
-        ip = req.headers.get("x-forwarded-for", "local").split(",")[0].strip()
+        fwd = req.headers.get("x-forwarded-for", "")
+        if fwd:
+            ip = fwd.split(",")[0].strip()
+        else:
+            # Direct connection (no proxy): scope client, not one shared
+            # bucket — otherwise every visitor rate-limits everyone.
+            client = getattr(req, "scope", {}).get("client", None)
+            ip = client[0] if client else "local"
         now = self._clock()
         count, start = self._hits.get(ip, (0, now))
         if now - start >= 60:

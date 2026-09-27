@@ -73,9 +73,8 @@ def mount_system_routes(app: Any) -> None:
     _health._ikarem_internal = True  # type: ignore
     _metrics._ikarem_internal = True  # type: ignore
     _ready._ikarem_internal = True  # type: ignore
-    try:
-        app.router.add("/healthz", {"GET"}, _health, name="healthz")
-        app.router.add("/readyz", {"GET"}, _ready, name="readyz")
-        app.router.add("/metrics", {"GET"}, _metrics, name="metrics")
-    except Exception:
-        pass
+    # No silent try/except: _ensure_system_routes guards double-mount, and a
+    # real registration failure must surface, not vanish.
+    app.router.add("/healthz", {"GET"}, _health, name="healthz")
+    app.router.add("/readyz", {"GET"}, _ready, name="readyz")
+    app.router.add("/metrics", {"GET"}, _metrics, name="metrics")

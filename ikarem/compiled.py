@@ -51,6 +51,31 @@ def _dep_kind(fn: Any) -> str:
     return "sync"
 
 
+def _hints_of(fn: Any) -> dict:
+    """Resolved annotations for fn (handles `from __future__ import
+    annotations` string form via the function's own globals).
+
+    Falls back to raw signature annotations when anything is unresolvable —
+    an unresolved annotation behaves exactly as before.
+    """
+    try:
+        import typing
+
+        hints = typing.get_type_hints(fn)
+        if isinstance(hints, dict):
+            return hints
+    except Exception:
+        pass
+    try:
+        return {
+            name: p.annotation
+            for name, p in inspect.signature(fn).parameters.items()
+            if p.annotation is not inspect._empty
+        }
+    except (ValueError, TypeError):
+        return {}
+
+
 # ---- plan nodes ----
 
 
@@ -80,6 +105,7 @@ class DepNode:
     is_auth: bool = False
     auth_roles: tuple = ()
     auth_scheme: str = ""
+    uses_config_secret: bool = False
 
 
 @dataclass
@@ -105,6 +131,7 @@ class HandlerPlan:
     is_auth: bool = False
     auth_roles: tuple = ()
     auth_scheme: str = ""
+    uses_config_secret: bool = False
 
 
 def _auth_info(fn: Any) -> dict | None:
@@ -166,8 +193,11 @@ def _compile_dep_node(fn: Any, use_cache: bool, stack: tuple[int, ...]) -> DepNo
         node.is_auth = True
         node.auth_roles = tuple(auth.get("roles", ()))
         node.auth_scheme = str(auth.get("scheme", ""))
+    if getattr(fn, "_ikarem_config_secret", False):
+        node.uses_config_secret = True
+    hints = _hints_of(fn)
     for pname, p in sig.parameters.items():
-        ann, default = p.annotation, p.default
+        ann, default = hints.get(pname, p.annotation), p.default
         if pname in ("request", "req"):
             node.sub_params.append(DepSubParam(pname, "request", ann, default))
         elif isinstance(default, Depends):
@@ -205,11 +235,15 @@ def _compile_dep_node(fn: Any, use_cache: bool, stack: tuple[int, ...]) -> DepNo
     # every parent, so handlers + OpenAPI + MCP all see the same boundary.
     for sp in node.sub_params:
         child = sp.nested
-        if child is not None and child.is_auth:
+        if child is None:
+            continue
+        if child.is_auth:
             node.is_auth = True
             if not node.auth_scheme:
                 node.auth_scheme = child.auth_scheme
             node.auth_roles = tuple(dict.fromkeys((*node.auth_roles, *child.auth_roles)))
+        if child.uses_config_secret:
+            node.uses_config_secret = True
     return node
 
 
@@ -226,6 +260,7 @@ def compile_handler(handler: Any) -> HandlerPlan:
         plan.compile_error = f"Cannot inspect handler '{name}'"
         return plan
     params = list(sig.parameters.values())
+    hints = _hints_of(handler)
     if (
         len(params) == 1
         and params[0].default is inspect._empty
@@ -235,22 +270,20 @@ def compile_handler(handler: Any) -> HandlerPlan:
         # the request — not when it declares a body/path/query contract
         # (e.g. `async def h(item: Item)` or `async def h(uid: int)`).
         p0 = params[0]
+        p0ann = hints.get(p0.name, p0.annotation)
         wants_request = (
-            p0.name in ("request", "req")
-            or p0.annotation is inspect._empty
-            or p0.annotation is Any
-            or p0.annotation is Req
+            p0.name in ("request", "req") or p0ann is inspect._empty or p0ann is Any or p0ann is Req
         )
         if not wants_request:
             try:
-                wants_request = inspect.isclass(p0.annotation) and issubclass(p0.annotation, Req)
+                wants_request = inspect.isclass(p0ann) and issubclass(p0ann, Req)
             except Exception:
                 pass
         if wants_request:
             plan.is_legacy_request_only = True
             return plan
     for p in params:
-        pname, ann, default = p.name, p.annotation, p.default
+        pname, ann, default = p.name, hints.get(p.name, p.annotation), p.default
         if pname in ("request", "req") and (ann is inspect._empty or ann is Req or ann is Any):
             # Also accept subclasses of Request? Original checked
             # isinstance(request, Req) at runtime. Keep static fast path for
@@ -314,6 +347,8 @@ def compile_handler(handler: Any) -> HandlerPlan:
             if not plan.auth_scheme:
                 plan.auth_scheme = hp.dep.auth_scheme
             plan.auth_roles = tuple(dict.fromkeys((*plan.auth_roles, *hp.dep.auth_roles)))
+        if hp.kind == "depends" and hp.dep is not None and hp.dep.uses_config_secret:
+            plan.uses_config_secret = True
     return plan
 
 
@@ -617,9 +652,21 @@ def check_app(app: Any) -> dict:
     report: dict[str, Any] = {"errors": [], "warnings": [], "routes": []}
     router = getattr(app, "router", None)
     routes = getattr(router, "routes", [])
+    seen_routes: dict[tuple, str] = {}
     for r in routes:
         if getattr(r.handler, "_ikarem_internal", False):
             continue
+        for method in sorted(r.methods):
+            key = (method, r.path)
+            handler_name = getattr(r.handler, "__name__", repr(r.handler))
+            if key in seen_routes:
+                report["errors"].append(
+                    f"{method} {r.path}: duplicate route (handlers "
+                    f"'{seen_routes[key]}' and '{handler_name}'); the first wins, "
+                    f"the second never runs"
+                )
+            else:
+                seen_routes[key] = handler_name
         plan = get_plan(r.handler)
         entry = {"path": r.path, "methods": sorted(r.methods), "handler": plan.handler_name}
         report["routes"].append(entry)

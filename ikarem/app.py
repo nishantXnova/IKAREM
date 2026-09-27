@@ -75,6 +75,12 @@ class Ikarem:
             name = f"{blueprint.name}.{getattr(handler, '__name__', full)}"
             self.router.add(full, methods, blueprint._wrap(handler), name)
 
+    def resource(self, prefix: str, schema: Any, table: str, **kw: Any) -> Any:
+        """Validated, paginated CRUD collection in one call (see resources)."""
+        from .resources import resource as _resource
+
+        return _resource(self, prefix, schema, table, **kw)
+
     def mount_static(self, url_path: str, directory: str) -> None:
         from .static import static_handler
 
@@ -185,10 +191,32 @@ class Ikarem:
             return
         self._ensure_system_routes()
         self.compile_all()  # pre-parse every handler once; per-request has zero reflection
+        self._validate_config()  # fail fast: secrets, middleware order, before traffic
         for fn in self._startup:
             await fn() if inspect.iscoroutinefunction(fn) else fn()
         await self.plugins.startup(self)
         self._started = True
+
+    def _validate_config(self) -> None:
+        from .observability import logger
+
+        for mw in self.middleware.stack:
+            validate = getattr(mw, "validate_config", None)
+            if validate is not None:
+                validate(self)
+        from .compiled import get_plan
+
+        if any(get_plan(r.handler).uses_config_secret for r in self.router.routes):
+            secret = self.config.get("auth_secret", None) or self.config.get("session_secret", None)
+            if not secret or secret in ("change-me",):
+                raise RuntimeError(
+                    "authenticated routes exist but no usable secret is configured: "
+                    "pass auth_secret= (or IKAREM_AUTH_SECRET). Refusing to mint "
+                    "verifiable-by-anyone tokens."
+                )
+        if self.debug:
+            for r in self.router.routes:
+                logger.info(f"route {'/'.join(sorted(r.methods))} {r.path} -> {r.name}")
 
     async def shutdown(self) -> None:
         await self.plugins.shutdown(self)
@@ -279,6 +307,18 @@ class Ikarem:
             return JSONResponse({"detail": detail}, status_code=405)
         return JSONResponse({"detail": "Internal Server Error"}, status_code=500)
 
+    def mount_asgi(self, prefix: str, asgi_app: Any) -> None:
+        """Escape hatch: delegate a whole subtree to another ASGI app.
+
+        ``app.mount_asgi("/admin", other_app)`` forwards ``/admin/*``
+        untouched (raw scope/receive/send — no middleware, no IKAREM
+        handling). For doing it your way without punishment.
+        """
+        mounts = getattr(self, "_asgi_mounts", None)
+        if mounts is None:
+            mounts = self._asgi_mounts = []
+        mounts.append((prefix.rstrip("/") or "/", asgi_app))
+
     # ---- ASGI ----
     async def __call__(self, scope: dict, receive: Any, send: Any) -> None:
         if scope["type"] == "lifespan":
@@ -289,6 +329,11 @@ class Ikarem:
             return
         if scope["type"] != "http":
             return
+        for prefix, sub in getattr(self, "_asgi_mounts", []):
+            path = scope.get("path", "/")
+            if path == prefix or path.startswith(prefix + "/"):
+                await sub(scope, receive, send)
+                return
         await self._handle_http(scope, receive, send)
 
     async def _handle_ws(self, scope: dict, receive: Any, send: Any) -> None:

@@ -112,7 +112,7 @@ class Router:
                 return r.handler, params
         if path_matched:
             raise MethodNotAllowed(f"Method {method} not allowed. Allow: {sorted(allowed)}")
-        raise NotFound(f"No route for {method} {path}")
+        raise NotFound(f"No route for {method} {path}{_suggest(path, self.routes)}")
 
     def url_for(self, name: str, **params: Any) -> str:
         for r in self.routes:
@@ -122,3 +122,16 @@ class Router:
                     url = re.sub(r"\{" + k + r"(?::\w+)?\}", str(v), url)
                 return url
         raise KeyError(f"No route named '{name}'")
+
+
+def _suggest(path: str, routes: list[Route]) -> str:
+    """'Did you mean ...?' for 404s, from static path templates."""
+    import difflib
+
+    candidates = sorted({r.path for r in routes if "{" not in r.path})
+    if not candidates:
+        return ""
+    close = difflib.get_close_matches(path, candidates, n=2, cutoff=0.6)
+    if not close:
+        return ""
+    return f". Did you mean: {', '.join(close)}?"

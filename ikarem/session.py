@@ -75,6 +75,22 @@ def _sign(secret: str, payload_b64: str) -> str:
     return _b64e(hmac.new(secret.encode(), payload_b64.encode(), hashlib.sha256).digest())
 
 
+def _app_secret(app: Any, explicit: str | None) -> str:
+    if explicit:
+        return explicit
+    cfg = getattr(app, "config", {})
+    try:
+        secret = cfg.get("session_secret") or cfg.get("auth_secret")
+    except Exception:
+        secret = None
+    if not secret or secret in ("change-me",):
+        raise RuntimeError(
+            "SessionMiddleware needs a secret: pass secret= or set "
+            "session_secret (Ikarem(session_secret=...) / IKAREM_SESSION_SECRET)"
+        )
+    return secret
+
+
 def encode_session(data: dict, secret: str, max_age: int) -> str:
     now = int(time.time())
     payload = _b64e(
@@ -123,19 +139,12 @@ class SessionMiddleware(Middleware):
         self.secure = secure
 
     def _secret(self, req: Any) -> str:
-        if self.secret:
-            return self.secret
-        cfg = getattr(getattr(req, "app", None), "config", {})
-        try:
-            secret = cfg.get("session_secret") or cfg.get("auth_secret")
-        except Exception:
-            secret = None
-        if not secret or secret in ("change-me",):
-            raise RuntimeError(
-                "SessionMiddleware needs a secret: pass secret= or set "
-                "session_secret (Ikarem(session_secret=...) / IKAREM_SESSION_SECRET)"
-            )
-        return secret
+        app = getattr(req, "app", None)
+        return _app_secret(app, self.secret)
+
+    def validate_config(self, app: Any) -> None:
+        """Fail at startup (not first request) on missing secrets."""
+        _app_secret(app, self.secret)
 
     async def __call__(self, req: Any, call_next: Any) -> Any:
         secret = self._secret(req)
@@ -192,6 +201,22 @@ class CSRFMiddleware(Middleware):
             elif path == p:
                 return True
         return False
+
+    def validate_config(self, app: Any) -> None:
+        """CSRF is meaningless without sessions: require SessionMiddleware
+        EARLIER in the stack, and say exactly how to fix it."""
+        stack = getattr(getattr(app, "middleware", None), "stack", [])
+        seen_session = False
+        for mw in stack:
+            if isinstance(mw, SessionMiddleware):
+                seen_session = True
+            if mw is self:
+                break
+        if not seen_session:
+            raise RuntimeError(
+                "CSRFMiddleware requires SessionMiddleware before it: "
+                "app.use(SessionMiddleware(...)) must come first."
+            )
 
     async def __call__(self, req: Any, call_next: Any) -> Any:
         sess = getattr(req, "session", None)

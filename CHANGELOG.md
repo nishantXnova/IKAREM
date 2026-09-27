@@ -7,6 +7,23 @@ All notable changes to this project are documented here. Format follows
 ## [Unreleased]
 
 ### Added
+- Startup validation: default/missing secrets refused when auth routes exist,
+  `validate_config()` middleware hook (sessions, CSRF order), debug route-table log.
+- `ikarem check` flags duplicate (method, path) routes as errors.
+- 404s suggest close matches ("Did you mean: /users?").
+- `app.resource()` validated paginated CRUD (owner-scoped, spoof-proof).
+- `app.mount_asgi()` raw-subtree escape hatch.
+- `deprecated()` helper (version, removal, replacement in the warning).
+- `docs/PLUGINS.md` extension guide; README snippets execute in CI (`tests/test_docs.py`).
+- `Scheduler` job failures are logged with tracebacks, not just counted.
+
+### Changed
+- Probes mount even with `enable_docs=False`; mount helpers fail loudly.
+- Rate limiter keys direct connections by scope client IP, not one shared bucket.
+- `WebSocket.receive_text` skips handshake frames, raises on disconnect.
+- String annotations (`from __future__ import annotations`) resolve via type hints.
+
+### Added
 - `Schema(extra="forbid")` sanitization (unexpected keys become 400s).
 - `XMLResponse` / `dict_to_xml` / `escape_html`.
 - `APIKeyAuth` (static keys or async `lookup=`), `require_scopes()` (JWT

@@ -119,6 +119,7 @@ def require_roles(*roles: str):
         return claims
 
     _check._ikarem_security = {"scheme": "bearer", "roles": roles}  # type: ignore
+    _check._ikarem_config_secret = True  # type: ignore  # secret comes from app config
     return _check
 
 

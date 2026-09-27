@@ -94,8 +94,7 @@ def mount_docs(app: Any, title: str = "IKAREM", spec_url: str = "/openapi.json")
 
     _spec._ikarem_internal = True  # type: ignore
     _docs._ikarem_internal = True  # type: ignore
-    try:
-        app.router.add(spec_url, {"GET"}, _spec, name="openapi")
-        app.router.add("/docs", {"GET"}, _docs, name="docs")
-    except Exception:
-        pass
+    # No silent try/except: _docs_mounted guards double-mount; real
+    # failures must surface.
+    app.router.add(spec_url, {"GET"}, _spec, name="openapi")
+    app.router.add("/docs", {"GET"}, _docs, name="docs")

@@ -55,6 +55,7 @@
   <li><a href="#ledger"><span class="n">05</span>Live demo</a></li>
   <li><a href="#stack"><span class="n">06</span>The stack</a></li>
   <li><a href="#ops"><span class="n">07</span>Operate it</a></li>
+  <li><a href="#faq"><span class="n">08</span>Straight answers</a></li>
 </ol></aside>
 
 <main>
@@ -201,6 +202,23 @@ $ pytest -q && uvicorn app:app
 $ ikarem check myapp:app          <span class="tok-c"># gate deploys on this</span></code></pre>
   <p>Config is layered (defaults &lt; kwargs &lt; dict &lt; <code>IKAREM_*</code> env).
   Health checks: liveness <code>/healthz</code>, readiness <code>/readyz</code> (503 while the DB is down).</p>
+</section>
+
+<section id="faq">
+  <p class="secnum">08 / STRAIGHT ANSWERS</p>
+  <h2>Asked in production. Answered here.</h2>
+  <p><b>Demo login fails?</b> Check <code>SELECT email FROM users</code> — if the demo row is
+  missing, delete the SQLite file and reboot (it reseeds), or just register a fresh account.</p>
+  <p><b>403 on API POSTs?</b> That's CSRF doing its job. Send the <code>X-CSRF-Token</code> header
+  (fetch it from <code>GET /api/csrf</code>), or exempt pure token APIs via <code>exempt_paths</code>.</p>
+  <p><b>401 or 403?</b> 401 means anonymous — browsers redirect to <code>/login</code>.
+  403 means authenticated but not allowed.</p>
+  <p><b>Rate-limited on localhost?</b> Limits are per client IP (<code>X-Forwarded-For</code> or
+  socket peer), 240/min default. Tune <code>RateLimitMiddleware(per_minute=…)</code>.</p>
+  <p><b>SQLite under concurrent writes?</b> Single-lane by design (WAL on, corruption-proof).
+  Reads stay fast; past toy scale, point <code>IKAREM_DB_URL</code> at Postgres — the suite is green on both.</p>
+  <p><b>Postgres + tests?</b> One event loop per thread: <code>TestClient</code> reuses it, so
+  loop-bound pools survive across requests instead of churning.</p>
 </section>
 </main>
 </div>
