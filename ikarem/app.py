@@ -129,6 +129,30 @@ class Ikarem:
 
         return MCPServer(self)
 
+    # ---- scheduling (explicit start; nothing runs unless you start it) ----
+    def cron(self, expr: str, name: str | None = None) -> Any:
+        """Register a cron job: @app.cron("*/5 * * * *"). Start with
+        ``await app.start_scheduler(stop)``."""
+        return self._scheduler().cron(expr, name)
+
+    def every(self, seconds: float, name: str | None = None) -> Any:
+        """Register an interval job: @app.every(30). See start_scheduler."""
+        return self._scheduler().every(seconds, name)
+
+    def _scheduler(self) -> Any:
+        from .scheduler import Scheduler
+
+        sched = getattr(self, "_sched", None)
+        if sched is None:
+            sched = self._sched = Scheduler()
+        return sched
+
+    async def start_scheduler(self, stop: Any = None, poll: float = 1.0) -> None:
+        """Run registered cron/interval jobs until stop() is truthy."""
+        from .scheduler import run_scheduler
+
+        await run_scheduler(self._scheduler(), stop, poll)
+
     # ---- extension points ----
     def use(self, middleware: Any) -> None:
         self.middleware.add(middleware)

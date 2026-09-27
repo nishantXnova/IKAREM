@@ -1,7 +1,17 @@
 """IKAREM public API."""
 
 from .app import Ikarem
-from .auth import BearerAuth, check_password, create_token, hash_password, require_roles, verify_token
+from .auth import (
+    APIKeyAuth,
+    BearerAuth,
+    check_password,
+    create_token,
+    hash_password,
+    require_if,
+    require_roles,
+    require_scopes,
+    verify_token,
+)
 from .background import BackgroundTasks
 from .blueprints import Blueprint
 from .cache import CacheBackend, MemoryCache, cached
@@ -29,12 +39,18 @@ from .http import (
     StreamingResponse,
     TextResponse,
     UploadFile,
+    XMLResponse,
+    dict_to_xml,
+    escape_html,
 )
 from .mcp import MCPServer
 from .middleware import Middleware, MiddlewareStack
+from .migrations import Migrator
 from .observability import MetricsMiddleware, RequestIDMiddleware, configure_logging
 from .plugins import BasePlugin, Plugin, PluginManager
+from .queue import Queue, QueuePlugin, run_worker, task
 from .routing import Router
+from .scheduler import Scheduler, parse_cron, run_scheduler
 from .security import CORSMiddleware, RateLimitMiddleware, SecurityHeadersMiddleware
 from .session import CSRFMiddleware, SessionMiddleware, csrf_token
 from .static import FileResponse
@@ -74,6 +90,14 @@ __all__ = [
     "Templates",
     "flash",
     "get_flashed_messages",
+    "Migrator",
+    "Queue",
+    "QueuePlugin",
+    "run_worker",
+    "task",
+    "Scheduler",
+    "parse_cron",
+    "run_scheduler",
     "Schema",
     "ValidationError",
     "Field",
@@ -86,11 +110,17 @@ __all__ = [
     "check_password",
     "BearerAuth",
     "require_roles",
+    "require_scopes",
+    "require_if",
+    "APIKeyAuth",
     "SessionMiddleware",
     "CSRFMiddleware",
     "csrf_token",
     "FormData",
     "UploadFile",
+    "XMLResponse",
+    "dict_to_xml",
+    "escape_html",
     "CORSMiddleware",
     "SecurityHeadersMiddleware",
     "RateLimitMiddleware",

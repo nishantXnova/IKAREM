@@ -1,4 +1,4 @@
-"""`ikarem run|check|mcp|new ...`."""
+"""`ikarem run|check|mcp|new|migrate|worker ...`."""
 
 from __future__ import annotations
 
@@ -42,7 +42,16 @@ def _cmd_check(app) -> int:
 
 def main() -> None:
     # Backward compat: bare `ikarem module:app [--host/--port/--reload]` means run.
-    if len(sys.argv) > 1 and sys.argv[1] not in ("run", "check", "mcp", "new", "-h", "--help"):
+    if len(sys.argv) > 1 and sys.argv[1] not in (
+        "run",
+        "check",
+        "mcp",
+        "new",
+        "migrate",
+        "worker",
+        "-h",
+        "--help",
+    ):
         p = argparse.ArgumentParser(prog="ikarem", description="IKAREM runner")
         p.add_argument("target", nargs="?", default="examples.basic:app")
         p.add_argument("--host", default="127.0.0.1")
@@ -70,6 +79,18 @@ def main() -> None:
     pn = sub.add_parser("new", help="scaffold a production-grade starter project")
     pn.add_argument("dir", help="directory to create (must not exist or be empty)")
 
+    pmg = sub.add_parser("migrate", help="versioned schema migrations: up|down|status|new")
+    pmg.add_argument("action", choices=["up", "down", "status", "new"])
+    pmg.add_argument("target", nargs="?", default="examples.basic:app", help="module:attr")
+    pmg.add_argument("--dir", default="migrations", help="migrations directory")
+    pmg.add_argument("--to", type=int, default=None, help="migrate up to version N")
+    pmg.add_argument("--steps", type=int, default=1, help="migrate down N steps")
+    pmg.add_argument("--name", default="migration", help="name for `migrate new`")
+
+    pw = sub.add_parser("worker", help="drain the app's durable task queue until interrupted")
+    pw.add_argument("target", nargs="?", default="examples.basic:app", help="module:attr")
+    pw.add_argument("--poll", type=float, default=1.0)
+
     args = p.parse_args()
     if args.cmd == "new":
         from .scaffold import create_project
@@ -88,8 +109,74 @@ def main() -> None:
         _cmd_run(app, args.host, args.port, args.reload)
     elif args.cmd == "mcp":
         raise SystemExit(asyncio.run(app.mcp_server().run_stdio()))
+    elif args.cmd == "migrate":
+        raise SystemExit(_cmd_migrate(app, args))
+    elif args.cmd == "worker":
+        raise SystemExit(_cmd_worker(app, args))
     else:
         raise SystemExit(_cmd_check(app))
+
+
+def _cmd_migrate(app, args) -> int:
+    from .migrations import Migrator, new_migration
+
+    if args.action == "new":
+        path = new_migration(args.dir, args.name)
+        print(f"created {path}")
+        return 0
+    db = getattr(app, "state_db", None)
+    if db is None:
+        asyncio.run(app.startup())
+        db = getattr(app, "state_db", None)
+    if db is None:
+        print("error: no database (register DatabasePlugin first)")
+        return 1
+
+    async def go():
+        m = Migrator(db, args.dir)
+        if args.action == "status":
+            rep = await m.status()
+            print(f"applied: {rep['applied'] or 'none'}")
+            for v, name in rep["pending"]:
+                print(f"  pending {v:04d} {name}")
+            return 0
+        if args.action == "up":
+            done = await m.up(args.to)
+            print(f"applied: {done or 'already current'}")
+            return 0
+        done = await m.down(args.steps)
+        print(f"reverted: {done or 'nothing to revert'}")
+        return 0
+
+    try:
+        return asyncio.run(go())
+    finally:
+        try:
+            asyncio.run(app.shutdown())
+        except Exception:
+            pass
+
+
+def _cmd_worker(app, args) -> int:
+    from .queue import run_worker
+
+    async def go():
+        await app.startup()
+        print(f"worker draining queue '{args.queue}' (Ctrl+C to stop)…")
+        try:
+            n = await run_worker(app, poll=args.poll)
+        except KeyboardInterrupt:
+            n = -1
+        print(f"worker done ({n} jobs)" if n >= 0 else "worker stopped")
+        return 0
+
+    try:
+        return asyncio.run(go())
+    finally:
+        try:
+            asyncio.run(app.shutdown())
+        except Exception:
+            pass
 
 
 if __name__ == "__main__":

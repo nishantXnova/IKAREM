@@ -156,6 +156,43 @@ Templates("templates/").response("hi.html", name="amy")  # Jinja2 via ikarem[jin
 Deliberately *not* taken: context locals (`g`, global `request` proxies) and signals —
 explicit `req` params plus plugins and middleware cover that ground without the magic.
 
+## Ops batch: migrations, queues, cron, API keys
+
+```python
+from ikarem import Migrator, QueuePlugin, require_scopes, APIKeyAuth, task
+
+app.register(DatabasePlugin("postgresql://..."))
+app.register(QueuePlugin())  # durable jobs in app.state_queue
+
+
+@task("welcome")  # name -> callable, worker-dispatched
+async def welcome(to: str): ...
+
+
+@app.post("/signup")
+async def signup(req):
+    await req.app.state_queue.enqueue("welcome", {"to": "a@b.co"})
+    return {"ok": True}, 201
+
+
+@app.every(300)  # or @app.cron("0 2 * * *")
+async def nightly(): ...
+
+
+# await app.start_scheduler()                  # explicit: nothing runs unless started
+```
+
+```bash
+ikarem migrate new add_users && ikarem migrate up myapp:app
+ikarem worker myapp:app                        # drain the queue until Ctrl+C
+```
+
+Plus the small ones the checklist demanded: `Schema(extra="forbid")` sanitization,
+`XMLResponse`/`dict_to_xml`, `escape_html`, `APIKeyAuth` (static keys or `lookup=`),
+`require_scopes()` for JWT scopes, `require_if()` predicate (ABAC-lite).
+Out of scope on purpose: full ORM (strategy + validated schemas is the answer) and
+OAuth2 dance (JWT bearer covers service auth).
+
 Live proof it all works: [`ledger/`](ledger/) — a personal-finance app
 (auth, dashboard with SVG charts, CRUD, receipt uploads, CSV export, JSON API)
 running on stock IKAREM + uvicorn.

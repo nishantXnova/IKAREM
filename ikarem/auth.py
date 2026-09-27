@@ -120,3 +120,98 @@ def require_roles(*roles: str):
 
     _check._ikarem_security = {"scheme": "bearer", "roles": roles}  # type: ignore
     return _check
+
+
+def require_scopes(*scopes: str):
+    """Depends factory enforcing JWT `scope` (space-separated) or `scp` claim."""
+
+    async def _check(request: Any) -> dict:
+        from .errors import Forbidden, Unauthorized
+
+        auth = request.headers.get("authorization", "")
+        secret = request.app.config.get("auth_secret", "change-me")
+        if not auth.startswith("Bearer "):
+            raise Unauthorized("missing bearer token")
+        try:
+            claims = verify_token(auth[7:], secret)
+        except Exception as e:
+            raise Unauthorized(str(e))
+        raw = claims.get("scope", claims.get("scp", ""))
+        have = set(raw.split()) if isinstance(raw, str) else set(raw or [])
+        missing = [s for s in scopes if s not in have]
+        if missing:
+            raise Forbidden(f"missing scopes: {missing}")
+        return claims
+
+    _check._ikarem_security = {"scheme": "bearer", "roles": (), "scopes": scopes}  # type: ignore
+    return _check
+
+
+def require_if(predicate: Any, detail: str = "forbidden"):
+    """ABAC-lite: allow when ``predicate(claims)`` is truthy (JWT bearer).
+
+    ``claims=Depends(require_if(lambda c: c.get("tenant") == "acme"))``.
+    """
+
+    async def _check(request: Any) -> dict:
+        from .errors import Forbidden, Unauthorized
+
+        auth = request.headers.get("authorization", "")
+        secret = request.app.config.get("auth_secret", "change-me")
+        if not auth.startswith("Bearer "):
+            raise Unauthorized("missing bearer token")
+        try:
+            claims = verify_token(auth[7:], secret)
+        except Exception as e:
+            raise Unauthorized(str(e))
+        ok = predicate(claims)
+        if hasattr(ok, "__await__"):
+            ok = await ok
+        if not ok:
+            raise Forbidden(detail)
+        return claims
+
+    _check._ikarem_security = {"scheme": "bearer", "roles": ()}  # type: ignore
+    return _check
+
+
+class APIKeyAuth:
+    """Dependency: static API keys via header (default ``X-API-Key``).
+
+    ``APIKeyAuth({"service-a": "key-secret"})`` or pass ``lookup=`` — a
+    sync/async callable ``key -> info dict`` raising/returning None when
+    unknown. Returns the key's info (never the secret).
+    """
+
+    _ikarem_security_scheme = "apiKey"
+
+    def __init__(
+        self,
+        keys: dict[str, Any] | None = None,
+        lookup: Any = None,
+        header: str = "x-api-key",
+        required: bool = True,
+    ):
+        self.keys = keys or {}
+        self.lookup = lookup
+        self.header = header
+        self.required = required
+        self._ikarem_security = {"scheme": "apiKey", "roles": ()}
+
+    async def __call__(self, request: Any) -> Any | None:
+        import inspect
+
+        from .errors import Unauthorized
+
+        key = request.headers.get(self.header.lower(), "")
+        info: Any = None
+        if key:
+            if self.lookup is not None:
+                info = self.lookup(key)
+                if inspect.isawaitable(info):
+                    info = await info
+            else:
+                info = self.keys.get(key)
+        if info is None and self.required:
+            raise Unauthorized("invalid or missing API key")
+        return info

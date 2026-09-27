@@ -7,6 +7,18 @@ All notable changes to this project are documented here. Format follows
 ## [Unreleased]
 
 ### Added
+- `Schema(extra="forbid")` sanitization (unexpected keys become 400s).
+- `XMLResponse` / `dict_to_xml` / `escape_html`.
+- `APIKeyAuth` (static keys or async `lookup=`), `require_scopes()` (JWT
+  scope/scp claims), `require_if()` predicate guard (ABAC-lite).
+- Versioned migrations (`Migrator`, `migrations/NNNN_name.sql` up/down,
+  `ikarem migrate up|down|status|new`).
+- Durable task queue (`Queue`, `QueuePlugin`, `@task`, `ikarem worker`):
+  portable leases, exponential-backoff retries, parked dead jobs.
+- Cron scheduler (`app.cron` / `app.every`, explicit `start_scheduler`,
+  fake-clock testable `tick()`).
+
+### Added
 - `Blueprint` (prefixed groups with own before/after hooks + error handlers,
   namespaced `url_for`, zero per-request overhead).
 - `Templates` (Jinja2 via `ikarem[jinja]`, autoescaped, lazy optional import).

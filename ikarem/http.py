@@ -300,6 +300,49 @@ def delete_cookie(headers: dict, key: str, path: str = "/") -> None:
     set_cookie(headers, key, "", max_age=0, path=path)
 
 
+def escape_html(s: Any) -> str:
+    """XSS-safe interpolation for hand-built HTML (Jinja2 autoescapes already)."""
+    return (
+        str(s)
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace('"', "&quot;")
+        .replace("'", "&#x27;")
+    )
+
+
+def dict_to_xml(data: Any, root: str = "response") -> str:
+    """Tiny XML serializer for dict/list/scalar trees (lists repeat <item>)."""
+
+    def _node(tag: str, value: Any) -> str:
+        if isinstance(value, dict):
+            inner = "".join(_node(str(k), v) for k, v in value.items())
+            return f"<{tag}>{inner}</{tag}>"
+        if isinstance(value, (list, tuple)):
+            inner = "".join(_node("item", v) for v in value)
+            return f"<{tag}>{inner}</{tag}>"
+        if value is None:
+            return f"<{tag}/>"
+        if isinstance(value, bool):
+            return f"<{tag}>{str(value).lower()}</{tag}>"
+        return f"<{tag}>{escape_html(value)}</{tag}>"
+
+    return '<?xml version="1.0" encoding="UTF-8"?>' + _node(root, data)
+
+
+class XMLResponse(Response):
+    def __init__(
+        self, data: Any, status_code: int = 200, headers: dict[str, str] | None = None, root: str = "response"
+    ):
+        super().__init__(
+            dict_to_xml(data, root).encode(),
+            status_code=status_code,
+            headers=headers,
+            media_type="application/xml",
+        )
+
+
 class JSONResponse(Response):
     def __init__(self, data: Any, status_code: int = 200, headers: dict[str, str] | None = None):
         super().__init__(

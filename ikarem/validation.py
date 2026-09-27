@@ -167,6 +167,14 @@ def _coerce(value: Any, ann: Any, field: str, errors: list, constraints: FieldIn
 
 
 class Schema:
+    _extra = "ignore"
+
+    def __init_subclass__(cls, extra: str = "ignore", **kw: Any) -> None:
+        super().__init_subclass__(**kw)
+        if extra not in ("ignore", "forbid"):
+            raise TypeError("Schema extra must be 'ignore' or 'forbid'")
+        cls._extra = extra
+
     def __init__(self, *args: Any, **kwargs: Any):
         hints = self.__class__.__hints__()
         constraints = self.__class__.__constraints__()
@@ -193,6 +201,10 @@ class Schema:
             v = _coerce(data[name], ann, name, errors, constraints.get(name))
             if v is not _MISSING:
                 setattr(self, name, v)
+        if self.__class__._extra == "forbid":
+            for key in data:
+                if key not in hints:
+                    errors.append({"field": key, "error": "unexpected", "value": data[key]})
         if errors:
             raise ValidationError(errors)
 
