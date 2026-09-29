@@ -23,8 +23,8 @@ jobs:
         run: pip install -e ".[dev]" ruff
       - name: Lint
         run: ruff check . && ruff format --check .
-      - name: Tests (framework + showcase)
-        run: python -m pytest tests/ ledger/tests -q
+      - name: Tests (framework + showcases)
+        run: python -m pytest tests/ ledger/tests cadence/tests -q
       - name: Static handler audit
         run: python -m ikarem.cli check ledger.app:app
 
