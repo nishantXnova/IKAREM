@@ -379,11 +379,18 @@ class StreamingResponse(Response):
         self.body = b""
 
     async def __call__(self, scope: dict, receive: Any, send: Any) -> None:
+        headers = [(b"content-type", self.media_type.encode())]
+        for k, v in self.headers.items():
+            if isinstance(v, (list, tuple)):
+                for item in v:
+                    headers.append((k.lower().encode(), str(item).encode()))
+            else:
+                headers.append((k.lower().encode(), str(v).encode()))
         await send(
             {
                 "type": "http.response.start",
                 "status": self.status_code,
-                "headers": [(b"content-type", self.media_type.encode())],
+                "headers": headers,
             }
         )
         # support sync or async iterables

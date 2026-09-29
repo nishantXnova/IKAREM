@@ -2,6 +2,7 @@
 file responses support cookies, and errors keep request-ID/security headers."""
 
 from ikarem import Ikarem, SessionMiddleware
+from ikarem.http import StreamingResponse
 from ikarem.observability import RequestIDMiddleware
 from ikarem.security import SecurityHeadersMiddleware
 from ikarem.static import FileResponse
@@ -22,6 +23,15 @@ def _app():
     @app.get("/boom")
     async def boom(req):
         raise RuntimeError("kaboom")
+
+    @app.get("/s")
+    async def s(req):
+        def gen():
+            yield "a,b\n"
+
+        resp = StreamingResponse(gen(), media_type="text/csv")
+        resp.headers["content-disposition"] = "attachment; filename=x.csv"
+        return resp
 
     return app
 
@@ -44,3 +54,10 @@ def test_error_responses_keep_middleware_headers():
     r500 = c.get("/boom")
     assert r500.status_code == 500
     assert r500.headers.get("x-request-id")
+
+
+def test_streaming_response_carries_custom_headers():
+    r = TestClient(_app()).get("/s")
+    assert r.status_code == 200, r.text
+    assert r.text == "a,b\n"
+    assert "attachment" in r.headers.get("content-disposition", "")
