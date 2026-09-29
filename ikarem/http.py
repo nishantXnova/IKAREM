@@ -40,6 +40,8 @@ class Request:
         return out
 
     async def body(self, max_bytes: int | None = None) -> bytes:
+        if max_bytes is None:
+            max_bytes = getattr(self, "max_body_bytes", None)
         if self._body is None:
             from .errors import PayloadTooLarge
 
@@ -64,7 +66,9 @@ class Request:
             raise PayloadTooLarge(f"body exceeds {max_bytes} bytes")
         return self._body
 
-    async def json(self, max_bytes: int = 10 * 1024 * 1024) -> Any:
+    async def json(self, max_bytes: int | None = 10 * 1024 * 1024) -> Any:
+        if max_bytes is None:
+            max_bytes = getattr(self, "max_body_bytes", None)
         return json.loads((await self.body(max_bytes)).decode() or "null")
 
     async def text(self, max_bytes: int | None = None) -> str:

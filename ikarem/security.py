@@ -39,12 +39,51 @@ class CORSMiddleware(Middleware):
 
 
 class SecurityHeadersMiddleware(Middleware):
+    """Secure-by-default headers. CSP is opt-in (a wrong default breaks
+    apps that inline scripts) — pass e.g. ``content_security_policy=
+    "default-src 'self'"`` when ready."""
+
+    def __init__(self, content_security_policy: str | None = None):
+        self.csp = content_security_policy
+
     async def __call__(self, req: Any, call_next: Any) -> Any:
         resp = await call_next(req)
         resp.headers.setdefault("x-content-type-options", "nosniff")
         resp.headers.setdefault("x-frame-options", "DENY")
         resp.headers.setdefault("referrer-policy", "no-referrer")
+        if self.csp:
+            resp.headers.setdefault("content-security-policy", self.csp)
         return resp
+
+
+class TrustedHostMiddleware(Middleware):
+    """Reject Host headers outside an allowlist (cache poisoning,
+    password-reset link theft, host-header injection).
+
+    Exact names plus leading-dot wildcards: ``TrustedHostMiddleware(
+    ["example.com", ".example.com"])``. Rejected requests get 400 without
+    touching handlers. Health probes hitting by IP need listing too."""
+
+    def __init__(self, allowed_hosts: list[str] | None = None):
+        self.allowed = [h.lower() for h in (allowed_hosts or ["*"])]
+
+    def _ok(self, host: str) -> bool:
+        host = host.split(":")[0].lower()
+        for rule in self.allowed:
+            if rule == "*":
+                return True
+            if rule.startswith("."):
+                if host == rule[1:] or host.endswith(rule):
+                    return True
+            elif host == rule:
+                return True
+        return False
+
+    async def __call__(self, req: Any, call_next: Any) -> Any:
+        host = req.headers.get("host", "")
+        if not self._ok(host):
+            return JSONResponse({"detail": f"host not trusted: {host or '(missing)'}"}, status_code=400)
+        return await call_next(req)
 
 
 class RateLimitMiddleware(Middleware):

@@ -28,6 +28,9 @@ ikarem = "ikarem.cli:main"
 where = ["."]
 include = ["ikarem*"]
 
+[tool.setuptools.package-data]
+ikarem = ["py.typed"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 

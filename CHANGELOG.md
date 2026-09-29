@@ -41,6 +41,17 @@ All notable changes to this project are documented here. Format follows
 - Cron scheduler (`app.cron` / `app.every`, explicit `start_scheduler`,
   fake-clock testable `tick()`).
 
+### Added (strong batch)
+- `TimeoutMiddleware` (503 + Retry-After), `ConcurrencyLimitMiddleware`
+  (bulkhead via non-blocking acquire), `IdempotencyMiddleware`
+  (`Idempotency-Key` replays over any `CacheBackend`).
+- `TrustedHostMiddleware` (exact + wildcard allowlist), opt-in CSP on
+  `SecurityHeadersMiddleware`, `ServiceUnavailable` (503).
+- `Ikarem(max_body_bytes=...)` global body cap; latency avg/max in `/metrics`.
+- Real SQLite transactions (depth-tracked auto-commit, context-manager safe).
+- `Room` websocket pub/sub + `TestClient.ws_connect` in-process WS driving.
+- `py.typed` marker for downstream type checkers.
+
 ### Added
 - `Blueprint` (prefixed groups with own before/after hooks + error handlers,
   namespaced `url_for`, zero per-request overhead).

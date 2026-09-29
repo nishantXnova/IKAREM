@@ -47,6 +47,11 @@ class PayloadTooLarge(HTTPException):
     detail = "Payload Too Large"
 
 
+class ServiceUnavailable(HTTPException):
+    status_code = 503
+    detail = "Service Unavailable"
+
+
 class InternalError(HTTPException):
     status_code = 500
     detail = "Internal Server Error"
@@ -60,6 +65,7 @@ _STATUS_MAP = {
     405: MethodNotAllowed,
     413: PayloadTooLarge,
     500: InternalError,
+    503: ServiceUnavailable,
 }
 
 

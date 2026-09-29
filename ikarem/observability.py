@@ -31,17 +31,29 @@ class RequestIDMiddleware(Middleware):
         return resp
 
 
-_METRICS: dict[str, Any] = {"requests": 0, "errors": 0, "start": time.time()}
+_METRICS: dict[str, Any] = {
+    "requests": 0,
+    "errors": 0,
+    "latency_sum": 0.0,
+    "latency_max": 0.0,
+    "start": time.time(),
+}
 
 
 class MetricsMiddleware(Middleware):
     async def __call__(self, req: Any, call_next: Any) -> Any:
         _METRICS["requests"] += 1
+        start = time.perf_counter()
         try:
             return await call_next(req)
         except Exception:
             _METRICS["errors"] += 1
             raise
+        finally:
+            dt = time.perf_counter() - start
+            _METRICS["latency_sum"] += dt
+            if dt > _METRICS["latency_max"]:
+                _METRICS["latency_max"] = dt
 
 
 def mount_system_routes(app: Any) -> None:
@@ -67,7 +79,17 @@ def mount_system_routes(app: Any) -> None:
 
     async def _metrics(req: Any) -> Any:
         uptime = time.time() - _METRICS["start"]
-        body = f"# ikarem metrics\nikarem_requests {_METRICS['requests']}\nikarem_errors {_METRICS['errors']}\nikarem_uptime_seconds {uptime:.1f}\n"
+        n = max(1, _METRICS["requests"])
+        avg_ms = _METRICS["latency_sum"] / n * 1000
+        max_ms = _METRICS["latency_max"] * 1000
+        body = (
+            "# ikarem metrics\n"
+            f"ikarem_requests {_METRICS['requests']}\n"
+            f"ikarem_errors {_METRICS['errors']}\n"
+            f"ikarem_latency_avg_ms {avg_ms:.2f}\n"
+            f"ikarem_latency_max_ms {max_ms:.2f}\n"
+            f"ikarem_uptime_seconds {uptime:.1f}\n"
+        )
         return TextResponse(body)
 
     _health._ikarem_internal = True  # type: ignore

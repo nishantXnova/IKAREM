@@ -190,3 +190,37 @@ class TestClient:
 
     def clear_cookies(self) -> None:
         self.cookies.clear()
+
+    async def ws_connect(
+        self,
+        path: str,
+        incoming: list[dict] | None = None,
+        headers: dict[str, str] | None = None,
+        query: str = "",
+    ) -> list[dict]:
+        """Drive a websocket route in-process: feed `incoming` messages,
+        collect everything the handler sends. When the script runs out,
+        the connection disconnects (handlers see it via receive_text)."""
+        pending = list(incoming or [])
+
+        async def receive() -> dict:
+            if pending:
+                return pending.pop(0)
+            return {"type": "websocket.disconnect"}
+
+        sent: list[dict] = []
+
+        async def send(msg: dict) -> None:
+            sent.append(msg)
+
+        scope = {
+            "type": "websocket",
+            "path": path,
+            "query_string": query.encode(),
+            "headers": [(k.lower().encode(), v.encode()) for k, v in (headers or {}).items()],
+            "server": ("test", 80),
+            "client": ("test", 5000),
+        }
+        await self.app.startup()
+        await self.app(scope, receive, send)
+        return sent

@@ -256,6 +256,8 @@ class Ikarem:
     async def _handle_http(self, scope: dict, receive: Any, send: Any) -> None:
         request = Request(scope, receive)
         request.app = self
+        # App-wide body cap (DoS floor): per-call max_bytes= still wins.
+        request.max_body_bytes = self.config.get("max_body_bytes", None)  # type: ignore
         try:
             for p in self.plugins.plugins:
                 hook = getattr(p, "on_request", None)

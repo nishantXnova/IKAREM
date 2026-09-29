@@ -191,10 +191,26 @@ ikarem worker myapp:app                        # drain the queue until Ctrl+C
 ```
 
 Plus the small ones the checklist demanded: `Schema(extra="forbid")` sanitization,
-`XMLResponse`/`dict_to_xml`, `escape_html`, `APIKeyAuth` (static keys or `lookup=`),
+`XMLResponse`/`dict_to_xml`, `escape_html`, `APIKeyAuth` (static keys or async `lookup=`),
 `require_scopes()` for JWT scopes, `require_if()` predicate (ABAC-lite).
 Out of scope on purpose: full ORM (strategy + validated schemas is the answer) and
 OAuth2 dance (JWT bearer covers service auth).
+
+## Stronger: timeouts, bulkheads, idempotency, rooms
+
+```python
+from ikarem import TimeoutMiddleware, ConcurrencyLimitMiddleware, IdempotencyMiddleware
+
+app.use(TimeoutMiddleware(30))  # hung handler -> 503 + Retry-After
+app.use(ConcurrencyLimitMiddleware(100))  # bulkhead: fail fast past N in-flight
+app.use(IdempotencyMiddleware())  # Idempotency-Key replays, no double charges
+app.use(TrustedHostMiddleware(["example.com", ".example.com"]))
+```
+
+Plus `Ikarem(max_body_bytes=...)` DoS floor, latency fields in `/metrics`,
+atomic SQLite transactions, `Room` pub/sub for websockets (tested via
+`TestClient.ws_connect`), and a `py.typed` marker so downstream type checkers
+see the real types.
 
 Live proof it all works: [`ledger/`](ledger/) — a personal-finance app
 (auth, dashboard with SVG charts, CRUD, receipt uploads, CSV export, JSON API)

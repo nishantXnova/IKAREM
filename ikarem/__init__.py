@@ -26,6 +26,7 @@ from .errors import (
     MethodNotAllowed,
     NotFound,
     PayloadTooLarge,
+    ServiceUnavailable,
     Unauthorized,
     abort,
 )
@@ -50,16 +51,17 @@ from .migrations import Migrator
 from .observability import MetricsMiddleware, RequestIDMiddleware, configure_logging
 from .plugins import BasePlugin, Plugin, PluginManager
 from .queue import Queue, QueuePlugin, run_worker, task
+from .resilience import ConcurrencyLimitMiddleware, IdempotencyMiddleware, TimeoutMiddleware
 from .resources import resource
 from .routing import Router
 from .scheduler import Scheduler, parse_cron, run_scheduler
-from .security import CORSMiddleware, RateLimitMiddleware, SecurityHeadersMiddleware
+from .security import CORSMiddleware, RateLimitMiddleware, SecurityHeadersMiddleware, TrustedHostMiddleware
 from .session import CSRFMiddleware, SessionMiddleware, csrf_token
 from .static import FileResponse
 from .templating import Templates
 from .validation import Field, FieldInfo, Schema, ValidationError
 from .views import MethodView
-from .websocket import WebSocket
+from .websocket import Room, WebSocket
 
 __all__ = [
     "Ikarem",
@@ -86,6 +88,7 @@ __all__ = [
     "Unauthorized",
     "Forbidden",
     "InternalError",
+    "ServiceUnavailable",
     "PayloadTooLarge",
     "Blueprint",
     "MethodView",
@@ -127,10 +130,15 @@ __all__ = [
     "escape_html",
     "CORSMiddleware",
     "SecurityHeadersMiddleware",
+    "TrustedHostMiddleware",
     "RateLimitMiddleware",
+    "TimeoutMiddleware",
+    "ConcurrencyLimitMiddleware",
+    "IdempotencyMiddleware",
     "CacheBackend",
     "MemoryCache",
     "cached",
+    "Room",
     "WebSocket",
     "RequestIDMiddleware",
     "MetricsMiddleware",

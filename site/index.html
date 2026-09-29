@@ -184,8 +184,8 @@ $ ikarem check myapp:app       <span class="tok-c"># static audit: deps, cycles,
     <tr><td>Routing</td><td>Compiled routes, converters, 404 vs 405, <code>include_router</code>, static mounts</td></tr>
     <tr><td>Input</td><td><code>Schema</code> + <code>Field(ge/le/pattern/email…)</code> for JSON <i>and</i> forms; 400s automatic</td></tr>
     <tr><td>Logic</td><td><code>Depends()</code> DI — nested, cached, sync/async/yield, cycle-checked, compiled once</td></tr>
-    <tr><td>Auth</td><td>HS256 JWT + RBAC + scopes + API keys, pbkdf2 passwords, signed-cookie sessions, CSRF</td></tr>
-    <tr><td>Ops</td><td>Rate limit, CORS, security headers, request IDs, <code>/healthz</code> <code>/readyz</code> <code>/metrics</code>, cron + durable queues + migrations</td></tr>
+    <tr><td>Auth</td><td>HS256 JWT + RBAC + scopes + API keys, pbkdf2 passwords, signed-cookie sessions, CSRF, trusted hosts</td></tr>
+    <tr><td>Ops</td><td>Rate limit, timeouts, bulkheads, idempotency, CORS, security headers, request IDs, <code>/healthz</code> <code>/readyz</code> <code>/metrics</code>, cron + durable queues + migrations</td></tr>
     <tr><td>Data</td><td>Async strategy interface: SQLite (stdlib) / Postgres / MySQL / SQLServer</td></tr>
     <tr><td>Machine clients</td><td>OpenAPI 3.1 + Swagger UI; every route as an MCP tool (<code>ikarem mcp</code>)</td></tr>
     <tr><td>Modularity</td><td><code>Blueprint</code> groups + <code>MethodView</code> classes + <code>abort()</code></td></tr>

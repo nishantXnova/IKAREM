@@ -26,10 +26,18 @@ class _Tx(Transaction):
     def __init__(self, conn: "SQLiteConnector"):
         self._c = conn
 
+    async def __aenter__(self) -> "_Tx":
+        # No explicit BEGIN: pysqlite opens one implicitly on first DML.
+        # The depth flag only suppresses per-statement auto-commit so the
+        # whole block commits or rolls back atomically.
+        self._c._tx_depth += 1
+        return self
+
     async def commit(self) -> None:
         def _op() -> None:
             with self._c._tlock:
                 self._c._ensure().commit()
+                self._c._tx_depth = max(0, self._c._tx_depth - 1)
 
         await asyncio.to_thread(_op)
 
@@ -37,6 +45,7 @@ class _Tx(Transaction):
         def _op() -> None:
             with self._c._tlock:
                 self._c._ensure().rollback()
+                self._c._tx_depth = max(0, self._c._tx_depth - 1)
 
         await asyncio.to_thread(_op)
 
@@ -55,6 +64,7 @@ class SQLiteConnector(DatabaseConnector):
             path = ":memory:"
         self.path = path or ":memory:"
         self._conn: sqlite3.Connection | None = None
+        self._tx_depth = 0
         # One shared connection (keeps :memory: working) means every use
         # must be serialized: pysqlite connections corrupt under concurrent
         # use. The lock lives INSIDE the worker threads (threading.Lock, not
@@ -96,7 +106,8 @@ class SQLiteConnector(DatabaseConnector):
         def _op() -> int:
             with self._tlock:
                 cur = self._ensure().execute(_normalize(query), params)
-                self._ensure().commit()
+                if self._tx_depth == 0:
+                    self._ensure().commit()
                 return cur.lastrowid if cur.lastrowid is not None else cur.rowcount
 
         return await asyncio.to_thread(_op)
