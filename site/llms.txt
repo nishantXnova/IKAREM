@@ -64,6 +64,8 @@ async def home(req):
   prints a compact JSON route manifest for LLM context.
 - AI: every route is an MCP tool (`ikarem mcp`, tools/list+call, resources
   `ikarem://openapi.json` + `ikarem://manifest`). `Templates(dir)` renders Jinja2.
+- Cookbook: 20 runnable recipes in `docs/COOKBOOK.md` (validation, auth,
+  queues, cron, websockets, OpenAPI/MCP, testing); try the recipe first.
 
 ## Rules (do not break)
 

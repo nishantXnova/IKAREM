@@ -11,6 +11,8 @@
     { "src": "/migrate.html", "dest": "/site/migrate.html" },
     { "src": "/reference", "dest": "/site/reference.html" },
     { "src": "/reference.html", "dest": "/site/reference.html" },
+    { "src": "/recipes", "dest": "/site/recipes.html" },
+    { "src": "/recipes.html", "dest": "/site/recipes.html" },
     { "src": "/style.css", "dest": "/site/style.css" },
     { "src": "/script.js", "dest": "/site/script.js" },
     { "src": "/favicon.ico", "dest": "/assets/ikarem-icon.svg" },

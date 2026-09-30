@@ -7,6 +7,9 @@ All notable changes to this project are documented here. Format follows
 ## [Unreleased]
 
 ### Added
+- `docs/COOKBOOK.md`: 20 copy-paste recipes, each runnable and
+  self-asserting, all executed in CI (`tests/test_cookbook.py`);
+  published as `site/recipes.html` (+ nav, `/recipes` route, sitemap).
 - `docs/ECOSYSTEM.md` extension registry (`ikarem-<name>` naming,
   interface checklist, shipped/wanted/third-party tables, runnable
   plugin skeleton executed in `tests/test_docs.py`).

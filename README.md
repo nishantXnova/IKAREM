@@ -230,6 +230,7 @@ IKAREM engine — then migrate handler-by-handler. Full guide:
 [`docs/MIGRATING_FROM_MERAKI.md`](docs/MIGRATING_FROM_MERAKI.md) ·
 honest benchmarks: [`bench/RESULTS.md`](bench/RESULTS.md) ·
 extension registry: [`docs/ECOSYSTEM.md`](docs/ECOSYSTEM.md) ·
+20 runnable recipes: [`docs/COOKBOOK.md`](docs/COOKBOOK.md) ·
 install: `pip install ikarem` (`dist/ikarem-1.0.0-py3-none-any.whl` builds offline).
 
 ## Why IKAREM beats Meraki Phase 1 — and the industry

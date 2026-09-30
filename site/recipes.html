@@ -1,0 +1,697 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IKAREM Cookbook — 20 Copy-Paste Recipes</title>
+<meta name="description" content="20 runnable IKAREM recipes: validation, sessions, JWT, API keys, pagination, CRUD resources, background tasks, durable queues, cron, middleware, errors, CORS, rate limits, timeouts, websockets, static files, OpenAPI, MCP, testing. Every snippet executes in CI.">
+<meta name="theme-color" content="#0a0a0b">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="IKAREM">
+<meta property="og:url" content="https://ikarem.vercel.app/recipes">
+<meta property="og:title" content="IKAREM Cookbook — 20 Copy-Paste Recipes">
+<meta property="og:description" content="Validation, auth, queues, cron, websockets, OpenAPI, MCP — every snippet runnable and CI-executed.">
+<meta property="og:image" content="https://ikarem.vercel.app/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="IKAREM Cookbook — 20 Copy-Paste Recipes">
+<meta name="twitter:image" content="https://ikarem.vercel.app/og.png">
+<link rel="icon" href="../assets/ikarem-icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+<link rel="canonical" href="https://ikarem.vercel.app/recipes">
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="index.html"><img src="../assets/ikarem-icon.svg" alt="IKAREM"><b>IKAREM</b></a>
+  <span class="ver">v1.1.0</span>
+  <nav>
+    <a href="index.html">Docs</a>
+    <a href="migrate.html">Migrate</a>
+    <a href="reference.html">Reference</a>
+    <a href="recipes.html" class="on">Recipes</a>
+    <a href="https://github.com/nishantXnova/IKAREM" class="ext">GitHub</a>
+    <a href="https://pypi.org/project/ikarem/" class="ext">PyPI</a>
+  </nav>
+</header>
+
+<div class="wrap">
+<aside class="side"><ol>
+  <li><a href="#r01-hello-typed-path-params-query-defaults"><span class="n">01</span>Hello + typed path params + query defaults</a></li>
+  <li><a href="#r02-json-validation-with-constraints"><span class="n">02</span>JSON validation with constraints</a></li>
+  <li><a href="#r03-html-forms-file-uploads"><span class="n">03</span>HTML forms + file uploads</a></li>
+  <li><a href="#r04-sessions-login-me-logout"><span class="n">04</span>Sessions: login, me, logout</a></li>
+  <li><a href="#r05-jwt-bearer-roles"><span class="n">05</span>JWT Bearer + roles</a></li>
+  <li><a href="#r06-api-keys-scopes"><span class="n">06</span>API keys + scopes</a></li>
+  <li><a href="#r07-pagination"><span class="n">07</span>Pagination</a></li>
+  <li><a href="#r08-crud-resource-in-one-call"><span class="n">08</span>CRUD resource in one call</a></li>
+  <li><a href="#r09-background-tasks-fire-and-forget"><span class="n">09</span>Background tasks (fire-and-forget)</a></li>
+  <li><a href="#r10-durable-queue-survives-restarts"><span class="n">10</span>Durable queue (survives restarts)</a></li>
+  <li><a href="#r11-cron-intervals-testable-clock"><span class="n">11</span>Cron + intervals (testable clock)</a></li>
+  <li><a href="#r12-middleware-timing-auth-gate"><span class="n">12</span>Middleware: timing + auth gate</a></li>
+  <li><a href="#r13-errors-abort-custom-handlers"><span class="n">13</span>Errors: abort + custom handlers</a></li>
+  <li><a href="#r14-cors-security-headers-trusted-hosts"><span class="n">14</span>CORS + security headers + trusted hosts</a></li>
+  <li><a href="#r15-rate-limiting"><span class="n">15</span>Rate limiting</a></li>
+  <li><a href="#r16-timeouts-bulkheads-idempotent-writes"><span class="n">16</span>Timeouts, bulkheads, idempotent writes</a></li>
+  <li><a href="#r17-websocket-rooms"><span class="n">17</span>WebSocket rooms</a></li>
+  <li><a href="#r18-static-files-downloads"><span class="n">18</span>Static files + downloads</a></li>
+  <li><a href="#r19-openapi-routes-as-mcp-tools"><span class="n">19</span>OpenAPI + routes-as-MCP-tools</a></li>
+  <li><a href="#r20-testing-static-audit"><span class="n">20</span>Testing + static audit</a></li>
+</ol></aside>
+
+<main>
+<section id="top">
+  <p class="secnum">COOKBOOK / 20 RECIPES</p>
+  <h1>Copy. Paste. Run.</h1>
+  <p>Twenty recipes covering the whole framework. Every snippet is self-contained and
+  self-asserting — <code>tests/test_cookbook.py</code> in the repo executes all of them on
+  every push, so this page cannot drift. Canonical source:
+  <a href="https://github.com/nishantXnova/IKAREM/blob/main/docs/COOKBOOK.md">docs/COOKBOOK.md</a>.</p>
+</section>
+
+<section id="r01-hello-typed-path-params-query-defaults">
+  <p class="secnum">RECIPE 01</p>
+  <h2>Hello + typed path params + query defaults</h2>
+  <p>Dicts become JSON. <code>{uid:int}</code> coerces or 404s; query params fill from defaults when absent.</p>
+  <p class="mut small">Runnable — copy into a file and run with <code>python</code>. Executed in CI by <code>tests/test_cookbook.py</code>.</p>
+<pre><code>from ikarem import Ikarem
+from ikarem.testing import TestClient
+
+app = Ikarem(enable_docs=False)
+
+@app.get(&quot;/&quot;)
+async def home(req):
+    return {&quot;hello&quot;: &quot;ikarem&quot;}
+
+@app.get(&quot;/users/{uid:int}&quot;)
+async def get_user(req, uid: int, limit: int = 5):
+    return {&quot;uid&quot;: uid, &quot;limit&quot;: limit}
+
+c = TestClient(app)
+assert c.get(&quot;/&quot;).json() == {&quot;hello&quot;: &quot;ikarem&quot;}
+assert c.get(&quot;/users/3&quot;, query=&quot;limit=2&quot;).json() == {&quot;uid&quot;: 3, &quot;limit&quot;: 2}
+assert c.get(&quot;/users/abc&quot;).status_code == 404
+</code></pre>
+</section>
+
+<section id="r02-json-validation-with-constraints">
+  <p class="secnum">RECIPE 02</p>
+  <h2>JSON validation with constraints</h2>
+  <p><code>Schema</code> coerces types; <code>Field()</code> adds bounds; <code>extra=&quot;forbid&quot;</code> turns unknown keys into 400s instead of silently ignoring them.</p>
+  <p class="mut small">Runnable — copy into a file and run with <code>python</code>. Executed in CI by <code>tests/test_cookbook.py</code>.</p>
+<pre><code>from ikarem import Field, Ikarem, Schema
+from ikarem.testing import TestClient
+
+class Item(Schema, extra=&quot;forbid&quot;):
+    name: str = Field(..., min_length=1, max_length=80)
+    qty: int = Field(1, ge=1, le=99)
+
+app = Ikarem(enable_docs=False)
+
+@app.post(&quot;/items&quot;)
+async def create(item: Item):
+    return {&quot;name&quot;: item.name, &quot;qty&quot;: item.qty}
+
+c = TestClient(app)
+assert c.post(&quot;/items&quot;, body={&quot;name&quot;: &quot;apple&quot;, &quot;qty&quot;: &quot;2&quot;}).json() == {&quot;name&quot;: &quot;apple&quot;, &quot;qty&quot;: 2}
+assert c.post(&quot;/items&quot;, body={&quot;qty&quot;: 1}).status_code == 400
+assert c.post(&quot;/items&quot;, body={&quot;name&quot;: &quot;x&quot;, &quot;hack&quot;: 1}).status_code == 400
+assert c.post(&quot;/items&quot;, body={&quot;name&quot;: &quot;x&quot;, &quot;qty&quot;: 500}).status_code == 400
+</code></pre>
+</section>
+
+<section id="r03-html-forms-file-uploads">
+  <p class="secnum">RECIPE 03</p>
+  <h2>HTML forms + file uploads</h2>
+  <p><code>await req.form()</code> handles urlencoded and multipart. Files arrive as <code>UploadFile</code> (filename, content_type, size); bodies over the cap 413.</p>
+  <p class="mut small">Runnable — copy into a file and run with <code>python</code>. Executed in CI by <code>tests/test_cookbook.py</code>.</p>
+<pre><code>from ikarem import Ikarem
+from ikarem.http import UploadFile
+from ikarem.testing import TestClient
+
+app = Ikarem(enable_docs=False)
+
+@app.post(&quot;/note&quot;)
+async def note(req):
+    form = await req.form()
+    f = form.get(&quot;photo&quot;)
+    if isinstance(f, UploadFile):
+        return {&quot;title&quot;: form.get(&quot;title&quot;), &quot;filename&quot;: f.filename, &quot;size&quot;: f.size}
+    return {&quot;title&quot;: form.get(&quot;title&quot;), &quot;filename&quot;: None}
+
+def _multipart(fields, files, boundary=&quot;BND&quot;):
+    parts = []
+    for k, v in fields.items():
+        parts.append(f&#x27;--{boundary}\r\nContent-Disposition: form-data; name=&quot;{k}&quot;\r\n\r\n{v}\r\n&#x27;)
+    for k, (fn, body, ct) in files.items():
+        parts.append(
+            f&#x27;--{boundary}\r\nContent-Disposition: form-data; name=&quot;{k}&quot;; filename=&quot;{fn}&quot;\r\n&#x27;
+            f&quot;Content-Type: {ct}\r\n\r\n{body}\r\n&quot;
+        )
+    parts.append(f&quot;--{boundary}--\r\n&quot;)
+    return &quot;&quot;.join(parts).encode(), f&quot;multipart/form-data; boundary={boundary}&quot;
+
+c = TestClient(app)
+r = c.post(&quot;/note&quot;, body=&quot;title=hello&quot;, content_type=&quot;application/x-www-form-urlencoded&quot;)
+assert r.json() == {&quot;title&quot;: &quot;hello&quot;, &quot;filename&quot;: None}
+body, ct = _multipart({&quot;title&quot;: &quot;pic&quot;}, {&quot;photo&quot;: (&quot;a.png&quot;, &quot;BYTES&quot;, &quot;image/png&quot;)})
+r = c.post(&quot;/note&quot;, body=body, content_type=ct)
+assert r.json() == {&quot;title&quot;: &quot;pic&quot;, &quot;filename&quot;: &quot;a.png&quot;, &quot;size&quot;: 5}
+</code></pre>
+</section>
+
+<section id="r04-sessions-login-me-logout">
+  <p class="secnum">RECIPE 04</p>
+  <h2>Sessions: login, me, logout</h2>
+  <p>Signed-cookie sessions. <code>req.session</code> is a dict; mutating it re-signs the cookie. Secret comes from <code>session_secret=</code> (refused at startup when auth routes exist and the secret is still the default).</p>
+  <p class="mut small">Runnable — copy into a file and run with <code>python</code>. Executed in CI by <code>tests/test_cookbook.py</code>.</p>
+<pre><code>from ikarem import Ikarem, SessionMiddleware, Unauthorized
+from ikarem.testing import TestClient
+
+app = Ikarem(enable_docs=False, session_secret=&quot;cookbook-session-secret&quot;)
+app.use(SessionMiddleware())
+
+@app.post(&quot;/login&quot;)
+async def login(req):
+    form = await req.form()
+    if form.get(&quot;user&quot;) == &quot;amy&quot; and form.get(&quot;pw&quot;) == &quot;s3cret&quot;:
+        req.session[&quot;uid&quot;] = &quot;u1&quot;
+        return {&quot;ok&quot;: True}
+    raise Unauthorized(&quot;bad credentials&quot;)
+
+@app.get(&quot;/me&quot;)
+async def me(req):
+    uid = req.session.get(&quot;uid&quot;)
+    if not uid:
+        raise Unauthorized(&quot;anonymous&quot;)
+    return {&quot;uid&quot;: uid}
+
+@app.post(&quot;/logout&quot;)
+async def logout(req):
+    req.session.clear()
+    return {&quot;ok&quot;: True}
+
+c = TestClient(app)
+assert c.get(&quot;/me&quot;).status_code == 401
+assert c.post(&quot;/login&quot;, body=&quot;user=amy&amp;pw=s3cret&quot;, content_type=&quot;application/x-www-form-urlencoded&quot;).json() == {&quot;ok&quot;: True}
+assert c.get(&quot;/me&quot;).json() == {&quot;uid&quot;: &quot;u1&quot;}
+assert c.post(&quot;/logout&quot;).json() == {&quot;ok&quot;: True}
+assert c.get(&quot;/me&quot;).status_code == 401
+</code></pre>
+</section>
+
+<section id="r05-jwt-bearer-roles">
+  <p class="secnum">RECIPE 05</p>
+  <h2>JWT Bearer + roles</h2>
+  <p>Stdlib HS256, no deps. <code>require_roles()</code> reads the <code>roles</code> claim from the app&#x27;s <code>auth_secret</code>; 401 without a token, 403 with the wrong role.</p>
+  <p class="mut small">Runnable — copy into a file and run with <code>python</code>. Executed in CI by <code>tests/test_cookbook.py</code>.</p>
+<pre><code>from ikarem import Depends, Ikarem, create_token, require_roles
+from ikarem.testing import TestClient
+
+SECRET = &quot;cookbook-auth-secret&quot;
+app = Ikarem(enable_docs=False, auth_secret=SECRET)
+
+@app.get(&quot;/admin&quot;)
+async def admin(req, claims=Depends(require_roles(&quot;admin&quot;))):
+    return {&quot;sub&quot;: claims[&quot;sub&quot;]}
+
+c = TestClient(app)
+assert c.get(&quot;/admin&quot;).status_code == 401
+user = create_token(&quot;u2&quot;, SECRET, roles=[&quot;user&quot;])
+assert c.get(&quot;/admin&quot;, headers={&quot;authorization&quot;: f&quot;Bearer {user}&quot;}).status_code == 403
+root = create_token(&quot;u1&quot;, SECRET, roles=[&quot;admin&quot;])
+assert c.get(&quot;/admin&quot;, headers={&quot;authorization&quot;: f&quot;Bearer {root}&quot;}).json() == {&quot;sub&quot;: &quot;u1&quot;}
+</code></pre>
+</section>
+
+<section id="r06-api-keys-scopes">
+  <p class="secnum">RECIPE 06</p>
+  <h2>API keys + scopes</h2>
+  <p>Service-to-service keys via <code>APIKeyAuth</code> (static dict or async <code>lookup=</code>), user scopes via <code>require_scopes()</code> (<code>scope</code>/<code>scp</code> JWT claims).</p>
+  <p class="mut small">Runnable — copy into a file and run with <code>python</code>. Executed in CI by <code>tests/test_cookbook.py</code>.</p>
+<pre><code>from ikarem import APIKeyAuth, Depends, Ikarem, create_token, require_scopes
+from ikarem.testing import TestClient
+
+SECRET = &quot;cookbook-scope-secret&quot;
+app = Ikarem(enable_docs=False, auth_secret=SECRET)
+keys = APIKeyAuth({&quot;svc-key&quot;: {&quot;name&quot;: &quot;billing&quot;}})
+
+@app.get(&quot;/internal&quot;)
+async def internal(req, info=Depends(keys)):
+    return {&quot;svc&quot;: info[&quot;name&quot;]}
+
+@app.get(&quot;/files&quot;)
+async def files(req, claims=Depends(require_scopes(&quot;read&quot;))):
+    return {&quot;n&quot;: 2}
+
+c = TestClient(app)
+assert c.get(&quot;/internal&quot;).status_code == 401
+assert c.get(&quot;/internal&quot;, headers={&quot;x-api-key&quot;: &quot;svc-key&quot;}).json() == {&quot;svc&quot;: &quot;billing&quot;}
+tok = create_token(&quot;u1&quot;, SECRET, scope=&quot;read write&quot;)
+assert c.get(&quot;/files&quot;, headers={&quot;authorization&quot;: f&quot;Bearer {tok}&quot;}).json() == {&quot;n&quot;: 2}
+narrow = create_token(&quot;u2&quot;, SECRET, scope=&quot;write&quot;)
+assert c.get(&quot;/files&quot;, headers={&quot;authorization&quot;: f&quot;Bearer {narrow}&quot;}).status_code == 403
+</code></pre>
+</section>
+
+<section id="r07-pagination">
+  <p class="secnum">RECIPE 07</p>
+  <h2>Pagination</h2>
+  <p>Slice + envelope. <code>page</code>/<code>per_page</code> from query with sane clamps; always return <code>total</code> so clients can render page counts.</p>
+  <p class="mut small">Runnable — copy into a file and run with <code>python</code>. Executed in CI by <code>tests/test_cookbook.py</code>.</p>
+<pre><code>from ikarem import Ikarem
+from ikarem.testing import TestClient
+
+ROWS = [{&quot;id&quot;: i} for i in range(1, 6)]
+app = Ikarem(enable_docs=False)
+
+@app.get(&quot;/rows&quot;)
+async def rows(req, page: int = 1, per_page: int = 2):
+    page = max(1, page)
+    per_page = min(50, max(1, per_page))
+    start = (page - 1) * per_page
+    return {&quot;total&quot;: len(ROWS), &quot;page&quot;: page, &quot;items&quot;: ROWS[start : start + per_page]}
+
+c = TestClient(app)
+p1 = c.get(&quot;/rows&quot;, query=&quot;page=1&amp;per_page=2&quot;).json()
+assert (p1[&quot;total&quot;], p1[&quot;page&quot;], len(p1[&quot;items&quot;])) == (5, 1, 2)
+p3 = c.get(&quot;/rows&quot;, query=&quot;page=3&amp;per_page=2&quot;).json()
+assert [r[&quot;id&quot;] for r in p3[&quot;items&quot;]] == [5]
+</code></pre>
+</section>
+
+<section id="r08-crud-resource-in-one-call">
+  <p class="secnum">RECIPE 08</p>
+  <h2>CRUD resource in one call</h2>
+  <p><code>app.resource()</code> generates validated, paginated JSON CRUD from a Schema + table. No owner scoping here (see <code>owner_field=</code> in <code>ikarem/resources.py</code> for the session-scoped variant).</p>
+  <p class="mut small">Runnable — copy into a file and run with <code>python</code>. Executed in CI by <code>tests/test_cookbook.py</code>.</p>
+<pre><code>from ikarem import Ikarem, Schema
+from ikarem.db import DatabasePlugin
+from ikarem.testing import TestClient
+
+class NoteIn(Schema):
+    text: str
+
+app = Ikarem(enable_docs=False)
+app.register(DatabasePlugin(&quot;sqlite:///:memory:&quot;))
+
+@app.on_startup
+async def init():
+    await app.state_db.execute(&quot;CREATE TABLE IF NOT EXISTS notes (id INTEGER PRIMARY KEY AUTOINCREMENT, text TEXT)&quot;)
+
+app.resource(&quot;/notes&quot;, NoteIn, table=&quot;notes&quot;)
+
+c = TestClient(app)
+assert c.post(&quot;/notes&quot;, body={&quot;text&quot;: &quot;buy milk&quot;}).status_code == 201
+r = c.post(&quot;/notes&quot;, body={&quot;text&quot;: &quot;second&quot;})
+assert r.status_code == 201
+lst = c.get(&quot;/notes&quot;).json()
+assert lst[&quot;total&quot;] &gt;= 2 and lst[&quot;items&quot;]
+rid = r.json()[&quot;id&quot;]
+assert c.get(f&quot;/notes/{rid}&quot;).json()[&quot;text&quot;] == &quot;second&quot;
+assert c.put(f&quot;/notes/{rid}&quot;, body={&quot;text&quot;: &quot;edited&quot;}).json()[&quot;text&quot;] == &quot;edited&quot;
+assert c.delete(f&quot;/notes/{rid}&quot;).json() == {&quot;ok&quot;: True}
+assert c.get(f&quot;/notes/{rid}&quot;).status_code == 404
+</code></pre>
+</section>
+
+<section id="r09-background-tasks-fire-and-forget">
+  <p class="secnum">RECIPE 09</p>
+  <h2>Background tasks (fire-and-forget)</h2>
+  <p>Return the response now, run the side effect after send. Gone on restart with no retry — when the job must survive deploys, use recipe 10 instead.</p>
+  <p class="mut small">Runnable — copy into a file and run with <code>python</code>. Executed in CI by <code>tests/test_cookbook.py</code>.</p>
+<pre><code>from ikarem import BackgroundTasks, Ikarem
+from ikarem.testing import TestClient
+
+sent = []
+app = Ikarem(enable_docs=False)
+
+@app.post(&quot;/welcome&quot;)
+async def welcome(req, bg: BackgroundTasks):
+    body = await req.json()
+    bg.add(sent.append, body[&quot;email&quot;])
+    return {&quot;queued&quot;: True}
+
+c = TestClient(app)
+assert c.post(&quot;/welcome&quot;, body={&quot;email&quot;: &quot;amy@x.com&quot;}).json() == {&quot;queued&quot;: True}
+assert sent == [&quot;amy@x.com&quot;]
+</code></pre>
+</section>
+
+<section id="r10-durable-queue-survives-restarts">
+  <p class="secnum">RECIPE 10</p>
+  <h2>Durable queue (survives restarts)</h2>
+  <p>Portable leases, exponential-backoff retries, parked dead jobs. Workers drain via <code>ikarem worker myapp:app</code>; here <code>run_one()</code> drives a single job.</p>
+  <p class="mut small">Runnable — copy into a file and run with <code>python</code>. Executed in CI by <code>tests/test_cookbook.py</code>.</p>
+<pre><code>import asyncio
+
+from ikarem import Ikarem
+from ikarem.db import DatabasePlugin
+from ikarem.queue import QueuePlugin, task
+
+seen = []
+
+@task(&quot;cookbook-greet&quot;)
+async def greet(name=&quot;world&quot;):
+    seen.append(name)
+
+app = Ikarem(enable_docs=False)
+app.register(DatabasePlugin(&quot;sqlite:///:memory:&quot;))
+app.register(QueuePlugin())
+
+async def main():
+    await app.startup()
+    try:
+        await app.state_queue.enqueue(&quot;cookbook-greet&quot;, {&quot;name&quot;: &quot;ada&quot;})
+        assert await app.state_queue.depth() &gt;= 1
+        assert await app.state_queue.run_one() is True
+        assert seen == [&quot;ada&quot;]
+        assert await app.state_queue.run_one() is False
+    finally:
+        await app.shutdown()
+
+asyncio.run(main())
+</code></pre>
+</section>
+
+<section id="r11-cron-intervals-testable-clock">
+  <p class="secnum">RECIPE 11</p>
+  <h2>Cron + intervals (testable clock)</h2>
+  <p>Jobs register with decorators; all timing flows through <code>tick(now)</code>, so tests drive time instead of sleeping. Tie to lifespan with <code>app.register(SchedulerPlugin())</code> in production.</p>
+  <p class="mut small">Runnable — copy into a file and run with <code>python</code>. Executed in CI by <code>tests/test_cookbook.py</code>.</p>
+<pre><code>import asyncio
+import time
+
+from ikarem import Ikarem
+
+app = Ikarem(enable_docs=False)
+fired = []
+
+@app.every(60)
+async def heartbeat():
+    fired.append(1)
+
+@app.cron(&quot;@daily&quot;)
+async def daily():
+    fired.append(&quot;daily&quot;)
+
+async def main():
+    sched = app._scheduler()
+    assert len(sched.jobs) == 2
+    await sched.tick(now=time.time() + 61)
+    assert fired == [1]
+
+asyncio.run(main())
+</code></pre>
+</section>
+
+<section id="r12-middleware-timing-auth-gate">
+  <p class="secnum">RECIPE 12</p>
+  <h2>Middleware: timing + auth gate</h2>
+  <p><code>(request, call_next) -&gt; response</code>. Return without calling <code>call_next</code> to short-circuit. Function middleware and classes both work.</p>
+  <p class="mut small">Runnable — copy into a file and run with <code>python</code>. Executed in CI by <code>tests/test_cookbook.py</code>.</p>
+<pre><code>from ikarem import Ikarem, Unauthorized
+from ikarem.testing import TestClient
+
+app = Ikarem(enable_docs=False)
+
+async def timing(req, call_next):
+    resp = await call_next(req)
+    resp.headers[&quot;x-took&quot;] = &quot;fast&quot;
+    return resp
+
+async def gate(req, call_next):
+    if req.headers.get(&quot;x-flag&quot;) != &quot;yes&quot;:
+        raise Unauthorized(&quot;flag required&quot;)
+    return await call_next(req)
+
+app.use(timing)
+app.use(gate)
+
+@app.get(&quot;/gated&quot;)
+async def gated(req):
+    return {&quot;ok&quot;: True}
+
+c = TestClient(app)
+assert c.get(&quot;/gated&quot;).status_code == 401
+r = c.get(&quot;/gated&quot;, headers={&quot;x-flag&quot;: &quot;yes&quot;})
+assert r.json() == {&quot;ok&quot;: True} and r.headers[&quot;x-took&quot;] == &quot;fast&quot;
+</code></pre>
+</section>
+
+<section id="r13-errors-abort-custom-handlers">
+  <p class="secnum">RECIPE 13</p>
+  <h2>Errors: abort + custom handlers</h2>
+  <p><code>abort(status, detail)</code> fails tersely through the normal pipeline (so middleware headers still apply). <code>@app.exception_handler</code> maps exception types, most-specific match first.</p>
+  <p class="mut small">Runnable — copy into a file and run with <code>python</code>. Executed in CI by <code>tests/test_cookbook.py</code>.</p>
+<pre><code>from ikarem import Ikarem, abort
+from ikarem.testing import TestClient
+
+app = Ikarem(enable_docs=False)
+
+@app.exception_handler(ValueError)
+async def _bad(req, exc):
+    from ikarem import JSONResponse
+
+    return JSONResponse({&quot;detail&quot;: f&quot;bad value: {exc}&quot;}, status_code=422)
+
+@app.get(&quot;/widget/{wid:int}&quot;)
+async def widget(req, wid: int):
+    if wid == 0:
+        abort(404, &quot;no such widget&quot;)
+    return {&quot;wid&quot;: wid}
+
+@app.get(&quot;/boom&quot;)
+async def boom(req):
+    raise ValueError(&quot;wid&quot;)
+
+c = TestClient(app)
+assert c.get(&quot;/widget/0&quot;).status_code == 404
+assert c.get(&quot;/boom&quot;).status_code == 422
+assert c.get(&quot;/widget/7&quot;).json() == {&quot;wid&quot;: 7}
+</code></pre>
+</section>
+
+<section id="r14-cors-security-headers-trusted-hosts">
+  <p class="secnum">RECIPE 14</p>
+  <h2>CORS + security headers + trusted hosts</h2>
+  <p>Preflights answer 204 without touching handlers; security headers apply to every response including errors; unlisted <code>Host</code> values 400 immediately.</p>
+  <p class="mut small">Runnable — copy into a file and run with <code>python</code>. Executed in CI by <code>tests/test_cookbook.py</code>.</p>
+<pre><code>from ikarem import CORSMiddleware, Ikarem, SecurityHeadersMiddleware, TrustedHostMiddleware
+from ikarem.testing import TestClient
+
+app = Ikarem(enable_docs=False)
+app.use(TrustedHostMiddleware([&quot;example.com&quot;]))
+app.use(SecurityHeadersMiddleware())
+app.use(CORSMiddleware(allow_origins=[&quot;https://app.example.com&quot;]))
+
+@app.get(&quot;/&quot;)
+async def home(req):
+    return {&quot;ok&quot;: True}
+
+c = TestClient(app)
+assert c.get(&quot;/&quot;, headers={&quot;host&quot;: &quot;evil.com&quot;}).status_code == 400
+r = c.get(&quot;/&quot;, headers={&quot;host&quot;: &quot;example.com&quot;})
+assert r.headers[&quot;x-frame-options&quot;] == &quot;DENY&quot;
+assert r.headers[&quot;access-control-allow-origin&quot;] == &quot;https://app.example.com&quot;
+pre = c.request(&quot;OPTIONS&quot;, &quot;/&quot;, headers={&quot;host&quot;: &quot;example.com&quot;})
+assert pre.status_code == 204
+</code></pre>
+</section>
+
+<section id="r15-rate-limiting">
+  <p class="secnum">RECIPE 15</p>
+  <h2>Rate limiting</h2>
+  <p>Fixed-window, per-IP, bounded buckets. 429s carry <code>Retry-After</code> plus <code>X-RateLimit-*</code> headers; successful responses carry the quota headers too.</p>
+  <p class="mut small">Runnable — copy into a file and run with <code>python</code>. Executed in CI by <code>tests/test_cookbook.py</code>.</p>
+<pre><code>from ikarem import Ikarem, RateLimitMiddleware
+from ikarem.testing import TestClient
+
+app = Ikarem(enable_docs=False)
+app.use(RateLimitMiddleware(per_minute=2))
+
+@app.get(&quot;/&quot;)
+async def home(req):
+    return {&quot;ok&quot;: True}
+
+c = TestClient(app)
+assert c.get(&quot;/&quot;).status_code == 200
+assert c.get(&quot;/&quot;).status_code == 200
+r = c.get(&quot;/&quot;)
+assert r.status_code == 429 and &quot;retry-after&quot; in r.headers
+assert r.headers[&quot;x-ratelimit-limit&quot;] == &quot;2&quot;
+</code></pre>
+</section>
+
+<section id="r16-timeouts-bulkheads-idempotent-writes">
+  <p class="secnum">RECIPE 16</p>
+  <h2>Timeouts, bulkheads, idempotent writes</h2>
+  <p>Overload becomes clean 503s with <code>Retry-After</code> instead of wedges; retried POSTs with the same <code>Idempotency-Key</code> replay instead of double-charging.</p>
+  <p class="mut small">Runnable — copy into a file and run with <code>python</code>. Executed in CI by <code>tests/test_cookbook.py</code>.</p>
+<pre><code>import asyncio
+
+from ikarem import ConcurrencyLimitMiddleware, IdempotencyMiddleware, Ikarem, TimeoutMiddleware
+from ikarem.testing import TestClient
+
+app = Ikarem(enable_docs=False)
+app.use(TimeoutMiddleware(timeout=0.05, retry_after=7))
+app.use(ConcurrencyLimitMiddleware(limit=10))
+app.use(IdempotencyMiddleware())
+
+charges = []
+
+@app.get(&quot;/slow&quot;)
+async def slow(req):
+    await asyncio.sleep(5)
+    return {&quot;never&quot;: True}
+
+@app.get(&quot;/fast&quot;)
+async def fast(req):
+    return {&quot;ok&quot;: True}
+
+@app.post(&quot;/pay&quot;)
+async def pay(req):
+    charges.append(1)
+    return {&quot;charged&quot;: len(charges)}
+
+c = TestClient(app)
+r = c.get(&quot;/slow&quot;)
+assert r.status_code == 503 and r.headers[&quot;retry-after&quot;] == &quot;7&quot;
+assert c.get(&quot;/fast&quot;).status_code == 200
+h = {&quot;idempotency-key&quot;: &quot;k-1&quot;}
+a = c.post(&quot;/pay&quot;, body={}, headers=h)
+b = c.post(&quot;/pay&quot;, body={}, headers=h)
+assert a.json() == b.json() == {&quot;charged&quot;: 1} and len(charges) == 1
+</code></pre>
+</section>
+
+<section id="r17-websocket-rooms">
+  <p class="secnum">RECIPE 17</p>
+  <h2>WebSocket rooms</h2>
+  <p>In-process pub/sub: join on connect, broadcast to the rest, leave in a <code>finally</code>. Single process by design — an external broker slots in behind the same shape when you outgrow one node.</p>
+  <p class="mut small">Runnable — copy into a file and run with <code>python</code>. Executed in CI by <code>tests/test_cookbook.py</code>.</p>
+<pre><code>import asyncio
+
+from ikarem import Room
+
+class FakeWS:
+    def __init__(self):
+        self.sent = []
+
+    async def send_text(self, text):
+        self.sent.append(text)
+
+async def main():
+    room = Room()
+    a, b = FakeWS(), FakeWS()
+    await room.join(a)
+    await room.join(b)
+    assert len(room) == 2
+    n = await room.broadcast(&quot;hi&quot;, exclude=a)
+    assert n == 1 and b.sent == [&quot;hi&quot;] and a.sent == []
+    room.leave(a)
+    room.leave(b)
+    assert len(room) == 0
+
+asyncio.run(main())
+</code></pre>
+</section>
+
+<section id="r18-static-files-downloads">
+  <p class="secnum">RECIPE 18</p>
+  <h2>Static files + downloads</h2>
+  <p><code>mount_static</code> serves a directory with symlink-escape and prefix-collision guards (<code>..</code> never leaves the root). <code>FileResponse</code> streams downloads with <code>Content-Disposition</code> intact through middleware.</p>
+  <p class="mut small">Runnable — copy into a file and run with <code>python</code>. Executed in CI by <code>tests/test_cookbook.py</code>.</p>
+<pre><code>import tempfile
+from pathlib import Path
+
+from ikarem import Ikarem
+from ikarem.testing import TestClient
+
+pub = Path(tempfile.mkdtemp(prefix=&quot;cookbook-static-&quot;))
+(pub / &quot;ok.txt&quot;).write_text(&quot;hello file&quot;)
+
+app = Ikarem(enable_docs=False)
+app.mount_static(&quot;/static&quot;, str(pub))
+
+@app.get(&quot;/receipt&quot;)
+async def receipt(req):
+    from ikarem import FileResponse
+
+    return FileResponse(str(pub / &quot;ok.txt&quot;), filename=&quot;receipt.txt&quot;)
+
+c = TestClient(app)
+r = c.get(&quot;/static/ok.txt&quot;)
+assert r.status_code == 200 and r.text == &quot;hello file&quot;
+assert c.get(&quot;/static/../secret.txt&quot;).status_code == 404
+dl = c.get(&quot;/receipt&quot;)
+assert dl.status_code == 200 and &quot;attachment&quot; in dl.headers.get(&quot;content-disposition&quot;, &quot;&quot;)
+</code></pre>
+</section>
+
+<section id="r19-openapi-routes-as-mcp-tools">
+  <p class="secnum">RECIPE 19</p>
+  <h2>OpenAPI + routes-as-MCP-tools</h2>
+  <p>Every route derives its OpenAPI operation and MCP tool from the same compiled plan — query shapes, bodies, and auth boundaries can&#x27;t drift.</p>
+  <p class="mut small">Runnable — copy into a file and run with <code>python</code>. Executed in CI by <code>tests/test_cookbook.py</code>.</p>
+<pre><code>import asyncio
+
+from ikarem import Depends, Ikarem, Schema, require_roles
+from ikarem.openapi import build_openapi
+
+SECRET = &quot;cookbook-mcp-secret&quot;
+
+class Item(Schema):
+    name: str
+
+app = Ikarem(enable_docs=False, auth_secret=SECRET)
+
+@app.post(&quot;/items&quot;)
+async def create_item(item: Item):
+    &quot;&quot;&quot;Create an item.&quot;&quot;&quot;
+    return {&quot;name&quot;: item.name}
+
+@app.get(&quot;/admin&quot;)
+async def admin(req, claims=Depends(require_roles(&quot;admin&quot;))):
+    return {&quot;sub&quot;: claims[&quot;sub&quot;]}
+
+spec = build_openapi(app)
+assert spec[&quot;paths&quot;][&quot;/items&quot;][&quot;post&quot;][&quot;summary&quot;] == &quot;Create an item.&quot;
+assert spec[&quot;paths&quot;][&quot;/admin&quot;][&quot;get&quot;][&quot;security&quot;] == [{&quot;bearerAuth&quot;: []}]
+tools = {t[&quot;name&quot;]: t for t in app.mcp_tools()}
+assert set(tools) == {&quot;create_item&quot;, &quot;admin&quot;}
+out = asyncio.run(app.mcp_call(&quot;create_item&quot;, {&quot;name&quot;: &quot;apple&quot;}))
+assert out[&quot;isError&quot;] is False
+</code></pre>
+</section>
+
+<section id="r20-testing-static-audit">
+  <p class="secnum">RECIPE 20</p>
+  <h2>Testing + static audit</h2>
+  <p><code>TestClient</code> keeps cookies across requests (login flows just work); <code>app.check()</code> statically audits handlers — cycles, bare <code>Depends()</code>, duplicate routes — before traffic. 404s suggest close matches.</p>
+  <p class="mut small">Runnable — copy into a file and run with <code>python</code>. Executed in CI by <code>tests/test_cookbook.py</code>.</p>
+<pre><code>from ikarem import Ikarem
+from ikarem.testing import TestClient
+
+app = Ikarem(enable_docs=False)
+
+@app.get(&quot;/users&quot;)
+async def users(req):
+    return {&quot;n&quot;: 1}
+
+report = app.check()
+assert report[&quot;errors&quot;] == []
+assert any(r[&quot;path&quot;] == &quot;/users&quot; for r in report[&quot;routes&quot;])
+c = TestClient(app)
+miss = c.get(&quot;/user&quot;)
+assert miss.status_code == 404 and &quot;Did you mean&quot; in miss.text
+</code></pre>
+</section>
+</main>
+</div>
+
+<footer><div class="wrap">
+  <span>IKAREM v1.1.0 — MIT. Meraki, reversed. And crushed.</span>
+  <span style="margin-left:auto"><a href="https://github.com/nishantXnova/IKAREM">GitHub</a> · <a href="https://pypi.org/project/ikarem/">PyPI</a></span>
+</div></footer>
+<script src="script.js" defer></script>
+</body>
+</html>
