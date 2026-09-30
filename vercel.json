@@ -15,6 +15,7 @@
     { "src": "/recipes.html", "dest": "/site/recipes.html" },
     { "src": "/guide", "dest": "/site/guide.html" },
     { "src": "/guide.html", "dest": "/site/guide.html" },
+    { "src": "/guide.pdf", "dest": "/site/guide.pdf" },
     { "src": "/style.css", "dest": "/site/style.css" },
     { "src": "/script.js", "dest": "/site/script.js" },
     { "src": "/favicon.ico", "dest": "/assets/ikarem-icon.svg" },

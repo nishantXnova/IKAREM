@@ -10,7 +10,8 @@ All notable changes to this project are documented here. Format follows
 - `docs/GUIDE.md`: "From Zero to Production", 25 chapters in 5 parts
   from install to internals, each runnable and self-asserting, all
   executed in CI (`tests/test_guide.py`); published as `site/guide.html`
-  (+ nav, `/guide` route, sitemap). Login chapter hashes with pbkdf2
+  (+ nav, `/guide` route, sitemap) and `site/guide.pdf` (35 pages,
+  print stylesheet, `/guide.pdf` route). Login chapter hashes with pbkdf2
   (dummy-hash timing cover), env-or-raise secret guard, login rate
   limit, logout, and asserted cookie flags. Broadcast and static-guard
   chapters assert the real historical bugs (second-client receipt,
