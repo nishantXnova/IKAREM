@@ -14,7 +14,7 @@ from .auth import (
 )
 from .background import BackgroundTasks
 from .blueprints import Blueprint
-from .cache import CacheBackend, MemoryCache, cached
+from .cache import CacheBackend, MemoryCache, RedisCache, cached
 from .config import Config
 from .deprecation import deprecated
 from .di import Depends
@@ -54,7 +54,7 @@ from .queue import Queue, QueuePlugin, run_worker, task
 from .resilience import ConcurrencyLimitMiddleware, IdempotencyMiddleware, TimeoutMiddleware
 from .resources import resource
 from .routing import Router
-from .scheduler import Scheduler, parse_cron, run_scheduler
+from .scheduler import Scheduler, SchedulerPlugin, parse_cron, run_scheduler
 from .security import CORSMiddleware, RateLimitMiddleware, SecurityHeadersMiddleware, TrustedHostMiddleware
 from .session import CSRFMiddleware, SessionMiddleware, csrf_token
 from .static import FileResponse
@@ -101,6 +101,7 @@ __all__ = [
     "run_worker",
     "task",
     "Scheduler",
+    "SchedulerPlugin",
     "parse_cron",
     "run_scheduler",
     "resource",
@@ -137,6 +138,7 @@ __all__ = [
     "IdempotencyMiddleware",
     "CacheBackend",
     "MemoryCache",
+    "RedisCache",
     "cached",
     "Room",
     "WebSocket",
@@ -146,4 +148,4 @@ __all__ = [
     "MCPServer",
 ]
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"

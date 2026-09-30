@@ -13,7 +13,8 @@ def build_openapi(app: Any, title: str = "IKAREM", version: str = "0.1.0") -> di
     from .compiled import describe_route
 
     paths: dict[str, dict] = {}
-    has_auth = False
+    schemes: set[str] = set()
+    api_key_headers: set[str] = set()
     for r in app.router.routes:
         # skip auto-mounted internals if flagged
         if getattr(r.handler, "_ikarem_internal", False):
@@ -56,18 +57,31 @@ def build_openapi(app: Any, title: str = "IKAREM", version: str = "0.1.0") -> di
             elif desc.query:
                 op["responses"]["400"] = {"description": "Invalid query parameter"}
             if desc.is_auth:
-                has_auth = True
+                scheme = (desc.auth_scheme or "bearer").lower()
+                if scheme == "apikey":
+                    header = desc.auth_header or "x-api-key"
+                    api_key_headers.add(header)
+                    schemes.add("apiKey")
+                    op["security"] = [{"apiKeyAuth": []}]
+                else:
+                    schemes.add("bearer")
+                    op["security"] = [{"bearerAuth": []}]
                 op["responses"]["401"] = {"description": "Unauthorized"}
                 op["responses"]["403"] = {"description": "Forbidden"}
-                op["security"] = [{"bearerAuth": []}]
             item[method.lower()] = op
     spec: dict[str, Any] = {
         "openapi": "3.1.0",
         "info": {"title": title, "version": version},
         "paths": paths,
     }
-    if has_auth:
-        spec["components"] = {"securitySchemes": {"bearerAuth": {"type": "http", "scheme": "bearer"}}}
+    if schemes:
+        security_schemes: dict[str, Any] = {}
+        if "bearer" in schemes:
+            security_schemes["bearerAuth"] = {"type": "http", "scheme": "bearer"}
+        if "apiKey" in schemes:
+            header = sorted(api_key_headers)[0] if api_key_headers else "x-api-key"
+            security_schemes["apiKeyAuth"] = {"type": "apiKey", "in": "header", "name": header}
+        spec["components"] = {"securitySchemes": security_schemes}
     return spec
 
 

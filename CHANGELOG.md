@@ -7,6 +7,22 @@ All notable changes to this project are documented here. Format follows
 ## [Unreleased]
 
 ### Added
+- OpenAPI emits `apiKeyAuth` (with per-route header name) alongside
+  `bearerAuth`; compiled plans + `describe_app` carry `auth.header/scopes`;
+  MCP tool text names the API-key header instead of Bearer.
+- `RedisCache` shared `CacheBackend` (`ikarem[redis]`, lazy import, JSON
+  values, `client=` injection for tests); single-process ceiling documented
+  on `cache` (`MemoryCache`/rate-limit/`Room`/idempotency default).
+- `SchedulerPlugin` lifespan wiring (`app.register(SchedulerPlugin())` —
+  starts on startup, cancels on shutdown; `autostart=False` for manual
+  `start_scheduler` control).
+- `ikarem worker --queue` flag (was `AttributeError`); trusted-publisher
+  `publish.yml` (OIDC, tag-gated, no long-lived PyPI token); CI scaffold
+  smoke job (templates stay runnable) + bench smoke.
+
+## [1.1.0] — 2026-09-30
+
+### Added
 - `ikarem inspect` compact route manifest (token-efficient LLM context).
 - MCP `resources/list` + `resources/read` (`ikarem://openapi.json`,
   `ikarem://manifest`); capabilities now advertise tools + resources.

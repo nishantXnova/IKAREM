@@ -91,6 +91,9 @@ def main() -> None:
     pw = sub.add_parser("worker", help="drain the app's durable task queue until interrupted")
     pw.add_argument("target", nargs="?", default="examples.basic:app", help="module:attr")
     pw.add_argument("--poll", type=float, default=1.0)
+    pw.add_argument(
+        "--queue", default="default", help="queue name (informational; app.state_queue is drained)"
+    )
 
     pi = sub.add_parser("inspect", help="print a compact route manifest (built for LLM context)")
     pi.add_argument("target", nargs="?", default="examples.basic:app", help="module:attr")

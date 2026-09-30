@@ -73,7 +73,16 @@ def build_tool(route: Any, desc: Any, name: str) -> dict:
     description = f"{summary} [HTTP {method} {desc.path}]" if summary else f"HTTP {method} {desc.path}"
     if desc.is_auth:
         roles = f" (roles: {', '.join(desc.auth_roles)})" if desc.auth_roles else ""
-        description += f" Requires Authorization header with Bearer JWT{roles}."
+        scopes = (
+            f" (scopes: {', '.join(getattr(desc, 'auth_scopes', ()) or ())})"
+            if getattr(desc, "auth_scopes", ())
+            else ""
+        )
+        if (getattr(desc, "auth_scheme", "") or "bearer").lower() == "apikey":
+            header = getattr(desc, "auth_header", "") or "x-api-key"
+            description += f" Requires {header} header with API key{roles}{scopes}."
+        else:
+            description += f" Requires Authorization header with Bearer JWT{roles}{scopes}."
     return {
         "name": name,
         "description": description,

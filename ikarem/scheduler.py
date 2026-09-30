@@ -194,3 +194,53 @@ async def run_scheduler(
             return
         await scheduler.tick()
         await asyncio.sleep(poll)
+
+
+class SchedulerPlugin:
+    """Lifespan wiring for cron/interval jobs: start on startup, stop on shutdown.
+
+    ``app.register(SchedulerPlugin(poll=1.0))`` after ``@app.cron`` /
+    ``@app.every`` registrations. Jobs then tick inside the app process
+    with no manual ``await app.start_scheduler(stop)`` beside startup.
+    Manual ``start_scheduler`` still works when you need explicit control.
+    """
+
+    name = "scheduler"
+    priority = 30
+
+    def __init__(self, poll: float = 1.0, autostart: bool = True):
+        if poll <= 0:
+            raise ValueError(f"SchedulerPlugin poll must be positive, got {poll!r}")
+        self.poll = poll
+        self.autostart = autostart
+        self._task: Any = None
+
+    def register(self, app: Any) -> None:
+        async def _startup() -> None:
+            sched = app._scheduler()
+            app.state_scheduler = sched  # type: ignore
+            if not self.autostart:
+                return
+            if self._task is not None:
+                return
+
+            async def _loop() -> None:
+                while True:
+                    await sched.tick()
+                    await asyncio.sleep(self.poll)
+
+            self._task = asyncio.create_task(_loop())
+
+        async def _shutdown() -> None:
+            task, self._task = self._task, None
+            if task is not None:
+                task.cancel()
+                try:
+                    await task
+                except asyncio.CancelledError:
+                    pass
+                except Exception:
+                    pass
+
+        app.on_startup(_startup)
+        app.on_shutdown(_shutdown)

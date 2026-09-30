@@ -590,6 +590,8 @@ class RouteDescription:
     is_auth: bool = False
     auth_roles: tuple = ()
     auth_scheme: str = ""
+    auth_header: str = ""
+    auth_scopes: tuple = ()
 
 
 def describe_route(route: Any) -> RouteDescription:
@@ -605,6 +607,8 @@ def describe_route(route: Any) -> RouteDescription:
         is_auth=plan.is_auth,
         auth_roles=plan.auth_roles,
         auth_scheme=plan.auth_scheme,
+        auth_header=plan.auth_header,
+        auth_scopes=plan.auth_scopes,
     )
     for m in _ROUTE_PARAM_RE.finditer(route.path):
         desc.path_params.append(m.group(1))
@@ -703,6 +707,10 @@ def describe_app(app: Any) -> dict:
                 auth: dict[str, Any] = {"scheme": desc.auth_scheme or "bearer"}
                 if desc.auth_roles:
                     auth["roles"] = list(desc.auth_roles)
+                if desc.auth_scopes:
+                    auth["scopes"] = list(desc.auth_scopes)
+                if desc.auth_header:
+                    auth["header"] = desc.auth_header
                 entry["auth"] = auth
             out.append(entry)
     return {"routes": out, "count": len(out)}
