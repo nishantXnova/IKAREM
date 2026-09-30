@@ -6,6 +6,7 @@
 [![PyPI](https://img.shields.io/pypi/v/ikarem)](https://pypi.org/project/ikarem/)
 [![Python](https://img.shields.io/pypi/pyversions/ikarem)](https://pypi.org/project/ikarem/)
 [![License](https://img.shields.io/pypi/l/ikarem)](https://github.com/nishantXnova/IKAREM/blob/main/LICENSE)
+[![M8ven Verified](https://m8ven.ai/badge/mcp/nishantxnova/ikarem?variant=verified)](https://m8ven.ai/mcp/nishantxnova/ikarem)
 
 Industry-grade Python ASGI backend framework. Pip-installable, **zero-dep core**.
 
