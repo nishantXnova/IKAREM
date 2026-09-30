@@ -10,8 +10,11 @@ All notable changes to this project are documented here. Format follows
 - `docs/GUIDE.md`: "From Zero to Production", 25 chapters in 5 parts
   from install to internals, each runnable and self-asserting, all
   executed in CI (`tests/test_guide.py`); published as `site/guide.html`
-  (+ nav, `/guide` route, sitemap). Login chapter hashes with pbkdf2,
-  reads the secret from the environment, and rotates the session.
+  (+ nav, `/guide` route, sitemap). Login chapter hashes with pbkdf2
+  (dummy-hash timing cover), env-or-raise secret guard, login rate
+  limit, logout, and asserted cookie flags. Broadcast and static-guard
+  chapters assert the real historical bugs (second-client receipt,
+  symlink + sibling-prefix).
 - `WebSocketDisconnect` (`RuntimeError` subclass — old catches keep
   working) and `app.scheduler()` public accessor.
 - Migration guides for FastAPI, Starlette, Litestar, Flask, Django

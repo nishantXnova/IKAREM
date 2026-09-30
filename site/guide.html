@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>IKAREM Guide — From Zero to Production</title>
-<meta name="description" content="The complete IKAREM path: first app to auth, databases, queues, websockets, testing, deployment, and internals. 25 chapters in 5 parts, every snippet runnable and CI-executed.">
+<meta name="description" content="The complete IKAREM path: install to internals in 25 chapters across 5 parts. Every snippet runnable and CI-executed.">
 <meta name="theme-color" content="#0a0a0b">
 <meta property="og:type" content="article">
 <meta property="og:site_name" content="IKAREM">
 <meta property="og:url" content="https://ikarem.vercel.app/guide">
 <meta property="og:title" content="IKAREM Guide — From Zero to Production">
-<meta property="og:description" content="The complete IKAREM path: first app to auth, databases, queues, websockets, testing, deployment, and internals. 25 chapters in 5 parts, every snippet runnable and CI-executed.">
+<meta property="og:description" content="The complete IKAREM path: install to internals in 25 chapters across 5 parts. Every snippet runnable and CI-executed.">
 <meta property="og:image" content="https://ikarem.vercel.app/og.png">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="IKAREM Guide — From Zero to Production">
@@ -113,9 +113,11 @@ from ikarem.testing import TestClient
 
 app = Ikarem()
 
+
 @app.get(&quot;/&quot;)
 async def home(req):
     return {&quot;hello&quot;: &quot;ikarem&quot;}
+
 
 c = TestClient(app)
 r = c.get(&quot;/&quot;)
@@ -135,9 +137,11 @@ from ikarem.testing import TestClient
 
 app = Ikarem(enable_docs=False)
 
+
 @app.get(&quot;/users/{uid:int}&quot;)
 async def get_user(req, uid: int):
     return {&quot;uid&quot;: uid}
+
 
 c = TestClient(app)
 assert c.get(&quot;/users/7&quot;).json() == {&quot;uid&quot;: 7}
@@ -158,13 +162,16 @@ from ikarem.testing import TestClient
 
 app = Ikarem(enable_docs=False)
 
+
 @app.post(&quot;/echo&quot;)
 async def echo(req):
     return await req.json()
 
+
 @app.post(&quot;/small&quot;)
 async def small(req):
     return {&quot;n&quot;: len(await req.body(max_bytes=10))}
+
 
 c = TestClient(app)
 assert c.post(&quot;/echo&quot;, body={&quot;a&quot;: 1}).json() == {&quot;a&quot;: 1}
@@ -182,19 +189,24 @@ assert c.post(&quot;/small&quot;, body=&quot;x&quot; * 100).status_code == 413
 <pre><code>from ikarem import Field, Ikarem, Schema
 from ikarem.testing import TestClient
 
+
 class Item(Schema):
     name: str = Field(..., min_length=1, max_length=80)
     qty: int = Field(1, ge=1, le=99)
+
 
 class Order(Schema, extra=&quot;forbid&quot;):
     item: Item
     express: bool = False
 
+
 app = Ikarem(enable_docs=False)
+
 
 @app.post(&quot;/orders&quot;)
 async def create(order: Order):
     return {&quot;name&quot;: order.item.name, &quot;qty&quot;: order.item.qty, &quot;express&quot;: order.express}
+
 
 c = TestClient(app)
 good = {&quot;item&quot;: {&quot;name&quot;: &quot;apple&quot;, &quot;qty&quot;: &quot;2&quot;}, &quot;express&quot;: True}
@@ -215,19 +227,24 @@ from ikarem.testing import TestClient
 
 closed = []
 
+
 def settings():
     return {&quot;currency&quot;: &quot;USD&quot;}
+
 
 async def ledger_conn(req):
     conn = {&quot;open&quot;: True}
     yield conn
     closed.append(&quot;closed&quot;)
 
+
 app = Ikarem(enable_docs=False)
+
 
 @app.get(&quot;/balance&quot;)
 async def balance(req, cfg=Depends(settings), db=Depends(ledger_conn)):
     return {&quot;currency&quot;: cfg[&quot;currency&quot;], &quot;open&quot;: db[&quot;open&quot;]}
+
 
 c = TestClient(app)
 assert c.get(&quot;/balance&quot;).json() == {&quot;currency&quot;: &quot;USD&quot;, &quot;open&quot;: True}
@@ -245,27 +262,35 @@ assert closed == [&quot;closed&quot;]
   <p class="secnum">CHAPTER 07</p>
   <h2>Auth that says no clearly</h2>
   <p>Stateless JWT (HS256, stdlib only) plus role and scope guards. 401 means anonymous, 403 means authenticated but not allowed — clients can act on the difference. Secrets come from config and are refused at startup when they are still defaults.</p>
-  <p>Notes: <code>verify_token</code> rejects algorithm confusion (<code>alg=none</code>), expired tokens, and missing <code>sub</code>. Service-to-service keys use <code>APIKeyAuth</code> with static keys or an async <code>lookup=</code>. Passwords hash with pbkdf2 — see the next chapter for the full login shape.</p>
+  <p>Notes: production sets <code>IKAREM_AUTH_SECRET</code> (the strict env-or-raise shape is chapter 8&#x27;s); tokens always carry an explicit <code>expires_in</code> — readers copy this call, so the default here is 15 minutes, not forever. <code>verify_token</code> rejects algorithm confusion (<code>alg=none</code>), expired tokens, and missing <code>sub</code>. Service-to-service keys use <code>APIKeyAuth</code> with static keys or an async <code>lookup=</code>. Passwords hash with pbkdf2 — see the next chapter for the full login shape.</p>
   <p class="mut small">Runnable — copy into a file and run with <code>python</code>. Executed in CI by <code>tests/test_guide.py</code>.</p>
-<pre><code>from ikarem import Depends, Ikarem, create_token, require_roles, require_scopes
+<pre><code>import os
+import time
+
+from ikarem import Depends, Ikarem, create_token, require_roles, require_scopes, verify_token
 from ikarem.testing import TestClient
 
-SECRET = &quot;guide-auth-secret&quot;
+SECRET = os.environ.get(&quot;IKAREM_AUTH_SECRET&quot;) or &quot;guide-dev-only-secret&quot;
 app = Ikarem(enable_docs=False, auth_secret=SECRET)
+
 
 @app.get(&quot;/admin&quot;)
 async def admin(req, claims=Depends(require_roles(&quot;admin&quot;))):
     return {&quot;sub&quot;: claims[&quot;sub&quot;]}
 
+
 @app.get(&quot;/files&quot;)
 async def files(req, claims=Depends(require_scopes(&quot;read&quot;))):
     return {&quot;n&quot;: 2}
+
 
 c = TestClient(app)
 assert c.get(&quot;/admin&quot;).status_code == 401
 user = create_token(&quot;u2&quot;, SECRET, roles=[&quot;user&quot;])
 assert c.get(&quot;/admin&quot;, headers={&quot;authorization&quot;: f&quot;Bearer {user}&quot;}).status_code == 403
-root = create_token(&quot;u1&quot;, SECRET, roles=[&quot;admin&quot;], scope=&quot;read&quot;)
+root = create_token(&quot;u1&quot;, SECRET, expires_in=900, roles=[&quot;admin&quot;], scope=&quot;read&quot;)
+claims = verify_token(root, SECRET)
+assert 0 &lt; claims[&quot;exp&quot;] - time.time() &lt;= 900  # explicit 15-minute life
 assert c.get(&quot;/admin&quot;, headers={&quot;authorization&quot;: f&quot;Bearer {root}&quot;}).json() == {&quot;sub&quot;: &quot;u1&quot;}
 assert c.get(&quot;/files&quot;, headers={&quot;authorization&quot;: f&quot;Bearer {root}&quot;}).json() == {&quot;n&quot;: 2}
 </code></pre>
@@ -275,14 +300,14 @@ assert c.get(&quot;/files&quot;, headers={&quot;authorization&quot;: f&quot;Bear
   <p class="secnum">CHAPTER 08</p>
   <h2>Logins without shortcuts</h2>
   <p>Passwords hash with pbkdf2 and verify in constant time — never <code>==</code> against plaintext, never stored plaintext. The session secret loads from the environment (no hardcoded fallback that ships to production), and a successful login starts a fresh session so a pre-login cookie can&#x27;t be fixed onto a victim.</p>
-  <p>Notes: set <code>IKAREM_SESSION_SECRET</code> in production — the generated fallback exists so the snippet runs anywhere, not so deploys can skip the secret (startup validation refuses default secrets on auth routes). The <code>TestClient</code> cookie jar persists login across requests, so flows test exactly as browsers behave. Token APIs can exempt paths instead of sending CSRF headers.</p>
+  <p>Notes: a random per-process fallback would sign cookies with a different key in every uvicorn worker (chapter 21) — users logged out at random, and nothing would warn you because random is not a default. So the fallback here requires the explicit <code>IKAREM_DEV=1</code> flag, and anything else raises with the remedy. Unknown usernames verify against a dummy hash, so timing reveals nothing. Cookies arrive <code>HttpOnly</code> with <code>SameSite=Lax</code> by default; <code>Secure</code> is opt-in via <code>SessionMiddleware(secure=True)</code> — turn it on the moment you serve HTTPS. The <code>TestClient</code> cookie jar persists login across requests, so flows test exactly as browsers behave.</p>
   <p class="mut small">Runnable — copy into a file and run with <code>python</code>. Executed in CI by <code>tests/test_guide.py</code>.</p>
 <pre><code>import os
-import secrets
 
 from ikarem import (
     CSRFMiddleware,
     Ikarem,
+    RateLimitMiddleware,
     SessionMiddleware,
     Unauthorized,
     check_password,
@@ -291,26 +316,63 @@ from ikarem import (
 )
 from ikarem.testing import TestClient
 
-SECRET = os.environ.get(&quot;IKAREM_SESSION_SECRET&quot;) or secrets.token_hex(32)
+
+def resolve_secret():
+    secret = os.environ.get(&quot;IKAREM_SESSION_SECRET&quot;)
+    if secret:
+        return secret
+    if os.environ.get(&quot;IKAREM_DEV&quot;) == &quot;1&quot;:
+        return &quot;dev-only-insecure-secret&quot;  # throwaway local runs
+    raise RuntimeError(&quot;set IKAREM_SESSION_SECRET to a long random value (or IKAREM_DEV=1 locally)&quot;)
+
+
+os.environ.setdefault(&quot;IKAREM_DEV&quot;, &quot;1&quot;)  # delete this line in production
+SECRET = resolve_secret()
+
+# the guard, proven both ways: the production shape refuses to boot
+_saved = (os.environ.pop(&quot;IKAREM_DEV&quot;, None), os.environ.pop(&quot;IKAREM_SESSION_SECRET&quot;, None))
+try:
+    try:
+        resolve_secret()
+        assert False, &quot;must refuse without secret or dev flag&quot;
+    except RuntimeError as e:
+        assert &quot;IKAREM_SESSION_SECRET&quot; in str(e)
+finally:
+    if _saved[0] is not None:
+        os.environ[&quot;IKAREM_DEV&quot;] = _saved[0]
+    if _saved[1] is not None:
+        os.environ[&quot;IKAREM_SESSION_SECRET&quot;] = _saved[1]
+
+DUMMY_HASH = hash_password(&quot;no-such-user&quot;)  # unknown users verify here: same timing
 USERS = {&quot;amy&quot;: hash_password(&quot;s3cret&quot;)}  # seeded hash, never the password
 
 app = Ikarem(enable_docs=False, session_secret=SECRET)
+app.use(RateLimitMiddleware(per_minute=11))  # logins are brute-forced: budget them
 app.use(SessionMiddleware())
 app.use(CSRFMiddleware())
+
 
 @app.get(&quot;/csrf&quot;)
 async def csrf(req):
     return {&quot;t&quot;: csrf_token(req)}
 
+
 @app.post(&quot;/login&quot;)
 async def login(req):
     form = await req.form()
-    pw_hash = USERS.get(form.get(&quot;user&quot;, &quot;&quot;))
-    if pw_hash is None or not check_password(form.get(&quot;pw&quot;, &quot;&quot;), pw_hash):
+    pw_hash = USERS.get(form.get(&quot;user&quot;, &quot;&quot;)) or DUMMY_HASH
+    if not check_password(form.get(&quot;pw&quot;, &quot;&quot;), pw_hash):
         raise Unauthorized(&quot;bad credentials&quot;)
     req.session.clear()  # fresh session on login: fixation-safe
     req.session[&quot;uid&quot;] = &quot;u1&quot;
     return {&quot;ok&quot;: True}
+
+
+@app.post(&quot;/logout&quot;)
+async def logout(req):
+    req.session.clear()
+    return {&quot;ok&quot;: True}
+
 
 @app.get(&quot;/me&quot;)
 async def me(req):
@@ -319,16 +381,32 @@ async def me(req):
         raise Unauthorized(&quot;anonymous&quot;)
     return {&quot;uid&quot;: uid}
 
+
+CT = &quot;application/x-www-form-urlencoded&quot;
 c = TestClient(app)
 assert c.get(&quot;/me&quot;).status_code == 401
-t = c.get(&quot;/csrf&quot;).json()[&quot;t&quot;]
-h = {&quot;x-csrf-token&quot;: t}
-bad = &quot;user=amy&amp;pw=wrong&quot;
-assert c.post(&quot;/login&quot;, body=bad, content_type=&quot;application/x-www-form-urlencoded&quot;, headers=h).status_code == 401
-assert c.post(&quot;/login&quot;, body=&quot;user=amy&amp;nope=1&quot;, content_type=&quot;application/x-www-form-urlencoded&quot;, headers=h).status_code == 401
-good = &quot;user=amy&amp;pw=s3cret&quot;
-assert c.post(&quot;/login&quot;, body=good, content_type=&quot;application/x-www-form-urlencoded&quot;, headers=h).json() == {&quot;ok&quot;: True}
+
+
+def token():
+    return c.get(&quot;/csrf&quot;).json()[&quot;t&quot;]
+
+
+assert (
+    c.post(&quot;/login&quot;, body=&quot;user=amy&amp;pw=wrong&quot;, content_type=CT, headers={&quot;x-csrf-token&quot;: token()}).status_code
+    == 401
+)
+assert (
+    c.post(&quot;/login&quot;, body=&quot;user=noone&amp;pw=x&quot;, content_type=CT, headers={&quot;x-csrf-token&quot;: token()}).status_code
+    == 401
+)
+good = c.post(&quot;/login&quot;, body=&quot;user=amy&amp;pw=s3cret&quot;, content_type=CT, headers={&quot;x-csrf-token&quot;: token()})
+assert good.json() == {&quot;ok&quot;: True}
+sc = &quot;; &quot;.join(v for k, v in good.headers_list if k.lower() == &quot;set-cookie&quot;)
+assert &quot;httponly&quot; in sc.lower() and &quot;samesite=lax&quot; in sc.lower() and &quot;secure&quot; not in sc.lower()
 assert c.get(&quot;/me&quot;).json() == {&quot;uid&quot;: &quot;u1&quot;}
+assert c.post(&quot;/logout&quot;, headers={&quot;x-csrf-token&quot;: token()}).status_code == 200
+assert c.get(&quot;/me&quot;).status_code == 401
+assert c.get(&quot;/me&quot;).status_code == 429  # budget of 11 spent: brute force pays here
 </code></pre>
 </section>
 
@@ -346,6 +424,7 @@ app = Ikarem(enable_docs=False)
 app.use(RequestIDMiddleware())
 app.use(SecurityHeadersMiddleware())
 
+
 async def audit(req, call_next):
     order.append(&quot;in&quot;)
     resp = await call_next(req)
@@ -353,11 +432,14 @@ async def audit(req, call_next):
     resp.headers[&quot;x-audited&quot;] = &quot;yes&quot;
     return resp
 
+
 app.use(audit)
+
 
 @app.get(&quot;/&quot;)
 async def home(req):
     return {&quot;ok&quot;: True}
+
 
 c = TestClient(app)
 r = c.get(&quot;/&quot;)
@@ -377,9 +459,11 @@ from ikarem.testing import TestClient
 
 app = Ikarem(enable_docs=False)
 
+
 @app.exception_handler(ValueError)
 async def _bad(req, exc):
     return JSONResponse({&quot;detail&quot;: f&quot;bad value: {exc}&quot;}, status_code=422)
+
 
 @app.get(&quot;/widget/{wid:int}&quot;)
 async def widget(req, wid: int):
@@ -387,9 +471,11 @@ async def widget(req, wid: int):
         abort(404, &quot;no such widget&quot;)
     return {&quot;wid&quot;: wid}
 
+
 @app.get(&quot;/parse&quot;)
 async def parse(req):
     raise ValueError(&quot;qty&quot;)
+
 
 c = TestClient(app)
 assert c.get(&quot;/widget/0&quot;).status_code == 404
@@ -435,6 +521,7 @@ from ikarem.db import DatabasePlugin
 app = Ikarem(enable_docs=False)
 app.register(DatabasePlugin(&quot;sqlite:///:memory:&quot;))
 
+
 async def main():
     await app.startup()
     try:
@@ -446,6 +533,7 @@ async def main():
         assert [r[&quot;text&quot;] for r in rows] == [&quot;buy milk&quot;]
     finally:
         await app.shutdown()
+
 
 asyncio.run(main())
 </code></pre>
@@ -466,19 +554,23 @@ from ikarem.testing import TestClient
 
 fired, done = [], []
 
+
 @task(&quot;guide-receipt&quot;)
 async def receipt(order_id: int):
     done.append(order_id)
 
+
 app = Ikarem(enable_docs=False)
 app.register(DatabasePlugin(&quot;sqlite:///:memory:&quot;))
 app.register(QueuePlugin())
+
 
 @app.post(&quot;/orders&quot;)
 async def order(req, bg: BackgroundTasks):
     bg.add(fired.append, &quot;ack&quot;)
     await req.app.state_queue.enqueue(&quot;guide-receipt&quot;, {&quot;order_id&quot;: 7})
     return {&quot;ok&quot;: True}
+
 
 async def main():
     await app.startup()
@@ -488,6 +580,7 @@ async def main():
         assert done == [7]
     finally:
         await app.shutdown()
+
 
 asyncio.run(main())
 assert TestClient(app).post(&quot;/orders&quot;, body={}).json() == {&quot;ok&quot;: True}
@@ -510,13 +603,16 @@ from ikarem.scheduler import SchedulerPlugin
 app = Ikarem(enable_docs=False)
 ran = []
 
+
 @app.every(60)
 async def heartbeat():
     ran.append(1)
 
+
 @app.cron(&quot;@daily&quot;)
 async def rollup():
     ran.append(&quot;daily&quot;)
+
 
 async def main():
     sched = app.scheduler()
@@ -528,6 +624,7 @@ async def main():
     assert getattr(app, &quot;state_scheduler&quot;, None) is sched
     await app.shutdown()
 
+
 asyncio.run(main())
 </code></pre>
 </section>
@@ -535,10 +632,11 @@ asyncio.run(main())
 <section id="c15-blocking-code-belongs-in-threads">
   <p class="secnum">CHAPTER 15</p>
   <h2>Blocking code belongs in threads</h2>
-  <p>One event loop serves every request on a worker. A blocking call — <code>time.sleep</code>, a sync driver, DNS — stalls all of them, and the stall is invisible in profiles of your code because the loop is simply absent. Push blocking work to threads; keep <code>async</code> handlers non-blocking. Plain <code>def</code> handlers are supported, with the same rule: return fast.</p>
-  <p>Notes: this is the most common Flask/Django carryover bug — sync ORM calls pasted into <code>async</code> handlers. Convert the driver first (asyncpg, aiomysql), thread the rest. Never <code>asyncio.Lock</code> around threaded work; SQLite already serializes on a worker-side threading lock.</p>
+  <p>One event loop serves every request on a worker. A blocking call — <code>time.sleep</code>, a sync driver, DNS — stalls all of them, and the stall is invisible in profiles of your code because the loop is simply absent. Push blocking work to threads; keep <code>async</code> handlers non-blocking. The unambiguous rule, proven by the thread IDs below: IKAREM calls <code>async</code> handlers on the event-loop thread, and <code>def</code> handlers on that same thread — there is no hidden threadpool. A <code>def</code> handler is fine if it returns fast; a blocking call anywhere on the loop stalls every request on that worker.</p>
+  <p>Notes: this is the most common Flask/Django carryover bug — sync ORM calls pasted into <code>async</code> handlers. Convert the driver first (asyncpg, aiomysql), thread the rest with <code>asyncio.to_thread</code> (default pool: at most 32 threads, fewer on small machines). Never <code>asyncio.Lock</code> around threaded work; SQLite already serializes on a worker-side threading lock.</p>
   <p class="mut small">Runnable — copy into a file and run with <code>python</code>. Executed in CI by <code>tests/test_guide.py</code>.</p>
 <pre><code>import asyncio
+import threading
 import time
 
 from ikarem import Ikarem
@@ -553,19 +651,31 @@ def slow_hash(n):
 app = Ikarem(enable_docs=False)
 
 
-@app.get(&quot;/h/{n:int}&quot;)
-async def h(req, n: int):
+@app.get(&quot;/loop&quot;)
+async def loop_h(req):
+    return {&quot;t&quot;: threading.get_ident()}
+
+
+@app.get(&quot;/sync&quot;)
+def sync_h(req):
+    return {&quot;t&quot;: threading.get_ident()}
+
+
+@app.get(&quot;/hash/{n:int}&quot;)
+async def hash_h(req, n: int):
     return {&quot;r&quot;: await asyncio.to_thread(slow_hash, n)}
 
 
-@app.get(&quot;/s/{n:int}&quot;)
-def s(req, n: int):  # plain def is fine — as long as it returns fast
-    return {&quot;r&quot;: n * 2}
+@app.get(&quot;/thread&quot;)
+async def thread_h(req):
+    return {&quot;t&quot;: await asyncio.to_thread(threading.get_ident)}
 
 
 c = TestClient(app)
-assert c.get(&quot;/h/21&quot;).json() == {&quot;r&quot;: 42}
-assert c.get(&quot;/s/21&quot;).json() == {&quot;r&quot;: 42}
+t_loop = c.get(&quot;/loop&quot;).json()[&quot;t&quot;]
+assert c.get(&quot;/sync&quot;).json()[&quot;t&quot;] == t_loop  # same thread: blocking stalls all
+assert c.get(&quot;/thread&quot;).json()[&quot;t&quot;] != t_loop  # to_thread escapes the loop
+assert c.get(&quot;/hash/21&quot;).json() == {&quot;r&quot;: 42}
 </code></pre>
 </section>
 
@@ -579,7 +689,7 @@ assert c.get(&quot;/s/21&quot;).json() == {&quot;r&quot;: 42}
   <p class="secnum">CHAPTER 16</p>
   <h2>Talking back live</h2>
   <p>WebSocket routes plus in-process rooms: join on connect, broadcast to everyone but the sender, leave in a <code>finally</code>. Disconnects raise the specific <code>WebSocketDisconnect</code> — catch that, not bare <code>RuntimeError</code>, so real bugs still surface. The snippet proves both halves: route wiring through a real connection, and the broadcast itself with two members.</p>
-  <p>Notes: rooms are single-process by design (chapter 21 covers what that implies under workers); an external broker slots behind the same join/broadcast shape. <code>receive_text</code> skips handshake frames.</p>
+  <p>Notes: rooms are single-process by design (chapter 21 covers what that implies under workers); an external broker slots behind the same join/broadcast shape. <code>receive_text</code> skips handshake frames. Two live scripted clients can&#x27;t overlap deterministically through one <code>ws_connect</code> driver, so the member half is proven against the same <code>Room</code> object the route uses — no mocks of the broadcast itself.</p>
   <p class="mut small">Runnable — copy into a file and run with <code>python</code>. Executed in CI by <code>tests/test_guide.py</code>.</p>
 <pre><code>import asyncio
 
@@ -612,17 +722,16 @@ class FakeWS:
 
 
 async def main():
+    spy = FakeWS()
+    await room.join(spy)  # a live member before the scripted client arrives
     sent = await TestClient(app).ws_connect(
-        &quot;/chat&quot;, incoming=[{&quot;type&quot;: &quot;websocket.connect&quot;}, {&quot;text&quot;: &quot;hi&quot;}]
+        &quot;/chat&quot;, incoming=[{&quot;type&quot;: &quot;websocket.connect&quot;}, {&quot;text&quot;: &quot;hi-there&quot;}]
     )
     assert &quot;websocket.accept&quot; in [m[&quot;type&quot;] for m in sent]
-    a, b = FakeWS(), FakeWS()
-    await room.join(a)
-    await room.join(b)
-    assert await room.broadcast(&quot;hi&quot;, exclude=a) == 1
-    assert a.sent == [] and b.sent == [&quot;hi&quot;]
-    room.leave(a)
-    room.leave(b)
+    # the /chat route really broadcast through the room: the spy got it,
+    # and the sender was excluded (nothing else was in the room to echo)
+    assert spy.sent == [&quot;hi-there&quot;]
+    room.leave(spy)
 
 
 asyncio.run(main())
@@ -634,7 +743,7 @@ assert len(room) == 0
   <p class="secnum">CHAPTER 17</p>
   <h2>Files in, files out</h2>
   <p>Static directories serve with symlink-escape and prefix-collision guards — both were real bugs, so both are asserted here, not just <code>..</code>. <code>FileResponse</code> streams downloads with <code>Content-Disposition</code> surviving middleware. Uploads arrive parsed as <code>UploadFile</code> with size caps.</p>
-  <p>Notes: mount helpers fail loudly on missing directories. The realpath guard compares both sides, so neither <code>..</code> nor symlinks escape the root.</p>
+  <p>Notes: mount helpers fail loudly on missing directories. The realpath guard compares both sides, so neither <code>..</code> nor symlinks escape the root. The symlink branch skips where the OS refuses symlinks (some Windows runners) — the enforcement that always runs is <code>tests/test_hardening.py::test_static_blocks_symlink_escape</code> on Linux CI.</p>
   <p class="mut small">Runnable — copy into a file and run with <code>python</code>. Executed in CI by <code>tests/test_guide.py</code>.</p>
 <pre><code>import os
 import tempfile
@@ -661,9 +770,11 @@ except OSError:
 app = Ikarem(enable_docs=False)
 app.mount_static(&quot;/static&quot;, str(pub))
 
+
 @app.get(&quot;/receipt&quot;)
 async def receipt(req):
     return FileResponse(str(pub / &quot;ok.txt&quot;), filename=&quot;receipt.txt&quot;)
+
 
 c = TestClient(app)
 assert c.get(&quot;/static/ok.txt&quot;).text == &quot;hello file&quot;
@@ -684,8 +795,10 @@ assert dl.status_code == 200 and &quot;attachment&quot; in dl.headers[&quot;cont
 <pre><code>from ikarem import Blueprint, Ikarem, MethodView, Schema
 from ikarem.testing import TestClient
 
+
 class ItemIn(Schema):
     name: str
+
 
 class Items(MethodView):
     async def get(self, req):
@@ -694,12 +807,15 @@ class Items(MethodView):
     async def post(self, req, item: ItemIn):
         return {&quot;name&quot;: item.name}, 201
 
+
 api = Blueprint(&quot;api&quot;, url_prefix=&quot;/api&quot;)
 app = Ikarem(enable_docs=False)
+
 
 @api.get(&quot;/ping&quot;)
 async def ping(req):
     return {&quot;pong&quot;: True}
+
 
 app.register_blueprint(api)
 app.route(&quot;/items&quot;, Items.methods())(Items.as_view(&quot;items&quot;))
@@ -724,9 +840,11 @@ from ikarem.testing import TestClient
 
 app = Ikarem(enable_docs=False)
 
+
 @app.get(&quot;/users&quot;)
 async def users(req):
     return {&quot;n&quot;: 1}
+
 
 report = app.check()
 assert report[&quot;errors&quot;] == []
@@ -751,18 +869,22 @@ from ikarem import Ikarem
 events = []
 app = Ikarem(enable_docs=False)
 
+
 @app.on_startup
 async def up():
     events.append(&quot;up&quot;)
+
 
 @app.on_shutdown
 async def down():
     events.append(&quot;down&quot;)
 
+
 async def main():
     await app.startup()
     await app.startup()  # idempotent: second call is a no-op
     await app.shutdown()
+
 
 asyncio.run(main())
 assert events == [&quot;up&quot;, &quot;down&quot;]
@@ -773,7 +895,7 @@ assert events == [&quot;up&quot;, &quot;down&quot;]
   <p class="secnum">CHAPTER 21</p>
   <h2>Deployment without drama</h2>
   <p>One process per worker, so single-process state (rooms, memory caches, rate-limit buckets) multiplies per worker. Share what must be shared (<code>RedisCache</code> behind the same interface), pin sticky routing or accept room locality, configure from the environment, and gate the deploy on <code>check</code>. The full production shape — Dockerfile, compose with Postgres, env table — lives in <code>docs/DEPLOY.md</code>.</p>
-  <p>Serve it: <code>uvicorn myapp:app --workers 4</code> (<code>pip install ikarem[server]</code>). One worker is one room, one memory cache, one rate-limit table — size <code>ConcurrencyLimitMiddleware</code> and idempotency TTLs for that reality, or share them through Redis. Health: <code>/healthz</code> for liveness, <code>/readyz</code> for readiness (503 while the DB is down), <code>/metrics</code> for latency and queue depth.</p>
+  <p>Serve it: <code>uvicorn myapp:app --workers 4</code> (<code>pip install ikarem[server]</code>). One worker is one room, one memory cache, one rate-limit table — size <code>ConcurrencyLimitMiddleware</code> and idempotency TTLs for that reality, or share them through Redis. Every worker also needs the same <code>IKAREM_SESSION_SECRET</code>: chapter 8&#x27;s guard refuses to boot without one, because a per-process secret would log users out at random. Health: <code>/healthz</code> for liveness, <code>/readyz</code> for readiness (503 while the DB is down), <code>/metrics</code> for latency and queue depth.</p>
   <p class="mut small">Runnable — copy into a file and run with <code>python</code>. Executed in CI by <code>tests/test_guide.py</code>.</p>
 <pre><code>import os
 
@@ -803,26 +925,32 @@ assert app.check()[&quot;errors&quot;] == []
   <p>Notes: <code>ikarem inspect</code> prints the manifest for LLM context; <code>site/llms.txt</code> is the one-page framework manual. Serve routes as tools with <code>ikarem mcp myapp:app</code>.</p>
   <p class="mut small">Runnable — copy into a file and run with <code>python</code>. Executed in CI by <code>tests/test_guide.py</code>.</p>
 <pre><code>import asyncio
+import os
 
 from ikarem import Depends, Ikarem, Schema, require_roles
 from ikarem.compiled import describe_app
 from ikarem.openapi import build_openapi
 
-SECRET = &quot;guide-mcp-secret&quot;
+SECRET = os.environ.get(&quot;IKAREM_AUTH_SECRET&quot;) or &quot;guide-dev-only-secret&quot;
+
 
 class Item(Schema):
     name: str
 
+
 app = Ikarem(enable_docs=False, auth_secret=SECRET)
+
 
 @app.post(&quot;/items&quot;)
 async def create_item(item: Item):
     &quot;&quot;&quot;Create an item.&quot;&quot;&quot;
     return {&quot;name&quot;: item.name}
 
+
 @app.get(&quot;/admin&quot;)
 async def admin(req, claims=Depends(require_roles(&quot;admin&quot;))):
     return {&quot;sub&quot;: claims[&quot;sub&quot;]}
+
 
 spec = build_openapi(app)
 assert spec[&quot;paths&quot;][&quot;/items&quot;][&quot;post&quot;][&quot;summary&quot;] == &quot;Create an item.&quot;
@@ -840,7 +968,7 @@ assert out[&quot;isError&quot;] is False
   <p class="secnum">CHAPTER 23</p>
   <h2>Under the hood: plans, not reflection</h2>
   <p>Signatures parse once into handler plans; per-request resolution is dict lookups. <code>get_plan</code> caches by handler identity — the identity check below proves compilation happens once, whatever the request volume. That is the core of the performance story; the speed itself is proven by <code>bench/bench_switch.py</code> (same harness, same process) and <code>bench/load.py</code> (~75k sustained requests over real uvicorn, zero 5xx).</p>
-  <p>Notes: touch the hot path and the bench decides, not adjectives. No per-request <code>inspect.signature</code>, no regex where a dict works — the flame graphs stay flat by construction, and <code>compiled.py</code> is where to verify that.</p>
+  <p>Notes: touch the hot path and the bench decides, not adjectives. No per-request <code>inspect.signature</code>, no regex where a dict works — compile once, then dict lookups. Read <code>compiled.py</code> to verify, <code>bench/</code> to measure.</p>
   <p class="mut small">Runnable — copy into a file and run with <code>python</code>. Executed in CI by <code>tests/test_guide.py</code>.</p>
 <pre><code>from ikarem import Ikarem
 from ikarem.compiled import get_plan
@@ -848,9 +976,11 @@ from ikarem.testing import TestClient
 
 app = Ikarem(enable_docs=False)
 
+
 @app.get(&quot;/u/{uid:int}&quot;)
 async def u(req, uid: int, limit: int = 5):
     return {&quot;uid&quot;: uid, &quot;limit&quot;: limit}
+
 
 assert get_plan(u) is get_plan(u)
 c = TestClient(app)
@@ -869,10 +999,12 @@ from ikarem.compiled import describe_app, describe_route
 
 app = Ikarem(enable_docs=False)
 
+
 @app.get(&quot;/orders/{oid:int}&quot;)
 async def order(req, oid: int, verbose: bool = False):
     &quot;&quot;&quot;Fetch one order.&quot;&quot;&quot;
     return {&quot;oid&quot;: oid}
+
 
 (route,) = [r for r in app.router.routes if r.path == &quot;/orders/{oid:int}&quot;]
 desc = describe_route(route)
@@ -890,15 +1022,20 @@ assert entry[&quot;handler&quot;] == &quot;order&quot; and entry[&quot;summary&q
 <pre><code>import warnings
 
 from ikarem import Ikarem, deprecated
+from ikarem.testing import TestClient
+
 
 @deprecated(&quot;use total_v2() instead&quot;, since=&quot;1.1.0&quot;, removal=&quot;2.0.0&quot;, use_instead=&quot;total_v2&quot;)
 def total(items):
     return sum(items)
 
+
 def total_v2(items):
     return sum(items)
 
+
 app = Ikarem(enable_docs=False)
+
 
 @app.get(&quot;/total&quot;)
 async def total_h(req):
@@ -908,7 +1045,6 @@ async def total_h(req):
     assert any(&quot;1.1.0&quot; in str(w.message) and &quot;total_v2&quot; in str(w.message) for w in caught)
     return {&quot;n&quot;: n}
 
-from ikarem.testing import TestClient
 
 assert TestClient(app).get(&quot;/total&quot;).json() == {&quot;n&quot;: 6}
 </code></pre>

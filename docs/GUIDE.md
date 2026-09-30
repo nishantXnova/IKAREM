@@ -246,10 +246,13 @@ the difference. Secrets come from config and are refused at startup when
 they are still defaults.
 
 ```python
-from ikarem import Depends, Ikarem, create_token, require_roles, require_scopes
+import os
+import time
+
+from ikarem import Depends, Ikarem, create_token, require_roles, require_scopes, verify_token
 from ikarem.testing import TestClient
 
-SECRET = "guide-auth-secret"
+SECRET = os.environ.get("IKAREM_AUTH_SECRET") or "guide-dev-only-secret"
 app = Ikarem(enable_docs=False, auth_secret=SECRET)
 
 
@@ -267,15 +270,20 @@ c = TestClient(app)
 assert c.get("/admin").status_code == 401
 user = create_token("u2", SECRET, roles=["user"])
 assert c.get("/admin", headers={"authorization": f"Bearer {user}"}).status_code == 403
-root = create_token("u1", SECRET, roles=["admin"], scope="read")
+root = create_token("u1", SECRET, expires_in=900, roles=["admin"], scope="read")
+claims = verify_token(root, SECRET)
+assert 0 < claims["exp"] - time.time() <= 900  # explicit 15-minute life
 assert c.get("/admin", headers={"authorization": f"Bearer {root}"}).json() == {"sub": "u1"}
 assert c.get("/files", headers={"authorization": f"Bearer {root}"}).json() == {"n": 2}
 ```
 
-Notes: `verify_token` rejects algorithm confusion (`alg=none`), expired
-tokens, and missing `sub`. Service-to-service keys use `APIKeyAuth` with
-static keys or an async `lookup=`. Passwords hash with pbkdf2 — see the
-next chapter for the full login shape.
+Notes: production sets `IKAREM_AUTH_SECRET` (the strict env-or-raise
+shape is chapter 8's); tokens always carry an explicit `expires_in` —
+readers copy this call, so the default here is 15 minutes, not forever.
+`verify_token` rejects algorithm confusion (`alg=none`), expired tokens,
+and missing `sub`. Service-to-service keys use `APIKeyAuth` with static
+keys or an async `lookup=`. Passwords hash with pbkdf2 — see the next
+chapter for the full login shape.
 
 ## 08. Logins without shortcuts
 
@@ -287,11 +295,11 @@ fixed onto a victim.
 
 ```python
 import os
-import secrets
 
 from ikarem import (
     CSRFMiddleware,
     Ikarem,
+    RateLimitMiddleware,
     SessionMiddleware,
     Unauthorized,
     check_password,
@@ -300,10 +308,38 @@ from ikarem import (
 )
 from ikarem.testing import TestClient
 
-SECRET = os.environ.get("IKAREM_SESSION_SECRET") or secrets.token_hex(32)
+
+def resolve_secret():
+    secret = os.environ.get("IKAREM_SESSION_SECRET")
+    if secret:
+        return secret
+    if os.environ.get("IKAREM_DEV") == "1":
+        return "dev-only-insecure-secret"  # throwaway local runs
+    raise RuntimeError("set IKAREM_SESSION_SECRET to a long random value (or IKAREM_DEV=1 locally)")
+
+
+os.environ.setdefault("IKAREM_DEV", "1")  # delete this line in production
+SECRET = resolve_secret()
+
+# the guard, proven both ways: the production shape refuses to boot
+_saved = (os.environ.pop("IKAREM_DEV", None), os.environ.pop("IKAREM_SESSION_SECRET", None))
+try:
+    try:
+        resolve_secret()
+        assert False, "must refuse without secret or dev flag"
+    except RuntimeError as e:
+        assert "IKAREM_SESSION_SECRET" in str(e)
+finally:
+    if _saved[0] is not None:
+        os.environ["IKAREM_DEV"] = _saved[0]
+    if _saved[1] is not None:
+        os.environ["IKAREM_SESSION_SECRET"] = _saved[1]
+
+DUMMY_HASH = hash_password("no-such-user")  # unknown users verify here: same timing
 USERS = {"amy": hash_password("s3cret")}  # seeded hash, never the password
 
 app = Ikarem(enable_docs=False, session_secret=SECRET)
+app.use(RateLimitMiddleware(per_minute=11))  # logins are brute-forced: budget them
 app.use(SessionMiddleware())
 app.use(CSRFMiddleware())
 
@@ -316,11 +352,17 @@ async def csrf(req):
 @app.post("/login")
 async def login(req):
     form = await req.form()
-    pw_hash = USERS.get(form.get("user", ""))
-    if pw_hash is None or not check_password(form.get("pw", ""), pw_hash):
+    pw_hash = USERS.get(form.get("user", "")) or DUMMY_HASH
+    if not check_password(form.get("pw", ""), pw_hash):
         raise Unauthorized("bad credentials")
     req.session.clear()  # fresh session on login: fixation-safe
     req.session["uid"] = "u1"
+    return {"ok": True}
+
+
+@app.post("/logout")
+async def logout(req):
+    req.session.clear()
     return {"ok": True}
 
 
@@ -332,33 +374,43 @@ async def me(req):
     return {"uid": uid}
 
 
+CT = "application/x-www-form-urlencoded"
 c = TestClient(app)
 assert c.get("/me").status_code == 401
-t = c.get("/csrf").json()["t"]
-h = {"x-csrf-token": t}
-bad = "user=amy&pw=wrong"
+
+
+def token():
+    return c.get("/csrf").json()["t"]
+
+
 assert (
-    c.post("/login", body=bad, content_type="application/x-www-form-urlencoded", headers=h).status_code == 401
-)
-assert (
-    c.post(
-        "/login", body="user=amy&nope=1", content_type="application/x-www-form-urlencoded", headers=h
-    ).status_code
+    c.post("/login", body="user=amy&pw=wrong", content_type=CT, headers={"x-csrf-token": token()}).status_code
     == 401
 )
-good = "user=amy&pw=s3cret"
-assert c.post("/login", body=good, content_type="application/x-www-form-urlencoded", headers=h).json() == {
-    "ok": True
-}
+assert (
+    c.post("/login", body="user=noone&pw=x", content_type=CT, headers={"x-csrf-token": token()}).status_code
+    == 401
+)
+good = c.post("/login", body="user=amy&pw=s3cret", content_type=CT, headers={"x-csrf-token": token()})
+assert good.json() == {"ok": True}
+sc = "; ".join(v for k, v in good.headers_list if k.lower() == "set-cookie")
+assert "httponly" in sc.lower() and "samesite=lax" in sc.lower() and "secure" not in sc.lower()
 assert c.get("/me").json() == {"uid": "u1"}
+assert c.post("/logout", headers={"x-csrf-token": token()}).status_code == 200
+assert c.get("/me").status_code == 401
+assert c.get("/me").status_code == 429  # budget of 11 spent: brute force pays here
 ```
 
-Notes: set `IKAREM_SESSION_SECRET` in production — the generated fallback
-exists so the snippet runs anywhere, not so deploys can skip the secret
-(startup validation refuses default secrets on auth routes). The
-`TestClient` cookie jar persists login across requests, so flows test
-exactly as browsers behave. Token APIs can exempt paths instead of
-sending CSRF headers.
+Notes: a random per-process fallback would sign cookies with a different
+key in every uvicorn worker (chapter 21) — users logged out at random,
+and nothing would warn you because random is not a default. So the
+fallback here requires the explicit `IKAREM_DEV=1` flag, and anything
+else raises with the remedy. Unknown usernames verify against a dummy
+hash, so timing reveals nothing. Cookies arrive `HttpOnly` with
+`SameSite=Lax` by default; `Secure` is opt-in via
+`SessionMiddleware(secure=True)` — turn it on the moment you serve
+HTTPS. The `TestClient` cookie jar persists login across requests, so
+flows test exactly as browsers behave.
 
 ## 09. Middleware on purpose
 
@@ -612,11 +664,16 @@ swallowed.
 One event loop serves every request on a worker. A blocking call —
 `time.sleep`, a sync driver, DNS — stalls all of them, and the stall is
 invisible in profiles of your code because the loop is simply absent.
-Push blocking work to threads; keep `async` handlers non-blocking.
-Plain `def` handlers are supported, with the same rule: return fast.
+Push blocking work to threads; keep `async` handlers non-blocking. The
+unambiguous rule, proven by the thread IDs below: IKAREM calls `async`
+handlers on the event-loop thread, and `def` handlers on that same
+thread — there is no hidden threadpool. A `def` handler is fine if it
+returns fast; a blocking call anywhere on the loop stalls every request
+on that worker.
 
 ```python
 import asyncio
+import threading
 import time
 
 from ikarem import Ikarem
@@ -631,25 +688,39 @@ def slow_hash(n):
 app = Ikarem(enable_docs=False)
 
 
-@app.get("/h/{n:int}")
-async def h(req, n: int):
+@app.get("/loop")
+async def loop_h(req):
+    return {"t": threading.get_ident()}
+
+
+@app.get("/sync")
+def sync_h(req):
+    return {"t": threading.get_ident()}
+
+
+@app.get("/hash/{n:int}")
+async def hash_h(req, n: int):
     return {"r": await asyncio.to_thread(slow_hash, n)}
 
 
-@app.get("/s/{n:int}")
-def s(req, n: int):  # plain def is fine — as long as it returns fast
-    return {"r": n * 2}
+@app.get("/thread")
+async def thread_h(req):
+    return {"t": await asyncio.to_thread(threading.get_ident)}
 
 
 c = TestClient(app)
-assert c.get("/h/21").json() == {"r": 42}
-assert c.get("/s/21").json() == {"r": 42}
+t_loop = c.get("/loop").json()["t"]
+assert c.get("/sync").json()["t"] == t_loop  # same thread: blocking stalls all
+assert c.get("/thread").json()["t"] != t_loop  # to_thread escapes the loop
+assert c.get("/hash/21").json() == {"r": 42}
 ```
 
 Notes: this is the most common Flask/Django carryover bug — sync ORM
 calls pasted into `async` handlers. Convert the driver first (asyncpg,
-aiomysql), thread the rest. Never `asyncio.Lock` around threaded work;
-SQLite already serializes on a worker-side threading lock.
+aiomysql), thread the rest with `asyncio.to_thread` (default pool:
+at most 32 threads, fewer on small machines). Never `asyncio.Lock`
+around threaded work; SQLite already serializes on a worker-side
+threading lock.
 
 ## Part IV — Structure and shipping
 
@@ -696,15 +767,16 @@ class FakeWS:
 
 
 async def main():
-    sent = await TestClient(app).ws_connect("/chat", incoming=[{"type": "websocket.connect"}, {"text": "hi"}])
+    spy = FakeWS()
+    await room.join(spy)  # a live member before the scripted client arrives
+    sent = await TestClient(app).ws_connect(
+        "/chat", incoming=[{"type": "websocket.connect"}, {"text": "hi-there"}]
+    )
     assert "websocket.accept" in [m["type"] for m in sent]
-    a, b = FakeWS(), FakeWS()
-    await room.join(a)
-    await room.join(b)
-    assert await room.broadcast("hi", exclude=a) == 1
-    assert a.sent == [] and b.sent == ["hi"]
-    room.leave(a)
-    room.leave(b)
+    # the /chat route really broadcast through the room: the spy got it,
+    # and the sender was excluded (nothing else was in the room to echo)
+    assert spy.sent == ["hi-there"]
+    room.leave(spy)
 
 
 asyncio.run(main())
@@ -713,7 +785,10 @@ assert len(room) == 0
 
 Notes: rooms are single-process by design (chapter 21 covers what that
 implies under workers); an external broker slots behind the same
-join/broadcast shape. `receive_text` skips handshake frames.
+join/broadcast shape. `receive_text` skips handshake frames. Two live
+scripted clients can't overlap deterministically through one
+`ws_connect` driver, so the member half is proven against the same
+`Room` object the route uses — no mocks of the broadcast itself.
 
 ## 17. Files in, files out
 
@@ -765,6 +840,9 @@ assert dl.status_code == 200 and "attachment" in dl.headers["content-disposition
 
 Notes: mount helpers fail loudly on missing directories. The realpath
 guard compares both sides, so neither `..` nor symlinks escape the root.
+The symlink branch skips where the OS refuses symlinks (some Windows
+runners) — the enforcement that always runs is
+`tests/test_hardening.py::test_static_blocks_symlink_escape` on Linux CI.
 
 ## 18. Structure that scales
 
@@ -910,9 +988,11 @@ assert app.check()["errors"] == []
 Serve it: `uvicorn myapp:app --workers 4` (`pip install ikarem[server]`).
 One worker is one room, one memory cache, one rate-limit table — size
 `ConcurrencyLimitMiddleware` and idempotency TTLs for that reality, or
-share them through Redis. Health: `/healthz` for liveness, `/readyz`
-for readiness (503 while the DB is down), `/metrics` for latency and
-queue depth.
+share them through Redis. Every worker also needs the same
+`IKAREM_SESSION_SECRET`: chapter 8's guard refuses to boot without one,
+because a per-process secret would log users out at random. Health:
+`/healthz` for liveness, `/readyz` for readiness (503 while the DB is
+down), `/metrics` for latency and queue depth.
 
 ## Part V — Mastery
 
@@ -927,12 +1007,13 @@ between your docs, your agents, and your runtime.
 
 ```python
 import asyncio
+import os
 
 from ikarem import Depends, Ikarem, Schema, require_roles
 from ikarem.compiled import describe_app
 from ikarem.openapi import build_openapi
 
-SECRET = "guide-mcp-secret"
+SECRET = os.environ.get("IKAREM_AUTH_SECRET") or "guide-dev-only-secret"
 
 
 class Item(Schema):
@@ -996,9 +1077,9 @@ assert c.get("/u/3", query="limit=2").json() == {"uid": 3, "limit": 2}
 ```
 
 Notes: touch the hot path and the bench decides, not adjectives. No
-per-request `inspect.signature`, no regex where a dict works — the
-flame graphs stay flat by construction, and `compiled.py` is where to
-verify that.
+per-request `inspect.signature`, no regex where a dict works — compile
+once, then dict lookups. Read `compiled.py` to verify, `bench/` to
+measure.
 
 ## 24. Agents are users too
 
@@ -1043,6 +1124,7 @@ next moves: claim a row in `docs/ECOSYSTEM.md`, steal a recipe from
 import warnings
 
 from ikarem import Ikarem, deprecated
+from ikarem.testing import TestClient
 
 
 @deprecated("use total_v2() instead", since="1.1.0", removal="2.0.0", use_instead="total_v2")
@@ -1065,8 +1147,6 @@ async def total_h(req):
     assert any("1.1.0" in str(w.message) and "total_v2" in str(w.message) for w in caught)
     return {"n": n}
 
-
-from ikarem.testing import TestClient
 
 assert TestClient(app).get("/total").json() == {"n": 6}
 ```
