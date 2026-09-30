@@ -23,6 +23,12 @@ All notable changes to this project are documented here. Format follows
   `publish.yml` (OIDC, tag-gated, no long-lived PyPI token); CI scaffold
   smoke job (templates stay runnable) + bench smoke.
 
+### Fixed
+- `bench/bench_switch.py` crashed with `ModuleNotFoundError` when the
+  rival isn't installed (every CI runner): now prints labeled
+  IKAREM-only rows, exit 0; full duel when `meraki` is importable.
+  Covered in `tests/test_bench.py`.
+
 ## [1.1.0] — 2026-09-30
 
 ### Added

@@ -143,20 +143,29 @@ async def bench(app, method, path, body=b""):
 
 
 async def main():
-    mk, ik, cp = build_meraki(), build_ikarem_native(), build_ikarem_compat()
+    try:
+        mk = build_meraki()
+    except ModuleNotFoundError:
+        # CI smoke runs without the rival installed: IKAREM-only rows,
+        # clearly labeled, exit 0. Full comparison needs `pip install meraki`.
+        mk = None
+    ik, cp = build_ikarem_native(), build_ikarem_compat()
     rows = []
-    s, r = await bench(mk, "GET", "/hello")
-    rows.append(("GET /hello (static)", "meraki", s, r, None))
+    if mk is not None:
+        s, r = await bench(mk, "GET", "/hello")
+        rows.append(("GET /hello (static)", "meraki", s, r, None))
     s, r = await bench(ik, "GET", "/hello")
     rows.append(("GET /hello (static)", "ikarem", s, r, None))
     s, r = await bench(cp, "GET", "/hello")
     rows.append(("GET /hello (static)", "ikarem-compat", s, r, None))
-    s, r = await bench(mk, "GET", "/missing")
-    rows.append(("GET /missing (404)", "meraki", s, r, None))
+    if mk is not None:
+        s, r = await bench(mk, "GET", "/missing")
+        rows.append(("GET /missing (404)", "meraki", s, r, None))
     s, r = await bench(ik, "GET", "/missing")
     rows.append(("GET /missing (404)", "ikarem", s, r, None))
-    s, r = await bench(mk, "POST", "/hello")
-    rows.append(("POST /hello (405)", "meraki", s, r, None))
+    if mk is not None:
+        s, r = await bench(mk, "POST", "/hello")
+        rows.append(("POST /hello (405)", "meraki", s, r, None))
     s, r = await bench(ik, "POST", "/hello")
     rows.append(("POST /hello (405)", "ikarem", s, r, None))
     s, r = await bench(ik, "GET", "/users/42")
@@ -166,6 +175,8 @@ async def main():
 
     base = {route: rate for route, name, _, rate, _ in rows if name == "meraki"}
     print(f"N={N} in-process ASGI req/s (same harness, same process)")
+    if mk is None:
+        print("note: meraki not installed — IKAREM-only rows (pip install meraki for the full duel)")
     print(f"{'route':28} {'app':14} {'status':7} {'req/s':>10}  note")
     for route, name, status, rate, note in rows:
         mark = ""
