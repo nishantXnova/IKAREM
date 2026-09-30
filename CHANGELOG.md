@@ -7,6 +7,10 @@ All notable changes to this project are documented here. Format follows
 ## [Unreleased]
 
 ### Added
+- NISH responses (`ikarem/nish.py`: stdlib-only `to_nish` writer,
+  `NISHResponse`, `negotiate` for `?format=nish`/Accept); Ledger
+  `/api/summary` negotiates so the NISH Viewer extension paints it.
+  Output verified against both real NISH engines; `docs/NISH.md`.
 - `docs/GUIDE.md`: "From Zero to Production", 25 chapters in 5 parts
   from install to internals, each runnable and self-asserting, all
   executed in CI (`tests/test_guide.py`); published as `site/guide.html`

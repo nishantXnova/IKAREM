@@ -1,0 +1,90 @@
+"""NISH writer: exact output, viewer precondition, negotiation, errors."""
+
+import datetime
+
+import pytest
+
+from ikarem import Ikarem
+from ikarem.nish import NISHResponse, negotiate, to_nish
+from ikarem.testing import TestClient
+
+
+def test_writer_scalars_and_viewer_first_line():
+    out = to_nish({"ok": True, "n": 7, "pi": 3.14, "big": 1000.0, "nothing": None})
+    assert out.splitlines()[0] == "NISH/1.0"  # the Viewer extension sniffs this
+    assert "ok = true" in out
+    assert "n = 7" in out
+    assert "pi = 3.14" in out
+    assert "big = 1000.0" in out  # integral floats keep .0 (int/float loads differ)
+    assert "nothing = null" in out
+
+
+def test_writer_string_escapes():
+    out = to_nish({"q": 'a"b\\c\nd\teé\x01', "empty": ""})
+    assert '"a\\"b\\\\c\\nd\\teé\\u0001"' in out
+    assert 'empty = ""' in out
+
+
+def test_writer_sections_and_arrays():
+    out = to_nish(
+        {
+            "title": "shop",
+            "user": {"name": "amy", "tags": ["a", "b"]},
+            "rows": [{"id": 1}, {"id": 2}],
+            "mixed": [1, "two", None],
+        }
+    )
+    # plain keys first: nothing binds inside a section by accident
+    assert out.index("mixed = ") < out.index("[[rows]]")
+    assert "[user]" in out
+    assert "[[rows]]" in out
+    assert out.count("id = 1") == 1 and out.count("id = 2") == 1
+
+
+def test_writer_quotes_composing_keys():
+    # bare dotted keys would compose (a.b nests); quoting keeps them literal
+    out = to_nish({"weird key": 1, "dotted.key": 2, "123abc": 3})
+    assert '"weird key" = 1' in out
+    assert '"dotted.key" = 2' in out
+    assert '"123abc" = 3' in out
+
+
+def test_writer_bytes_and_dates():
+    import base64
+
+    out = to_nish({"blob": b"\x00hi", "day": datetime.date(2026, 1, 2)})
+    assert "bytes:b64:" + base64.b64encode(b"\x00hi").decode() in out
+    assert "time:2026-01-02T00:00:00Z" in out
+
+
+def test_writer_rejects_outside_subset():
+    with pytest.raises(TypeError, match="wrap it in a dict"):
+        to_nish([1])
+    with pytest.raises(TypeError, match="no encoding"):
+        to_nish({"x": object()})
+    with pytest.raises(ValueError, match="non-finite"):
+        to_nish({"x": float("nan")})
+    with pytest.raises(TypeError, match="must be strings"):
+        to_nish({1: 2})
+
+
+def test_nish_response_shape():
+    r = NISHResponse({"a": 1})
+    assert r.body.startswith(b"NISH/1.0")
+    assert r.status_code == 200
+    assert "text/plain" in r.media_type  # renders in browsers for the extension
+
+
+def test_negotiate_query_and_accept_header():
+    app = Ikarem(enable_docs=False)
+
+    @app.get("/d")
+    async def d(req):
+        return negotiate(req, {"n": 1})
+
+    c = TestClient(app)
+    assert c.get("/d").json() == {"n": 1}  # default stays JSON
+    nish = c.get("/d", query="format=nish")
+    assert nish.body.startswith(b"NISH/1.0") and b"n = 1" in nish.body
+    acc = c.get("/d", headers={"accept": "application/x-nish"})
+    assert acc.body.startswith(b"NISH/1.0")

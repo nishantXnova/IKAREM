@@ -25,6 +25,7 @@ from ikarem import (
     flash,
     get_flashed_messages,
     hash_password,
+    negotiate,
     verify_token,
 )
 from ikarem.db import DatabasePlugin
@@ -686,7 +687,7 @@ async def api_csrf(req):
 
 @app.get("/api/summary")
 async def api_summary(req, uid=Depends(current_user)):
-    """Dashboard numbers as JSON."""
+    """Dashboard numbers as JSON — or NISH for the Viewer extension (?format=nish)."""
     db = req.app.state_db
     sums = await db.fetch_one(
         "SELECT COALESCE(SUM(CASE WHEN kind='income' THEN amount_cents END),0) AS income,"
@@ -699,12 +700,15 @@ async def api_summary(req, uid=Depends(current_user)):
         " GROUP BY category ORDER BY total DESC",
         uid,
     )
-    return {
-        "income_cents": sums["income"],
-        "expense_cents": sums["expense"],
-        "balance_cents": sums["income"] - sums["expense"],
-        "by_category": cats,
-    }
+    return negotiate(
+        req,
+        {
+            "income_cents": sums["income"],
+            "expense_cents": sums["expense"],
+            "balance_cents": sums["income"] - sums["expense"],
+            "by_category": cats,
+        },
+    )
 
 
 @app.get("/api/txns")

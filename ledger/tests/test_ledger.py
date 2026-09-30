@@ -87,6 +87,10 @@ def test_api_crud_and_filters():
     s = c.get("/api/summary").json()
     assert s["income_cents"] == 200000 and s["expense_cents"] == 900
     assert s["balance_cents"] == 199100
+    nish = c.get("/api/summary", query="format=nish")
+    assert nish.body.startswith(b"NISH/1.0")
+    assert b"income_cents = 200000" in nish.body
+    assert b"[[by_category]]" in nish.body
     tid = all_tx["txns"][0]["id"]
     assert c.put(f"/api/txns/{tid}", body={"description": "Paycheck!"}, **csrf()).status_code == 200
     assert c.delete(f"/api/txns/{tid}", **csrf()).json() == {"ok": True}

@@ -48,6 +48,7 @@ from .http import (
 from .mcp import MCPServer
 from .middleware import Middleware, MiddlewareStack
 from .migrations import Migrator
+from .nish import NISHResponse, negotiate, to_nish
 from .observability import MetricsMiddleware, RequestIDMiddleware, configure_logging
 from .plugins import BasePlugin, Plugin, PluginManager
 from .queue import Queue, QueuePlugin, run_worker, task
@@ -147,6 +148,9 @@ __all__ = [
     "MetricsMiddleware",
     "configure_logging",
     "MCPServer",
+    "NISHResponse",
+    "negotiate",
+    "to_nish",
 ]
 
 __version__ = "1.1.0"

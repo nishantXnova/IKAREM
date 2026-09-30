@@ -245,6 +245,7 @@ Plus honest benchmarks: [`bench/RESULTS.md`](bench/RESULTS.md) ·
 extension registry: [`docs/ECOSYSTEM.md`](docs/ECOSYSTEM.md) ·
 20 runnable recipes: [`docs/COOKBOOK.md`](docs/COOKBOOK.md) ·
 from scratch to genius: [`docs/GUIDE.md`](docs/GUIDE.md) ([PDF](https://ikarem.vercel.app/guide.pdf)) ·
+NISH responses for the Viewer extension: [`docs/NISH.md`](docs/NISH.md) ·
 install: `pip install ikarem`.
 
 *Footnote: IKAREM started as an answer to [Meraki](https://github.com/sulfurcodes/Meraki)

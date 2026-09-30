@@ -56,6 +56,7 @@ app.register(Hello())
 | QueuePlugin + `@task` + `ikarem worker` | plugin + portable leases | `ikarem/queue.py` |
 | SchedulerPlugin + `app.cron` / `app.every` | plugin + lifespan | `ikarem/scheduler.py` |
 | `MemoryCache` / `RedisCache` + `@cached` | `CacheBackend` | `ikarem/cache.py` |
+| NISH responses (`to_nish`, `NISHResponse`, `negotiate`) | response format | `ikarem/nish.py` + `docs/NISH.md` |
 | CORS / security headers / trusted hosts / rate limit | middleware | `ikarem/security.py` |
 | Timeouts / bulkheads / idempotency | middleware | `ikarem/resilience.py` |
 | Meraki compat, Flask takes (blueprints, templates, flash, MethodView) | shims | `ikarem/meraki_compat.py`, `ikarem/blueprints.py` |
