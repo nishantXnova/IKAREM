@@ -28,3 +28,21 @@ Past ~50k in-process req/s, both frameworks are an order of magnitude beyond
 what a network + database app saturates — framework overhead is noise next
 to I/O. The rows that decide a switch (params, bodies, validation, auth,
 sessions, docs) are IKAREM-only. Rerun anytime: `python bench/bench_switch.py`.
+
+## Sustained load, real uvicorn (2026-09-30, Windows laptop, `python bench/load.py`)
+
+Ledger on stock uvicorn, 16 keep-alive client threads, 45s phases, plus a
+slow-client trickle POST. Verdict both runs: **LOAD OK — zero 5xx, zero
+timeouts.**
+
+| phase | rps | p50 | p99 | n |
+|---|---|---|---|---|
+| GET /healthz (public) | 1557 | 10.2ms | 12.6ms | 15,569 × 200 |
+| GET /api/summary (authed SQLite reads) | 994 | 15.8ms | 24.7ms | 44,711 × 200 |
+| POST /api/txns (authed writes + validation + CSRF) | 557 | 18.7ms | 219.7ms | 11,139 × 201 |
+
+~71k requests per run. Writes p99 moves run to run (557–794 rps observed) —
+SQLite is single-lane by design, so concurrent-write latency is the honest
+cost of the embedded DB, not the framework; point `IKAREM_DB_URL` at
+Postgres past toy scale. No rival was installed on this machine, so no new
+duel rows — the 2026-09-27 table above stands.
