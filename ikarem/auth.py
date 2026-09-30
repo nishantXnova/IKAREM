@@ -197,7 +197,7 @@ class APIKeyAuth:
         self.lookup = lookup
         self.header = header
         self.required = required
-        self._ikarem_security = {"scheme": "apiKey", "roles": ()}
+        self._ikarem_security = {"scheme": "apiKey", "roles": (), "header": header}
 
     async def __call__(self, request: Any) -> Any | None:
         import inspect

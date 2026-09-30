@@ -105,6 +105,8 @@ class DepNode:
     is_auth: bool = False
     auth_roles: tuple = ()
     auth_scheme: str = ""
+    auth_header: str = ""
+    auth_scopes: tuple = ()
     uses_config_secret: bool = False
 
 
@@ -131,6 +133,8 @@ class HandlerPlan:
     is_auth: bool = False
     auth_roles: tuple = ()
     auth_scheme: str = ""
+    auth_header: str = ""
+    auth_scopes: tuple = ()
     uses_config_secret: bool = False
 
 
@@ -193,6 +197,8 @@ def _compile_dep_node(fn: Any, use_cache: bool, stack: tuple[int, ...]) -> DepNo
         node.is_auth = True
         node.auth_roles = tuple(auth.get("roles", ()))
         node.auth_scheme = str(auth.get("scheme", ""))
+        node.auth_header = str(auth.get("header", "") or "")
+        node.auth_scopes = tuple(auth.get("scopes", ()))
     if getattr(fn, "_ikarem_config_secret", False):
         node.uses_config_secret = True
     hints = _hints_of(fn)
@@ -241,7 +247,10 @@ def _compile_dep_node(fn: Any, use_cache: bool, stack: tuple[int, ...]) -> DepNo
             node.is_auth = True
             if not node.auth_scheme:
                 node.auth_scheme = child.auth_scheme
+            if not node.auth_header:
+                node.auth_header = child.auth_header
             node.auth_roles = tuple(dict.fromkeys((*node.auth_roles, *child.auth_roles)))
+            node.auth_scopes = tuple(dict.fromkeys((*node.auth_scopes, *child.auth_scopes)))
         if child.uses_config_secret:
             node.uses_config_secret = True
     return node
@@ -346,7 +355,10 @@ def compile_handler(handler: Any) -> HandlerPlan:
             plan.is_auth = True
             if not plan.auth_scheme:
                 plan.auth_scheme = hp.dep.auth_scheme
+            if not plan.auth_header:
+                plan.auth_header = hp.dep.auth_header
             plan.auth_roles = tuple(dict.fromkeys((*plan.auth_roles, *hp.dep.auth_roles)))
+            plan.auth_scopes = tuple(dict.fromkeys((*plan.auth_scopes, *hp.dep.auth_scopes)))
         if hp.kind == "depends" and hp.dep is not None and hp.dep.uses_config_secret:
             plan.uses_config_secret = True
     return plan

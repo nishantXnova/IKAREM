@@ -9,6 +9,7 @@
 [![M8ven Verified](https://m8ven.ai/badge/mcp/nishantxnova-ikarem-1yam5c?variant=verified&v=f97b1e1df496f42096a0d7689cc7dad9)](https://m8ven.ai/mcp/nishantxnova-ikarem-1yam5c)
 
 Industry-grade Python ASGI backend framework. Pip-installable, **zero-dep core**.
+[Meraki](https://github.com/sulfurcodes/Meraki) promised plugins. IKAREM shipped them.
 
 FastAPI-style DX (DI, validation, OpenAPI, auth) + Django/Nest-style structure
 (plugins, config, RBAC) + a core that runs on stdlib alone.
