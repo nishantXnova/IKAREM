@@ -1,0 +1,765 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IKAREM Guide — From Scratch to Genius</title>
+<meta name="description" content="The complete IKAREM path: first app to auth, databases, queues, websockets, testing, deployment, and internals. 22 chapters, every snippet runnable and CI-executed.">
+<meta name="theme-color" content="#0a0a0b">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="IKAREM">
+<meta property="og:url" content="https://ikarem.vercel.app/guide">
+<meta property="og:title" content="IKAREM Guide — From Scratch to Genius">
+<meta property="og:description" content="First app to auth, databases, queues, websockets, testing, internals — 22 chapters, every snippet runnable and CI-executed.">
+<meta property="og:image" content="https://ikarem.vercel.app/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="IKAREM Guide — From Scratch to Genius">
+<meta name="twitter:image" content="https://ikarem.vercel.app/og.png">
+<link rel="icon" href="../assets/ikarem-icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+<link rel="canonical" href="https://ikarem.vercel.app/guide">
+</head>
+<body>
+<header class="topbar">
+<div class="topbar-inner">
+  <a class="brand" href="index.html"><img src="../assets/ikarem-icon.svg" alt="IKAREM"><b>IKAREM</b></a>
+  <span class="ver">v1.1.0</span>
+  <nav>
+    <a href="index.html">Docs</a>
+    <a href="migrate.html">Migrate</a>
+    <a href="reference.html">Reference</a>
+    <a href="recipes.html">Recipes</a>
+    <a href="guide.html" class="on">Guide</a>
+    <a href="https://github.com/nishantXnova/IKAREM" class="ext">GitHub</a>
+    <a href="https://pypi.org/project/ikarem/" class="ext">PyPI</a>
+  </nav>
+</div>
+</header>
+
+<div class="wrap">
+<aside class="side"><ol>
+  <li><a href="#c01-first-light"><span class="n">01</span>First light</a></li>
+  <li><a href="#c02-routing-with-intent"><span class="n">02</span>Routing with intent</a></li>
+  <li><a href="#c03-bodies-with-boundaries"><span class="n">03</span>Bodies with boundaries</a></li>
+  <li><a href="#c04-validation-that-reads-like-the-docs"><span class="n">04</span>Validation that reads like the docs</a></li>
+  <li><a href="#c05-dependencies-without-magic"><span class="n">05</span>Dependencies without magic</a></li>
+  <li><a href="#c06-auth-that-says-no-clearly"><span class="n">06</span>Auth that says no clearly</a></li>
+  <li><a href="#c07-sessions-and-the-csrf-contract"><span class="n">07</span>Sessions and the CSRF contract</a></li>
+  <li><a href="#c08-middleware-on-purpose"><span class="n">08</span>Middleware on purpose</a></li>
+  <li><a href="#c09-errors-with-remedies"><span class="n">09</span>Errors with remedies</a></li>
+  <li><a href="#c10-configuration-without-surprises"><span class="n">10</span>Configuration without surprises</a></li>
+  <li><a href="#c11-data-that-survives"><span class="n">11</span>Data that survives</a></li>
+  <li><a href="#c12-work-that-outlives-the-deploy"><span class="n">12</span>Work that outlives the deploy</a></li>
+  <li><a href="#c13-time-kept-by-the-app"><span class="n">13</span>Time, kept by the app</a></li>
+  <li><a href="#c14-talking-back-live"><span class="n">14</span>Talking back live</a></li>
+  <li><a href="#c15-files-in-files-out"><span class="n">15</span>Files in, files out</a></li>
+  <li><a href="#c16-structure-that-scales"><span class="n">16</span>Structure that scales</a></li>
+  <li><a href="#c17-tests-that-behave-like-browsers"><span class="n">17</span>Tests that behave like browsers</a></li>
+  <li><a href="#c18-lifespan-wired-once"><span class="n">18</span>Lifespan, wired once</a></li>
+  <li><a href="#c19-docs-and-tools-for-free"><span class="n">19</span>Docs and tools for free</a></li>
+  <li><a href="#c20-under-the-hood-plans-not-reflection"><span class="n">20</span>Under the hood: plans, not reflection</a></li>
+  <li><a href="#c21-agents-are-users-too"><span class="n">21</span>Agents are users too</a></li>
+  <li><a href="#c22-genius-is-maintenance"><span class="n">22</span>Genius is maintenance</a></li>
+</ol></aside>
+
+<main>
+<section id="top">
+  <p class="secnum">GUIDE / 22 CHAPTERS</p>
+  <h1>Scratch to genius.</h1>
+  <p>From an empty file to a production backend, and from using the framework to
+  understanding it. Every snippet is self-contained and self-asserting —
+  <code>tests/test_guide.py</code> in the repo executes all of them on every push,
+  so this page cannot drift. Canonical source:
+  <a href="https://github.com/nishantXnova/IKAREM/blob/main/docs/GUIDE.md">docs/GUIDE.md</a>.</p>
+</section>
+
+<section id="c01-first-light">
+  <p class="secnum">CHAPTER 01</p>
+  <h2>First light</h2>
+  <p>Install the package, create an app, return a dict. Dicts, lists, strings, and bytes become responses automatically — ceremony is reserved for the cases that need it.</p>
+  <p>Serve it for real with any ASGI server (<code>app.run()</code> needs <code>pip install ikarem[server]</code>), or keep driving it in-process with <code>TestClient</code> — every chapter below uses the client, and your test suite should too. Notes: <code>debug=True</code> adds tracebacks to 500s (never in production); <code>enable_docs=False</code> hides <code>/openapi.json</code> and <code>/docs</code> but never the health probes.</p>
+  <p class="mut small">Runnable — copy into a file and run with <code>python</code>. Executed in CI by <code>tests/test_guide.py</code>.</p>
+<pre><code>from ikarem import Ikarem
+from ikarem.testing import TestClient
+
+app = Ikarem()
+
+@app.get(&quot;/&quot;)
+async def home(req):
+    return {&quot;hello&quot;: &quot;ikarem&quot;}
+
+c = TestClient(app)
+r = c.get(&quot;/&quot;)
+assert r.status_code == 200 and r.json() == {&quot;hello&quot;: &quot;ikarem&quot;}
+assert c.get(&quot;/missing&quot;).status_code == 404
+</code></pre>
+</section>
+
+<section id="c02-routing-with-intent">
+  <p class="secnum">CHAPTER 02</p>
+  <h2>Routing with intent</h2>
+  <p>Routes declare converters (<code>{uid:int}</code>, plus <code>float</code>, <code>uuid</code>, <code>path</code>), so bad segments 404 instead of crashing handlers. A path that matches nothing is 404; a path that matches with the wrong verb is 405. Name every route for free with the handler name, and reverse it with <code>url_for</code>.</p>
+  <p>Notes: converters are compiled to regex once at registration; static routes resolve in O(1). Unknown converters fail at startup with the valid list, not on first traffic. Close misses get &quot;Did you mean&quot; 404s.</p>
+  <p class="mut small">Runnable — copy into a file and run with <code>python</code>. Executed in CI by <code>tests/test_guide.py</code>.</p>
+<pre><code>from ikarem import Ikarem
+from ikarem.testing import TestClient
+
+app = Ikarem(enable_docs=False)
+
+@app.get(&quot;/users/{uid:int}&quot;)
+async def get_user(req, uid: int):
+    return {&quot;uid&quot;: uid}
+
+c = TestClient(app)
+assert c.get(&quot;/users/7&quot;).json() == {&quot;uid&quot;: 7}
+assert c.get(&quot;/users/abc&quot;).status_code == 404
+assert c.post(&quot;/users/7&quot;, body={}).status_code == 405
+assert app.router.url_for(&quot;get_user&quot;, uid=7) == &quot;/users/7&quot;
+</code></pre>
+</section>
+
+<section id="c03-bodies-with-boundaries">
+  <p class="secnum">CHAPTER 03</p>
+  <h2>Bodies with boundaries</h2>
+  <p>Read bodies explicitly (<code>await req.json()</code>, <code>await req.form()</code>, <code>await req.body(max_bytes=...)</code>) so oversized payloads become 413s at a limit you chose, not memory pressure you didn&#x27;t. The app-wide <code>max_body_bytes=</code> sets the floor; per-call <code>max_bytes=</code> overrides it.</p>
+  <p>Notes: <code>Request.json()</code> caps at 10MB by default. Streaming uploads should always pass an explicit cap. 413 responses still travel the middleware pipeline, so observability headers survive them.</p>
+  <p class="mut small">Runnable — copy into a file and run with <code>python</code>. Executed in CI by <code>tests/test_guide.py</code>.</p>
+<pre><code>from ikarem import Ikarem
+from ikarem.testing import TestClient
+
+app = Ikarem(enable_docs=False)
+
+@app.post(&quot;/echo&quot;)
+async def echo(req):
+    return await req.json()
+
+@app.post(&quot;/small&quot;)
+async def small(req):
+    return {&quot;n&quot;: len(await req.body(max_bytes=10))}
+
+c = TestClient(app)
+assert c.post(&quot;/echo&quot;, body={&quot;a&quot;: 1}).json() == {&quot;a&quot;: 1}
+assert c.post(&quot;/small&quot;, body=&quot;12345&quot;).json() == {&quot;n&quot;: 5}
+assert c.post(&quot;/small&quot;, body=&quot;x&quot; * 100).status_code == 413
+</code></pre>
+</section>
+
+<section id="c04-validation-that-reads-like-the-docs">
+  <p class="secnum">CHAPTER 04</p>
+  <h2>Validation that reads like the docs</h2>
+  <p><code>Schema</code> models coerce and check; <code>Field()</code> states bounds once and they surface in errors, OpenAPI, and MCP schemas together. <code>extra=&quot;forbid&quot;</code> rejects unknown keys — the default ignores them, which is how mass assignment sneaks in.</p>
+  <p>Notes: nested models validate recursively; coerced values (<code>&quot;2&quot;</code> to <code>2</code>) are what the handler receives. <code>json_schema()</code> powers OpenAPI and MCP input schemas from the same definition.</p>
+  <p class="mut small">Runnable — copy into a file and run with <code>python</code>. Executed in CI by <code>tests/test_guide.py</code>.</p>
+<pre><code>from ikarem import Field, Ikarem, Schema
+from ikarem.testing import TestClient
+
+class Item(Schema):
+    name: str = Field(..., min_length=1, max_length=80)
+    qty: int = Field(1, ge=1, le=99)
+
+class Order(Schema, extra=&quot;forbid&quot;):
+    item: Item
+    express: bool = False
+
+app = Ikarem(enable_docs=False)
+
+@app.post(&quot;/orders&quot;)
+async def create(order: Order):
+    return {&quot;name&quot;: order.item.name, &quot;qty&quot;: order.item.qty, &quot;express&quot;: order.express}
+
+c = TestClient(app)
+good = {&quot;item&quot;: {&quot;name&quot;: &quot;apple&quot;, &quot;qty&quot;: &quot;2&quot;}, &quot;express&quot;: True}
+assert c.post(&quot;/orders&quot;, body=good).json() == {&quot;name&quot;: &quot;apple&quot;, &quot;qty&quot;: 2, &quot;express&quot;: True}
+assert c.post(&quot;/orders&quot;, body={&quot;item&quot;: {&quot;qty&quot;: 1}}).status_code == 400
+assert c.post(&quot;/orders&quot;, body={&quot;item&quot;: {&quot;name&quot;: &quot;x&quot;}, &quot;hack&quot;: 1}).status_code == 400
+</code></pre>
+</section>
+
+<section id="c05-dependencies-without-magic">
+  <p class="secnum">CHAPTER 05</p>
+  <h2>Dependencies without magic</h2>
+  <p><code>Depends()</code> declares inputs; the framework builds them per request, caches repeats, and runs yield-dependency finalizers after the response is sent — even on the exception path. Dependencies are plain callables: test them without the framework.</p>
+  <p>Notes: nesting works to any depth; cycles fail at startup with the path. <code>Depends(fn, use_cache=False)</code> opts out of the per-request cache. Bare <code>Depends()</code> with no callable is a startup error naming the parameter.</p>
+  <p class="mut small">Runnable — copy into a file and run with <code>python</code>. Executed in CI by <code>tests/test_guide.py</code>.</p>
+<pre><code>from ikarem import Depends, Ikarem
+from ikarem.testing import TestClient
+
+closed = []
+
+def settings():
+    return {&quot;currency&quot;: &quot;USD&quot;}
+
+async def ledger_conn(req):
+    conn = {&quot;open&quot;: True}
+    yield conn
+    closed.append(&quot;closed&quot;)
+
+app = Ikarem(enable_docs=False)
+
+@app.get(&quot;/balance&quot;)
+async def balance(req, cfg=Depends(settings), db=Depends(ledger_conn)):
+    return {&quot;currency&quot;: cfg[&quot;currency&quot;], &quot;open&quot;: db[&quot;open&quot;]}
+
+c = TestClient(app)
+assert c.get(&quot;/balance&quot;).json() == {&quot;currency&quot;: &quot;USD&quot;, &quot;open&quot;: True}
+assert closed == [&quot;closed&quot;]
+</code></pre>
+</section>
+
+<section id="c06-auth-that-says-no-clearly">
+  <p class="secnum">CHAPTER 06</p>
+  <h2>Auth that says no clearly</h2>
+  <p>Stateless JWT (HS256, stdlib only) plus role and scope guards. 401 means anonymous, 403 means authenticated but not allowed — clients can act on the difference. Secrets come from config and are refused at startup when they are still defaults.</p>
+  <p>Notes: <code>verify_token</code> rejects algorithm confusion (<code>alg=none</code>), expired tokens, and missing <code>sub</code>. Service-to-service keys use <code>APIKeyAuth</code> with static keys or an async <code>lookup=</code>. Passwords hash with pbkdf2.</p>
+  <p class="mut small">Runnable — copy into a file and run with <code>python</code>. Executed in CI by <code>tests/test_guide.py</code>.</p>
+<pre><code>from ikarem import Depends, Ikarem, create_token, require_roles, require_scopes
+from ikarem.testing import TestClient
+
+SECRET = &quot;guide-auth-secret&quot;
+app = Ikarem(enable_docs=False, auth_secret=SECRET)
+
+@app.get(&quot;/admin&quot;)
+async def admin(req, claims=Depends(require_roles(&quot;admin&quot;))):
+    return {&quot;sub&quot;: claims[&quot;sub&quot;]}
+
+@app.get(&quot;/files&quot;)
+async def files(req, claims=Depends(require_scopes(&quot;read&quot;))):
+    return {&quot;n&quot;: 2}
+
+c = TestClient(app)
+assert c.get(&quot;/admin&quot;).status_code == 401
+user = create_token(&quot;u2&quot;, SECRET, roles=[&quot;user&quot;])
+assert c.get(&quot;/admin&quot;, headers={&quot;authorization&quot;: f&quot;Bearer {user}&quot;}).status_code == 403
+root = create_token(&quot;u1&quot;, SECRET, roles=[&quot;admin&quot;], scope=&quot;read&quot;)
+assert c.get(&quot;/admin&quot;, headers={&quot;authorization&quot;: f&quot;Bearer {root}&quot;}).json() == {&quot;sub&quot;: &quot;u1&quot;}
+assert c.get(&quot;/files&quot;, headers={&quot;authorization&quot;: f&quot;Bearer {root}&quot;}).json() == {&quot;n&quot;: 2}
+</code></pre>
+</section>
+
+<section id="c07-sessions-and-the-csrf-contract">
+  <p class="secnum">CHAPTER 07</p>
+  <h2>Sessions and the CSRF contract</h2>
+  <p>Signed-cookie sessions for browsers; double-submit CSRF on unsafe routes. <code>SessionMiddleware</code> must precede <code>CSRFMiddleware</code> — reversed order refuses to boot instead of silently leaving you unprotected.</p>
+  <p>Notes: the <code>TestClient</code> cookie jar persists login across requests, so flows test exactly as browsers behave. Token APIs can exempt paths instead of sending CSRF headers.</p>
+  <p class="mut small">Runnable — copy into a file and run with <code>python</code>. Executed in CI by <code>tests/test_guide.py</code>.</p>
+<pre><code>from ikarem import CSRFMiddleware, Ikarem, SessionMiddleware, Unauthorized, csrf_token
+from ikarem.testing import TestClient
+
+app = Ikarem(enable_docs=False, session_secret=&quot;guide-session-secret&quot;)
+app.use(SessionMiddleware())
+app.use(CSRFMiddleware())
+
+@app.get(&quot;/csrf&quot;)
+async def csrf(req):
+    return {&quot;t&quot;: csrf_token(req)}
+
+@app.post(&quot;/login&quot;)
+async def login(req):
+    form = await req.form()
+    if form.get(&quot;user&quot;) == &quot;amy&quot; and form.get(&quot;pw&quot;) == &quot;s3cret&quot;:
+        req.session[&quot;uid&quot;] = &quot;u1&quot;
+        return {&quot;ok&quot;: True}
+    raise Unauthorized(&quot;bad credentials&quot;)
+
+@app.get(&quot;/me&quot;)
+async def me(req):
+    uid = req.session.get(&quot;uid&quot;)
+    if not uid:
+        raise Unauthorized(&quot;anonymous&quot;)
+    return {&quot;uid&quot;: uid}
+
+c = TestClient(app)
+assert c.get(&quot;/me&quot;).status_code == 401
+t = c.get(&quot;/csrf&quot;).json()[&quot;t&quot;]
+h = {&quot;x-csrf-token&quot;: t}
+form = &quot;user=amy&amp;pw=s3cret&quot;
+assert c.post(&quot;/login&quot;, body=form, content_type=&quot;application/x-www-form-urlencoded&quot;, headers=h).json() == {&quot;ok&quot;: True}
+assert c.get(&quot;/me&quot;).json() == {&quot;uid&quot;: &quot;u1&quot;}
+</code></pre>
+</section>
+
+<section id="c08-middleware-on-purpose">
+  <p class="secnum">CHAPTER 08</p>
+  <h2>Middleware on purpose</h2>
+  <p>The onion: each layer sees the request going in and the response coming out, or short-circuits. Order is the feature — request IDs first, gates early, headers last. A <code>validate_config(app)</code> hook lets middleware fail at boot with the remedy.</p>
+  <p>Notes: raising <code>Unauthorized</code>/<code>Forbidden</code> inside middleware short-circuits with the same rendering as handler errors. Keep middleware free of business logic — gates and headers, nothing else.</p>
+  <p class="mut small">Runnable — copy into a file and run with <code>python</code>. Executed in CI by <code>tests/test_guide.py</code>.</p>
+<pre><code>from ikarem import Ikarem, RequestIDMiddleware, SecurityHeadersMiddleware
+from ikarem.testing import TestClient
+
+order = []
+app = Ikarem(enable_docs=False)
+app.use(RequestIDMiddleware())
+app.use(SecurityHeadersMiddleware())
+
+async def audit(req, call_next):
+    order.append(&quot;in&quot;)
+    resp = await call_next(req)
+    order.append(&quot;out&quot;)
+    resp.headers[&quot;x-audited&quot;] = &quot;yes&quot;
+    return resp
+
+app.use(audit)
+
+@app.get(&quot;/&quot;)
+async def home(req):
+    return {&quot;ok&quot;: True}
+
+c = TestClient(app)
+r = c.get(&quot;/&quot;)
+assert r.headers[&quot;x-request-id&quot;] and r.headers[&quot;x-frame-options&quot;] == &quot;DENY&quot;
+assert r.headers[&quot;x-audited&quot;] == &quot;yes&quot; and order == [&quot;in&quot;, &quot;out&quot;]
+</code></pre>
+</section>
+
+<section id="c09-errors-with-remedies">
+  <p class="secnum">CHAPTER 09</p>
+  <h2>Errors with remedies</h2>
+  <p><code>abort(status, detail)</code> fails tersely through the pipeline so error responses keep request IDs and security headers. Custom handlers map exception types, most-specific first. Framework law: every error names the fix.</p>
+  <p>Notes: unhandled exceptions are 500s with no leak (tracebacks only under <code>debug=True</code>). 404s suggest close matches. Handler errors render inside the middleware pipeline — headers included.</p>
+  <p class="mut small">Runnable — copy into a file and run with <code>python</code>. Executed in CI by <code>tests/test_guide.py</code>.</p>
+<pre><code>from ikarem import Ikarem, JSONResponse, abort
+from ikarem.testing import TestClient
+
+app = Ikarem(enable_docs=False)
+
+@app.exception_handler(ValueError)
+async def _bad(req, exc):
+    return JSONResponse({&quot;detail&quot;: f&quot;bad value: {exc}&quot;}, status_code=422)
+
+@app.get(&quot;/widget/{wid:int}&quot;)
+async def widget(req, wid: int):
+    if wid == 0:
+        abort(404, &quot;no such widget&quot;)
+    return {&quot;wid&quot;: wid}
+
+@app.get(&quot;/parse&quot;)
+async def parse(req):
+    raise ValueError(&quot;qty&quot;)
+
+c = TestClient(app)
+assert c.get(&quot;/widget/0&quot;).status_code == 404
+assert c.get(&quot;/parse&quot;).status_code == 422
+assert c.get(&quot;/widget/3&quot;).json() == {&quot;wid&quot;: 3}
+</code></pre>
+</section>
+
+<section id="c10-configuration-without-surprises">
+  <p class="secnum">CHAPTER 10</p>
+  <h2>Configuration without surprises</h2>
+  <p>Layered and explicit: defaults, then kwargs, then dict, then <code>IKAREM_*</code> environment variables. Typed reads with <code>cast=</code>. No settings module, no import-time environment sniffing.</p>
+  <p>Notes: secrets (<code>auth_secret</code>, <code>session_secret</code>) also read from <code>IKAREM_AUTH_SECRET</code> / <code>IKAREM_SESSION_SECRET</code>. Startup validation refuses to serve authenticated routes on default secrets.</p>
+  <p class="mut small">Runnable — copy into a file and run with <code>python</code>. Executed in CI by <code>tests/test_guide.py</code>.</p>
+<pre><code>from ikarem import Ikarem
+
+app = Ikarem(enable_docs=False, debug=False, page_size=20)
+
+assert app.config.get(&quot;page_size&quot;) == 20
+assert app.config.get(&quot;missing&quot;, &quot;fallback&quot;) == &quot;fallback&quot;
+assert app.config.get(&quot;page_size&quot;, cast=str) == &quot;20&quot;
+assert app.config.get(&quot;debug&quot;) is False
+</code></pre>
+</section>
+
+<section id="c11-data-that-survives">
+  <p class="secnum">CHAPTER 11</p>
+  <h2>Data that survives</h2>
+  <p>One connector interface, four engines. Placeholders are always <code>?</code>; rows are plain dicts; drivers import lazily with the exact extra named on failure. Transactions commit on clean exit and roll back on error.</p>
+  <p>Notes: SQLite serializes on a worker-side lock (single-lane by design, WAL on); Postgres/MySQL pools rebuild per event loop. Point <code>IKAREM_DB_URL</code> at Postgres when writes outgrow one lane — the suite is green on both.</p>
+  <p class="mut small">Runnable — copy into a file and run with <code>python</code>. Executed in CI by <code>tests/test_guide.py</code>.</p>
+<pre><code>import asyncio
+
+from ikarem import Ikarem
+from ikarem.db import DatabasePlugin
+
+app = Ikarem(enable_docs=False)
+app.register(DatabasePlugin(&quot;sqlite:///:memory:&quot;))
+
+async def main():
+    await app.startup()
+    try:
+        db = app.state_db
+        await db.execute(&quot;CREATE TABLE IF NOT EXISTS notes (id INTEGER PRIMARY KEY, text TEXT)&quot;)
+        async with db.transaction():
+            await db.execute(&quot;INSERT INTO notes (text) VALUES (?)&quot;, &quot;buy milk&quot;)
+        rows = await db.fetch_all(&quot;SELECT * FROM notes&quot;)
+        assert [r[&quot;text&quot;] for r in rows] == [&quot;buy milk&quot;]
+    finally:
+        await app.shutdown()
+
+asyncio.run(main())
+</code></pre>
+</section>
+
+<section id="c12-work-that-outlives-the-deploy">
+  <p class="secnum">CHAPTER 12</p>
+  <h2>Work that outlives the deploy</h2>
+  <p><code>BackgroundTasks</code> fire after the response and vanish on restart. The durable queue survives it: portable leases, exponential-backoff retries, parked dead jobs instead of silent loss. Drain with <code>ikarem worker</code>.</p>
+  <p>Notes: unknown task names and bad payloads fail the job, not the worker. <code>depth()</code> exposes queue length for <code>/readyz</code>-style checks and dashboards.</p>
+  <p class="mut small">Runnable — copy into a file and run with <code>python</code>. Executed in CI by <code>tests/test_guide.py</code>.</p>
+<pre><code>import asyncio
+
+from ikarem import BackgroundTasks, Ikarem
+from ikarem.db import DatabasePlugin
+from ikarem.queue import QueuePlugin, task
+
+fired, done = [], []
+
+@task(&quot;guide-receipt&quot;)
+async def receipt(order_id: int):
+    done.append(order_id)
+
+app = Ikarem(enable_docs=False)
+app.register(DatabasePlugin(&quot;sqlite:///:memory:&quot;))
+app.register(QueuePlugin())
+
+@app.post(&quot;/orders&quot;)
+async def order(req, bg: BackgroundTasks):
+    bg.add(fired.append, &quot;ack&quot;)
+    await req.app.state_queue.enqueue(&quot;guide-receipt&quot;, {&quot;order_id&quot;: 7})
+    return {&quot;ok&quot;: True}
+
+async def main():
+    await app.startup()
+    try:
+        await app.state_queue.enqueue(&quot;guide-receipt&quot;, {&quot;order_id&quot;: 7})
+        assert await app.state_queue.run_one() is True
+        assert done == [7]
+    finally:
+        await app.shutdown()
+
+asyncio.run(main())
+
+from ikarem.testing import TestClient
+
+assert TestClient(app).post(&quot;/orders&quot;, body={}).json() == {&quot;ok&quot;: True}
+assert fired == [&quot;ack&quot;]
+</code></pre>
+</section>
+
+<section id="c13-time-kept-by-the-app">
+  <p class="secnum">CHAPTER 13</p>
+  <h2>Time, kept by the app</h2>
+  <p>Cron plus intervals with an explicit start — nothing runs unless started. All timing flows through <code>tick(now)</code>, so tests travel through time instead of sleeping. In production, <code>SchedulerPlugin</code> ties the loop to lifespan.</p>
+  <p>Notes: overlapping runs of one job never stack — a still-running job is skipped that tick. Failures are counted and logged with tracebacks, never swallowed.</p>
+  <p class="mut small">Runnable — copy into a file and run with <code>python</code>. Executed in CI by <code>tests/test_guide.py</code>.</p>
+<pre><code>import asyncio
+import time
+
+from ikarem import Ikarem
+from ikarem.scheduler import SchedulerPlugin
+
+app = Ikarem(enable_docs=False)
+ran = []
+
+@app.every(60)
+async def heartbeat():
+    ran.append(1)
+
+@app.cron(&quot;@daily&quot;)
+async def rollup():
+    ran.append(&quot;daily&quot;)
+
+async def main():
+    sched = app._scheduler()
+    assert [j.name for j in sched.jobs] == [&quot;heartbeat&quot;, &quot;rollup&quot;]
+    await sched.tick(now=time.time() + 61)
+    assert ran == [1]
+    app.register(SchedulerPlugin(poll=0.01))
+    await app.startup()
+    assert getattr(app, &quot;state_scheduler&quot;, None) is sched
+    await app.shutdown()
+
+asyncio.run(main())
+</code></pre>
+</section>
+
+<section id="c14-talking-back-live">
+  <p class="secnum">CHAPTER 14</p>
+  <h2>Talking back live</h2>
+  <p>WebSocket routes plus in-process rooms: join on connect, broadcast to the rest, leave in a <code>finally</code>. The <code>TestClient.ws_connect</code> driver feeds scripted messages and collects everything sent.</p>
+  <p>Notes: rooms are single-process by design; an external broker slots behind the same join/broadcast shape when you outgrow one node. <code>receive_text</code> skips handshake frames and raises on disconnect.</p>
+  <p class="mut small">Runnable — copy into a file and run with <code>python</code>. Executed in CI by <code>tests/test_guide.py</code>.</p>
+<pre><code>import asyncio
+
+from ikarem import Ikarem, Room
+from ikarem.testing import TestClient
+
+room = Room()
+app = Ikarem(enable_docs=False)
+
+@app.websocket(&quot;/chat&quot;)
+async def chat(ws):
+    await ws.accept()
+    await room.join(ws)
+    try:
+        while True:
+            await room.broadcast(await ws.receive_text(), exclude=ws)
+    except RuntimeError:
+        pass
+    finally:
+        room.leave(ws)
+
+async def main():
+    sent = await TestClient(app).ws_connect(
+        &quot;/chat&quot;, incoming=[{&quot;type&quot;: &quot;websocket.connect&quot;}, {&quot;text&quot;: &quot;hi&quot;}]
+    )
+    kinds = [m[&quot;type&quot;] for m in sent]
+    assert &quot;websocket.accept&quot; in kinds
+
+asyncio.run(main())
+assert len(room) == 0
+</code></pre>
+</section>
+
+<section id="c15-files-in-files-out">
+  <p class="secnum">CHAPTER 15</p>
+  <h2>Files in, files out</h2>
+  <p>Static directories serve with symlink-escape and prefix-collision guards; <code>FileResponse</code> streams downloads with <code>Content-Disposition</code> surviving middleware. Uploads arrive parsed as <code>UploadFile</code> with size caps.</p>
+  <p>Notes: mount helpers fail loudly on missing directories. Probe and docs routes never shadow your mounts — system routes mount first, yours win ties by registration.</p>
+  <p class="mut small">Runnable — copy into a file and run with <code>python</code>. Executed in CI by <code>tests/test_guide.py</code>.</p>
+<pre><code>import tempfile
+from pathlib import Path
+
+from ikarem import FileResponse, Ikarem
+from ikarem.testing import TestClient
+
+pub = Path(tempfile.mkdtemp(prefix=&quot;guide-static-&quot;))
+(pub / &quot;ok.txt&quot;).write_text(&quot;hello file&quot;)
+
+app = Ikarem(enable_docs=False)
+app.mount_static(&quot;/static&quot;, str(pub))
+
+@app.get(&quot;/receipt&quot;)
+async def receipt(req):
+    return FileResponse(str(pub / &quot;ok.txt&quot;), filename=&quot;receipt.txt&quot;)
+
+c = TestClient(app)
+assert c.get(&quot;/static/ok.txt&quot;).text == &quot;hello file&quot;
+assert c.get(&quot;/static/../secret.txt&quot;).status_code == 404
+dl = c.get(&quot;/receipt&quot;)
+assert dl.status_code == 200 and &quot;attachment&quot; in dl.headers[&quot;content-disposition&quot;]
+</code></pre>
+</section>
+
+<section id="c16-structure-that-scales">
+  <p class="secnum">CHAPTER 16</p>
+  <h2>Structure that scales</h2>
+  <p><code>Blueprint</code>s group routes with their own hooks and error handlers; <code>MethodView</code> puts one resource&#x27;s verbs in one class with full DI per method. Both compile to the same plans as plain routes — zero per-request overhead for the organization.</p>
+  <p>Notes: blueprint routes are named <code>blueprint.handler</code>, so <code>url_for</code> stays unambiguous across groups. Blueprint error handlers scope to their routes; app handlers catch the rest.</p>
+  <p class="mut small">Runnable — copy into a file and run with <code>python</code>. Executed in CI by <code>tests/test_guide.py</code>.</p>
+<pre><code>from ikarem import Blueprint, Ikarem, MethodView, Schema
+from ikarem.testing import TestClient
+
+class ItemIn(Schema):
+    name: str
+
+class Items(MethodView):
+    async def get(self, req):
+        return {&quot;items&quot;: []}
+
+    async def post(self, req, item: ItemIn):
+        return {&quot;name&quot;: item.name}, 201
+
+api = Blueprint(&quot;api&quot;, url_prefix=&quot;/api&quot;)
+app = Ikarem(enable_docs=False)
+
+@api.get(&quot;/ping&quot;)
+async def ping(req):
+    return {&quot;pong&quot;: True}
+
+app.register_blueprint(api)
+app.route(&quot;/items&quot;, Items.methods())(Items.as_view(&quot;items&quot;))
+
+c = TestClient(app)
+assert c.get(&quot;/api/ping&quot;).json() == {&quot;pong&quot;: True}
+assert c.get(&quot;/items&quot;).json() == {&quot;items&quot;: []}
+assert c.post(&quot;/items&quot;, body={&quot;name&quot;: &quot;a&quot;}).status_code == 201
+assert c.post(&quot;/items&quot;, body={}).status_code == 400
+assert app.router.url_for(&quot;api.ping&quot;) == &quot;/api/ping&quot;
+</code></pre>
+</section>
+
+<section id="c17-tests-that-behave-like-browsers">
+  <p class="secnum">CHAPTER 17</p>
+  <h2>Tests that behave like browsers</h2>
+  <p><code>TestClient</code> keeps cookies, speaks every verb, and runs startup — login flows test exactly as browsers behave. <code>app.check()</code> audits handlers statically: cycles, bare <code>Depends()</code>, duplicate routes, auth gaps.</p>
+  <p>Notes: one client per thread — loop-bound resources (pools) survive across requests, matching production. Gate deploys on <code>check</code> in CI.</p>
+  <p class="mut small">Runnable — copy into a file and run with <code>python</code>. Executed in CI by <code>tests/test_guide.py</code>.</p>
+<pre><code>from ikarem import Ikarem
+from ikarem.testing import TestClient
+
+app = Ikarem(enable_docs=False)
+
+@app.get(&quot;/users&quot;)
+async def users(req):
+    return {&quot;n&quot;: 1}
+
+report = app.check()
+assert report[&quot;errors&quot;] == []
+assert any(r[&quot;path&quot;] == &quot;/users&quot; for r in report[&quot;routes&quot;])
+c = TestClient(app)
+assert c.get(&quot;/users&quot;).json() == {&quot;n&quot;: 1}
+miss = c.get(&quot;/user&quot;)
+assert miss.status_code == 404 and &quot;Did you mean&quot; in miss.text
+</code></pre>
+</section>
+
+<section id="c18-lifespan-wired-once">
+  <p class="secnum">CHAPTER 18</p>
+  <h2>Lifespan, wired once</h2>
+  <p><code>on_startup</code> / <code>on_shutdown</code> order your boot: tables, queues, schedulers. Plugins hook the same lifecycle with dependency sorting. ASGI lifespan messages drive it all under a real server.</p>
+  <p>Notes: startup compiles every handler plan, validates config (secrets, middleware order), then runs hooks and plugin startups. Shutdown reverses plugins before app hooks.</p>
+  <p class="mut small">Runnable — copy into a file and run with <code>python</code>. Executed in CI by <code>tests/test_guide.py</code>.</p>
+<pre><code>import asyncio
+
+from ikarem import Ikarem
+
+events = []
+app = Ikarem(enable_docs=False)
+
+@app.on_startup
+async def up():
+    events.append(&quot;up&quot;)
+
+@app.on_shutdown
+async def down():
+    events.append(&quot;down&quot;)
+
+async def main():
+    await app.startup()
+    await app.startup()  # idempotent: second call is a no-op
+    await app.shutdown()
+
+asyncio.run(main())
+assert events == [&quot;up&quot;, &quot;down&quot;]
+</code></pre>
+</section>
+
+<section id="c19-docs-and-tools-for-free">
+  <p class="secnum">CHAPTER 19</p>
+  <h2>Docs and tools for free</h2>
+  <p>OpenAPI, the route manifest, and MCP tools all derive from the same compiled plans — query shapes, bodies, and auth boundaries cannot drift between your docs, your agents, and your runtime.</p>
+  <p>Notes: <code>ikarem inspect</code> prints the manifest for LLM context; <code>site/llms.txt</code> is the one-page framework manual. Serve routes as tools with <code>ikarem mcp myapp:app</code>.</p>
+  <p class="mut small">Runnable — copy into a file and run with <code>python</code>. Executed in CI by <code>tests/test_guide.py</code>.</p>
+<pre><code>import asyncio
+
+from ikarem import Depends, Ikarem, Schema, require_roles
+from ikarem.compiled import describe_app
+from ikarem.openapi import build_openapi
+
+SECRET = &quot;guide-mcp-secret&quot;
+
+class Item(Schema):
+    name: str
+
+app = Ikarem(enable_docs=False, auth_secret=SECRET)
+
+@app.post(&quot;/items&quot;)
+async def create_item(item: Item):
+    &quot;&quot;&quot;Create an item.&quot;&quot;&quot;
+    return {&quot;name&quot;: item.name}
+
+@app.get(&quot;/admin&quot;)
+async def admin(req, claims=Depends(require_roles(&quot;admin&quot;))):
+    return {&quot;sub&quot;: claims[&quot;sub&quot;]}
+
+spec = build_openapi(app)
+assert spec[&quot;paths&quot;][&quot;/items&quot;][&quot;post&quot;][&quot;summary&quot;] == &quot;Create an item.&quot;
+assert spec[&quot;paths&quot;][&quot;/admin&quot;][&quot;get&quot;][&quot;security&quot;] == [{&quot;bearerAuth&quot;: []}]
+manifest = describe_app(app)
+assert manifest[&quot;count&quot;] == 2
+tools = {t[&quot;name&quot;]: t for t in app.mcp_tools()}
+assert set(tools) == {&quot;create_item&quot;, &quot;admin&quot;}
+out = asyncio.run(app.mcp_call(&quot;create_item&quot;, {&quot;name&quot;: &quot;apple&quot;}))
+assert out[&quot;isError&quot;] is False
+</code></pre>
+</section>
+
+<section id="c20-under-the-hood-plans-not-reflection">
+  <p class="secnum">CHAPTER 20</p>
+  <h2>Under the hood: plans, not reflection</h2>
+  <p>Signatures parse once into handler plans; per-request resolution is dict lookups. <code>get_plan</code> caches by handler identity — the same object serves every request. That is the whole performance story, and it is checkable.</p>
+  <p>Notes: <code>bench/bench_switch.py</code> proves the hot path with honest numbers; <code>bench/load.py</code> proves sustained load (~75k requests, zero 5xx). Touch the hot path and the bench decides, not adjectives.</p>
+  <p class="mut small">Runnable — copy into a file and run with <code>python</code>. Executed in CI by <code>tests/test_guide.py</code>.</p>
+<pre><code>from ikarem import Ikarem
+from ikarem.compiled import get_plan
+from ikarem.testing import TestClient
+
+app = Ikarem(enable_docs=False)
+
+@app.get(&quot;/u/{uid:int}&quot;)
+async def u(req, uid: int, limit: int = 5):
+    return {&quot;uid&quot;: uid, &quot;limit&quot;: limit}
+
+assert get_plan(u) is get_plan(u)
+c = TestClient(app)
+assert c.get(&quot;/u/3&quot;, query=&quot;limit=2&quot;).json() == {&quot;uid&quot;: 3, &quot;limit&quot;: 2}
+</code></pre>
+</section>
+
+<section id="c21-agents-are-users-too">
+  <p class="secnum">CHAPTER 21</p>
+  <h2>Agents are users too</h2>
+  <p>LLM clients consume the same contracts: manifest for planning, MCP tools for calling, <code>llms.txt</code> for the manual, <code>AGENTS.md</code> for contributor laws. Build agent-facing features by describing routes, not by special cases.</p>
+  <p>Notes: auth boundaries propagate into tool descriptions, so agents see <code>Requires Authorization</code> before they call. Keep docstrings to one true first line — it becomes the tool summary.</p>
+  <p class="mut small">Runnable — copy into a file and run with <code>python</code>. Executed in CI by <code>tests/test_guide.py</code>.</p>
+<pre><code>from ikarem import Ikarem
+from ikarem.compiled import describe_app, describe_route
+
+app = Ikarem(enable_docs=False)
+
+@app.get(&quot;/orders/{oid:int}&quot;)
+async def order(req, oid: int, verbose: bool = False):
+    &quot;&quot;&quot;Fetch one order.&quot;&quot;&quot;
+    return {&quot;oid&quot;: oid}
+
+(route,) = [r for r in app.router.routes if r.path == &quot;/orders/{oid:int}&quot;]
+desc = describe_route(route)
+assert desc.path_params == [&quot;oid&quot;] and desc.doc.startswith(&quot;Fetch one&quot;)
+entry = describe_app(app)[&quot;routes&quot;][0]
+assert entry[&quot;handler&quot;] == &quot;order&quot; and entry[&quot;summary&quot;] == &quot;Fetch one order.&quot;
+</code></pre>
+</section>
+
+<section id="c22-genius-is-maintenance">
+  <p class="secnum">CHAPTER 22</p>
+  <h2>Genius is maintenance</h2>
+  <p>The framework stays fast and honest the same way your app does: every behavior ships with a test, errors name remedies, deprecations warn with versions and replacements, and the changelog is cut from commits. Your next moves: claim a row in <code>docs/ECOSYSTEM.md</code>, steal a recipe from <code>docs/COOKBOOK.md</code>, and read <code>CONTRIBUTING.md</code> before the first PR.</p>
+  <p class="mut small">Runnable — copy into a file and run with <code>python</code>. Executed in CI by <code>tests/test_guide.py</code>.</p>
+<pre><code>from ikarem import Ikarem, deprecated
+
+@deprecated(&quot;use total_v2() instead&quot;, since=&quot;1.1.0&quot;, removal=&quot;2.0.0&quot;, use_instead=&quot;total_v2&quot;)
+def total(items):
+    return sum(items)
+
+def total_v2(items):
+    return sum(items)
+
+import warnings
+
+app = Ikarem(enable_docs=False)
+
+@app.get(&quot;/total&quot;)
+async def total_h(req):
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter(&quot;always&quot;)
+        n = total([1, 2, 3])
+    assert any(&quot;1.1.0&quot; in str(w.message) and &quot;total_v2&quot; in str(w.message) for w in caught)
+    return {&quot;n&quot;: n}
+
+from ikarem.testing import TestClient
+
+assert TestClient(app).get(&quot;/total&quot;).json() == {&quot;n&quot;: 6}
+</code></pre>
+</section>
+</main>
+</div>
+
+<footer><div class="wrap">
+  <span>IKAREM v1.1.0 — MIT. Zero-dependency Python ASGI.</span>
+  <span style="margin-left:auto"><a href="https://github.com/nishantXnova/IKAREM/blob/main/SECURITY.md">Security</a> · <a href="https://github.com/nishantXnova/IKAREM/blob/main/CHANGELOG.md">Changelog</a> · <a href="https://github.com/nishantXnova/IKAREM">GitHub</a> · <a href="https://pypi.org/project/ikarem/">PyPI</a></span>
+</div></footer>
+<script src="script.js" defer></script>
+</body>
+</html>

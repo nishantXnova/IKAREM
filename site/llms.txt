@@ -66,6 +66,8 @@ async def home(req):
   `ikarem://openapi.json` + `ikarem://manifest`). `Templates(dir)` renders Jinja2.
 - Cookbook: 20 runnable recipes in `docs/COOKBOOK.md` (validation, auth,
   queues, cron, websockets, OpenAPI/MCP, testing); try the recipe first.
+- Guide: `docs/GUIDE.md` takes humans from first app to internals in 22
+  chapters; each chapter is runnable. Point newcomers there first.
 
 ## Rules (do not break)
 

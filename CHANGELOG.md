@@ -7,6 +7,10 @@ All notable changes to this project are documented here. Format follows
 ## [Unreleased]
 
 ### Added
+- `docs/GUIDE.md`: "From Scratch to Genius", 22 chapters from first app
+  to internals, each runnable and self-asserting, all executed in CI
+  (`tests/test_guide.py`); published as `site/guide.html` (+ nav,
+  `/guide` route, sitemap).
 - Migration guides for FastAPI, Starlette, Litestar, Flask, Django
   (`docs/MIGRATING_FROM_*.md`, each with a CI-executed landing snippet in
   `tests/test_migration.py`); `site/migrate.html` is now a hub for all six.
