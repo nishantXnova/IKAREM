@@ -222,7 +222,9 @@ Live proof it all works: [`ledger/`](ledger/) — a personal-finance app
 (auth, dashboard with SVG charts, CRUD, receipt uploads, CSV export, JSON API)
 running on stock IKAREM + uvicorn.
 
-## Switching from Meraki? 5 minutes
+## Switching? Bring your routes
+
+Meraki (5 minutes):
 
 ```diff
 -from meraki import Meraki
@@ -230,9 +232,16 @@ running on stock IKAREM + uvicorn.
 ```
 
 Your app runs unchanged (same routes, middleware, 404/405 bodies) on the
-IKAREM engine — then migrate handler-by-handler. Full guide:
-[`docs/MIGRATING_FROM_MERAKI.md`](docs/MIGRATING_FROM_MERAKI.md) ·
-honest benchmarks: [`bench/RESULTS.md`](bench/RESULTS.md) ·
+IKAREM engine — then migrate handler-by-handler. From anywhere else:
+
+- FastAPI (a day): [`docs/MIGRATING_FROM_FASTAPI.md`](docs/MIGRATING_FROM_FASTAPI.md)
+- Starlette (hours): [`docs/MIGRATING_FROM_STARLETTE.md`](docs/MIGRATING_FROM_STARLETTE.md)
+- Litestar (a day): [`docs/MIGRATING_FROM_LITESTAR.md`](docs/MIGRATING_FROM_LITESTAR.md)
+- Flask (a day): [`docs/MIGRATING_FROM_FLASK.md`](docs/MIGRATING_FROM_FLASK.md)
+- Django (a week, views rewrite): [`docs/MIGRATING_FROM_DJANGO.md`](docs/MIGRATING_FROM_DJANGO.md)
+- Meraki (full guide): [`docs/MIGRATING_FROM_MERAKI.md`](docs/MIGRATING_FROM_MERAKI.md)
+
+Plus honest benchmarks: [`bench/RESULTS.md`](bench/RESULTS.md) ·
 extension registry: [`docs/ECOSYSTEM.md`](docs/ECOSYSTEM.md) ·
 20 runnable recipes: [`docs/COOKBOOK.md`](docs/COOKBOOK.md) ·
 install: `pip install ikarem`.

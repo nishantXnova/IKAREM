@@ -7,9 +7,20 @@ All notable changes to this project are documented here. Format follows
 ## [Unreleased]
 
 ### Added
+- Migration guides for FastAPI, Starlette, Litestar, Flask, Django
+  (`docs/MIGRATING_FROM_*.md`, each with a CI-executed landing snippet in
+  `tests/test_migration.py`); `site/migrate.html` is now a hub for all six.
 - `SECURITY.md` (supported versions, private reporting); README
   "Project basics" (Security, Contributing, Changelog, SemVer,
   deprecation policy, CI matrix).
+
+### Fixed
+- Blueprint routes with typed params, DI, Schema bodies, or BackgroundTasks
+  returned 500: the hook wrapper's `functools.wraps` leaked the original
+  signature into the compiled plan, so the wrapper was called with the
+  original's kwargs. The wrapper now carries `__signature__` and forwards
+  resolved kwargs (single resolution, hooks intact). Regression test in
+  `tests/test_flask_takes.py`.
 
 ### Changed
 - README + site headline: "Zero-dependency Python ASGI framework, built

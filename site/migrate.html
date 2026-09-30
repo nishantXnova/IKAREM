@@ -3,17 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Migrate from Meraki to IKAREM in 5 Minutes</title>
-<meta name="description" content="Switch a Meraki app to IKAREM with a two-line diff. Same routes, middleware and 404/405 bodies — then migrate handler by handler.">
+<title>Migrate to IKAREM — from Meraki, FastAPI, Flask, Django and more</title>
+<meta name="description" content="Move to IKAREM from Meraki (two-line diff), FastAPI, Starlette, Litestar, Flask, or Django. Mapping tables, honest deltas, and a plan per framework.">
 <meta name="theme-color" content="#0a0a0b">
 <meta property="og:type" content="article">
 <meta property="og:site_name" content="IKAREM">
 <meta property="og:url" content="https://ikarem.vercel.app/migrate">
-<meta property="og:title" content="Migrate from Meraki to IKAREM in 5 Minutes">
-<meta property="og:description" content="Two-line diff. Same app, faster engine. Then migrate handler by handler.">
+<meta property="og:title" content="Migrate to IKAREM — from Meraki, FastAPI, Flask, Django and more">
+<meta property="og:description" content="Two-line diff for Meraki. Mapping tables and honest plans for FastAPI, Starlette, Litestar, Flask, Django.">
 <meta property="og:image" content="https://ikarem.vercel.app/og.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Migrate from Meraki to IKAREM in 5 Minutes">
+<meta name="twitter:title" content="Migrate to IKAREM — from Meraki, FastAPI, Flask, Django and more">
 <meta name="twitter:image" content="https://ikarem.vercel.app/og.png">
 <link rel="icon" href="../assets/ikarem-icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="style.css">
@@ -35,16 +35,24 @@
 
 <div class="wrap">
 <aside class="side"><ol>
-  <li><a href="#swap" class="on"><span class="n">00</span>The diff</a></li>
+  <li><a href="#swap" class="on"><span class="n">00</span>Meraki diff</a></li>
   <li><a href="#map"><span class="n">01</span>API map</a></li>
   <li><a href="#cash"><span class="n">02</span>Cash in</a></li>
   <li><a href="#native"><span class="n">03</span>Go native</a></li>
+  <li><a href="#fastapi"><span class="n">04</span>FastAPI</a></li>
+  <li><a href="#starlette"><span class="n">05</span>Starlette</a></li>
+  <li><a href="#litestar"><span class="n">06</span>Litestar</a></li>
+  <li><a href="#flask"><span class="n">07</span>Flask</a></li>
+  <li><a href="#django"><span class="n">08</span>Django</a></li>
 </ol></aside>
 
 <main>
 <section id="swap">
-  <p class="secnum">MIGRATE / 5 MINUTES</p>
-  <h1>Two lines.<br>Then lunch.</h1>
+  <p class="secnum">MIGRATE / FROM ANYWHERE</p>
+  <h1>Two lines for Meraki.<br>A day for the rest.</h1>
+  <p class="mut small">Pick your framework below — every guide has a mapping table,
+  the honest deltas, and a plan. Full guides live in the repo under
+  <code>docs/MIGRATING_FROM_*.md</code>.</p>
 <pre><code>$ pip uninstall meraki -y && pip install ikarem</code></pre>
 <pre><code><span class="tok-c">- from meraki import Meraki</span>
 <span class="tok-s">+ from ikarem.meraki_compat import Meraki</span></code></pre>
@@ -93,6 +101,88 @@
   <code>mcp_tools()</code>. Both styles coexist on one app. You're done when
   <code>grep -r meraki_compat</code> is empty. Worked example: the
   <a href="index.html#ledger">Ledger</a> app was built exactly this way.</p>
+</section>
+
+<section id="fastapi">
+  <p class="secnum">04 / FROM FASTAPI</p>
+  <h2>A day. Mostly mechanical.</h2>
+  <table>
+    <tr><th>FastAPI</th><th>IKAREM</th></tr>
+    <tr><td><code>@app.get("/users/{uid}")</code> + <code>uid: int</code></td><td><code>@app.get("/users/{uid:int}")</code> + <code>uid: int</code></td></tr>
+    <tr><td><code>class Item(BaseModel)</code></td><td><code>class Item(Schema)</code> + <code>Field()</code></td></tr>
+    <tr><td><code>x=Depends(fn)</code></td><td><code>x=Depends(fn)</code> — same spelling</td></tr>
+    <tr><td><code>BackgroundTasks</code></td><td><code>BackgroundTasks</code> — same name</td></tr>
+    <tr><td><code>TestClient</code>, <code>/docs</code>, <code>/openapi.json</code></td><td>Same names, same paths</td></tr>
+  </table>
+  <p>Converters move into the route, there is no <code>response_model</code> filtering,
+  and advanced Pydantic types become plain fields plus handler checks.
+  Full guide: <a href="https://github.com/nishantXnova/IKAREM/blob/main/docs/MIGRATING_FROM_FASTAPI.md">docs/MIGRATING_FROM_FASTAPI.md</a>.</p>
+</section>
+
+<section id="starlette">
+  <p class="secnum">05 / FROM STARLETTE</p>
+  <h2>Hours. The closest cousin.</h2>
+  <table>
+    <tr><th>Starlette</th><th>IKAREM</th></tr>
+    <tr><td><code>Route("/users/{uid:int}", endpoint)</code></td><td><code>@app.get("/users/{uid:int}")</code></td></tr>
+    <tr><td><code>JSONResponse</code>, <code>PlainTextResponse</code></td><td>Same names</td></tr>
+    <tr><td><code>Middleware(...)</code></td><td><code>app.use(mw)</code></td></tr>
+    <tr><td><code>StaticFiles</code></td><td><code>app.mount_static(url, dir)</code></td></tr>
+    <tr><td><code>TestClient</code>, lifespan</td><td><code>TestClient</code>, <code>on_startup/shutdown</code></td></tr>
+  </table>
+  <p>Swap the router file, keep handler bodies, then add <code>Schema</code> bodies where
+  you used to parse <code>await request.json()</code> by hand.
+  Full guide: <a href="https://github.com/nishantXnova/IKAREM/blob/main/docs/MIGRATING_FROM_STARLETTE.md">docs/MIGRATING_FROM_STARLETTE.md</a>.</p>
+</section>
+
+<section id="litestar">
+  <p class="secnum">06 / FROM LITESTAR</p>
+  <h2>A day. Controller by controller.</h2>
+  <table>
+    <tr><th>Litestar</th><th>IKAREM</th></tr>
+    <tr><td><code>Controller</code> with <code>path=</code></td><td><code>Blueprint(name, url_prefix=)</code></td></tr>
+    <tr><td><code>Provide(dep)</code></td><td><code>Depends(dep)</code></td></tr>
+    <tr><td>DTOs</td><td><code>Schema</code> + <code>Field()</code></td></tr>
+    <tr><td><code>guards=[...]</code></td><td><code>require_roles() / require_scopes()</code></td></tr>
+    <tr><td><code>(data, StatusCode.CREATED_201)</code></td><td><code>(data, 201)</code></td></tr>
+  </table>
+  <p>Keep paths identical per controller, diff the 400s, replay the auth tests.
+  Full guide: <a href="https://github.com/nishantXnova/IKAREM/blob/main/docs/MIGRATING_FROM_LITESTAR.md">docs/MIGRATING_FROM_LITESTAR.md</a>.</p>
+</section>
+
+<section id="flask">
+  <p class="secnum">07 / FROM FLASK</p>
+  <h2>A day. Half the API already crossed over.</h2>
+  <table>
+    <tr><th>Flask</th><th>IKAREM</th></tr>
+    <tr><td><code>@app.route("/x", methods=["POST"])</code></td><td><code>@app.post("/x")</code></td></tr>
+    <tr><td>Global <code>request</code> proxy</td><td>Explicit <code>req</code> param — no magic</td></tr>
+    <tr><td><code>jsonify</code>, <code>abort</code>, <code>flash</code></td><td><code>return {...}</code>, <code>abort</code>, <code>flash</code> — same names</td></tr>
+    <tr><td><code>Blueprint</code>, <code>MethodView</code></td><td>Same names, full DI per method</td></tr>
+    <tr><td><code>render_template</code></td><td><code>Templates(dir)</code> (<code>ikarem[jinja]</code>)</td></tr>
+  </table>
+  <p>The real work is globals → <code>req</code> and sync → async (blocking DB drivers
+  first). <code>Blueprint</code> + <code>MethodView</code> + <code>abort</code> + <code>flash</code>
+  already shipped as Flask takes.
+  Full guide: <a href="https://github.com/nishantXnova/IKAREM/blob/main/docs/MIGRATING_FROM_FLASK.md">docs/MIGRATING_FROM_FLASK.md</a>.</p>
+</section>
+
+<section id="django">
+  <p class="secnum">08 / FROM DJANGO</p>
+  <h2>A week. A rewrite of views, stated plainly.</h2>
+  <table>
+    <tr><th>Django</th><th>IKAREM</th></tr>
+    <tr><td><code>urls.py</code> tree</td><td>Routes + <code>include_router(prefix)</code></td></tr>
+    <tr><td>Models + ORM</td><td><code>DatabaseConnector</code> strategy + <code>Schema</code> (SQL stays yours)</td></tr>
+    <tr><td><code>contrib.auth</code> + sessions</td><td>JWT + signed-cookie sessions + CSRF</td></tr>
+    <tr><td><code>MIDDLEWARE</code> setting</td><td><code>app.use(...)</code> order, fail-fast at boot</td></tr>
+    <tr><td><code>manage.py</code></td><td><code>ikarem run|check|mcp|new|migrate|worker|inspect</code></td></tr>
+  </table>
+  <p>No ORM and no admin are standing decisions, not gaps. Freeze the URL tree, port
+  models to SQL with the suite green between, cut over one subtree at a time behind
+  <code>mount_asgi()</code>.
+  Full guide: <a href="https://github.com/nishantXnova/IKAREM/blob/main/docs/MIGRATING_FROM_DJANGO.md">docs/MIGRATING_FROM_DJANGO.md</a>.</p>
+</section>
 </main>
 </div>
 

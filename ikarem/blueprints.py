@@ -5,8 +5,10 @@ optional URL prefix. Unlike copy-paste routers, blueprints carry their own
 before/after-request hooks and error handlers, and their routes are named
 ``blueprint.route`` so ``url_for`` stays unambiguous.
 
-Hooks wrap each handler ONCE at registration, so the compiled DI plan sees
-a plain ``(req)`` callable — zero per-request overhead versus app routes.
+Hooks wrap each handler ONCE at registration. The wrapper carries the
+original's ``__signature__``, so the compiled DI plan (and OpenAPI, MCP,
+``check``) sees the real contract, while per-request resolution still
+happens exactly once — the wrapper forwards already-resolved kwargs.
 """
 
 from __future__ import annotations
@@ -73,14 +75,22 @@ class Blueprint:
         return None
 
     def _wrap(self, handler: Callable) -> Callable:
-        from .di import resolve_handler
         from .errors import HTTPException
         from .http import to_response
 
         befores, afters, find_error = self._before, self._after, self._find_error
 
         @functools.wraps(handler)
-        async def _w(request: Any) -> Any:
+        async def _w(*args: Any, **kwargs: Any) -> Any:
+            # resolve_compiled calls us with the original's kwargs (legacy
+            # plans pass the request positionally). Hooks need the request;
+            # the handler gets everything forwarded untouched.
+            if "request" in kwargs:
+                request = kwargs["request"]
+            elif "req" in kwargs:
+                request = kwargs["req"]
+            else:
+                request = args[0] if args else None
             for f in befores:
                 r = f(request)
                 if inspect.isawaitable(r):
@@ -90,7 +100,8 @@ class Blueprint:
                     break
             else:
                 try:
-                    resp = to_response(await resolve_handler(handler, request))
+                    raw = handler(*args, **kwargs)
+                    resp = to_response(await raw if inspect.isawaitable(raw) else raw)
                 except HTTPException as e:
                     h = find_error(e)
                     if h is None:
@@ -107,4 +118,7 @@ class Blueprint:
                     resp = r
             return resp
 
+        # Compile (and document) the wrapper as the original: same params,
+        # query, body, and auth boundary for plans, OpenAPI, MCP, check.
+        _w.__signature__ = inspect.signature(handler)  # type: ignore
         return _w
