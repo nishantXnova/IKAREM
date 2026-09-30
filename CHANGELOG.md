@@ -27,6 +27,9 @@ All notable changes to this project are documented here. Format follows
   code only), framed hero mark with caption, rules-and-measure layout,
   tabular stats, sticky scroll-aware sidebar intact, reduced-motion
   respected. Content and anchors unchanged.
+- Site layout pass: one 1240px grid shared by topbar, sidebar, content,
+  and footer; sidebar and content share a top baseline; tables get header
+  rows and calm dividers; topbar nav scrolls instead of wrapping on mobile.
 - README + site headline: "Zero-dependency Python ASGI framework, built
   for humans and LLMs"; Meraki origin kept as a footnote; unexplained
   third-party badge removed; examples use typed handler params
