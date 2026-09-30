@@ -229,6 +229,7 @@ Your app runs unchanged (same routes, middleware, 404/405 bodies) on the
 IKAREM engine — then migrate handler-by-handler. Full guide:
 [`docs/MIGRATING_FROM_MERAKI.md`](docs/MIGRATING_FROM_MERAKI.md) ·
 honest benchmarks: [`bench/RESULTS.md`](bench/RESULTS.md) ·
+extension registry: [`docs/ECOSYSTEM.md`](docs/ECOSYSTEM.md) ·
 install: `pip install ikarem` (`dist/ikarem-1.0.0-py3-none-any.whl` builds offline).
 
 ## Why IKAREM beats Meraki Phase 1 — and the industry

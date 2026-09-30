@@ -7,6 +7,9 @@ All notable changes to this project are documented here. Format follows
 ## [Unreleased]
 
 ### Added
+- `docs/ECOSYSTEM.md` extension registry (`ikarem-<name>` naming,
+  interface checklist, shipped/wanted/third-party tables, runnable
+  plugin skeleton executed in `tests/test_docs.py`).
 - OpenAPI emits `apiKeyAuth` (with per-route header name) alongside
   `bearerAuth`; compiled plans + `describe_app` carry `auth.header/scopes`;
   MCP tool text names the API-key header instead of Bearer.

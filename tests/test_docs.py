@@ -70,5 +70,26 @@ def test_migration_guide_diff_is_real():
     assert TC(app).get("/").text == "migrated"
 
 
+def test_ecosystem_registry_lists_contract_and_tables():
+    text = (pathlib.Path(__file__).parent.parent / "docs" / "ECOSYSTEM.md").read_text(encoding="utf-8")
+    assert "ikarem-<name>" in text  # naming rule present
+    assert "Submission checklist" in text
+    for marker in ("Shipped", "Wanted", "Third-party"):
+        assert marker in text, f"registry missing {marker} table"
+
+
+def test_ecosystem_skeleton_executes():
+    import re as _re
+
+    from ikarem.testing import TestClient
+
+    text = (pathlib.Path(__file__).parent.parent / "docs" / "ECOSYSTEM.md").read_text(encoding="utf-8")
+    blocks = _re.findall(r"```python\n(.*?)```", text, re.S)
+    assert len(blocks) == 1, "registry keeps exactly one runnable skeleton"
+    ns: dict = {"__name__": "ecosystem_skeleton"}
+    exec(compile(blocks[0], "<ecosystem>", "exec"), ns)
+    assert TestClient(ns["app"]).get("/hello").json() == {"hello": "ikarem"}
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-q"])

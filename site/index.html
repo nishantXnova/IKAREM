@@ -134,7 +134,7 @@ $ ikarem check myapp:app       <span class="tok-c"># static audit: deps, cycles,
     <tr><td>Hard-requires uvicorn</td><td><b>Zero required deps.</b> Core is stdlib + ASGI.</td></tr>
     <tr><td>Static paths only, no params</td><td><b>Compiled</b> <code>{param:int/float/uuid/path}</code> routes, 404 vs 405, <code>url_for</code>.</td></tr>
     <tr><td>Requests can't read bodies</td><td><code>await body()/json()/form()</code> — JSON <i>and</i> multipart uploads.</td></tr>
-    <tr><td>Plugin/config files are empty</td><td>Working plugin system (deps sorted, cycles caught) + layered config.</td></tr>
+    <tr><td>Plugin/config files are empty</td><td>Working plugin system (deps sorted, cycles caught) + layered config. Extensions: <a href="https://github.com/nishantXnova/IKAREM/blob/main/docs/ECOSYSTEM.md">ecosystem registry</a>.</td></tr>
     <tr><td>No validation, auth, or docs</td><td><code>Schema</code> + <code>Field()</code>, JWT + RBAC + sessions, OpenAPI + MCP tools.</td></tr>
     <tr><td>No test story</td><td>Cookie-jar <code>TestClient</code>, 108-test suite, <code>ikarem check</code>.</td></tr>
   </table>
