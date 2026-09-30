@@ -30,6 +30,9 @@ All notable changes to this project are documented here. Format follows
 - Site layout pass: one 1240px grid shared by topbar, sidebar, content,
   and footer; sidebar and content share a top baseline; tables get header
   rows and calm dividers; topbar nav scrolls instead of wrapping on mobile.
+- Site calm pass: wider section rhythm, muted eyebrows and link
+  underlines (red reserved for hover and single accents), unboxed stats
+  band, quieter sidebar/buttons, airier tables and footer.
 - README + site headline: "Zero-dependency Python ASGI framework, built
   for humans and LLMs"; Meraki origin kept as a footnote; unexplained
   third-party badge removed; examples use typed handler params
