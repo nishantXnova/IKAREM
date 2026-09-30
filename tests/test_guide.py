@@ -10,7 +10,7 @@ import pytest
 
 GUIDE = pathlib.Path(__file__).parent.parent / "docs" / "GUIDE.md"
 
-EXPECTED_CHAPTERS = 22
+EXPECTED_CHAPTERS = 25
 
 
 def _blocks():

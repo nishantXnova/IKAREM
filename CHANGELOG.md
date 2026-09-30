@@ -7,10 +7,13 @@ All notable changes to this project are documented here. Format follows
 ## [Unreleased]
 
 ### Added
-- `docs/GUIDE.md`: "From Scratch to Genius", 22 chapters from first app
-  to internals, each runnable and self-asserting, all executed in CI
-  (`tests/test_guide.py`); published as `site/guide.html` (+ nav,
-  `/guide` route, sitemap).
+- `docs/GUIDE.md`: "From Zero to Production", 25 chapters in 5 parts
+  from install to internals, each runnable and self-asserting, all
+  executed in CI (`tests/test_guide.py`); published as `site/guide.html`
+  (+ nav, `/guide` route, sitemap). Login chapter hashes with pbkdf2,
+  reads the secret from the environment, and rotates the session.
+- `WebSocketDisconnect` (`RuntimeError` subclass — old catches keep
+  working) and `app.scheduler()` public accessor.
 - Migration guides for FastAPI, Starlette, Litestar, Flask, Django
   (`docs/MIGRATING_FROM_*.md`, each with a CI-executed landing snippet in
   `tests/test_migration.py`); `site/migrate.html` is now a hub for all six.

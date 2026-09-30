@@ -145,13 +145,19 @@ class Ikarem:
         """Register an interval job: @app.every(30). See start_scheduler."""
         return self._scheduler().every(seconds, name)
 
-    def _scheduler(self) -> Any:
+    def scheduler(self) -> Any:
+        """The app's Scheduler, created on first use. Register jobs with
+        ``@app.cron`` / ``@app.every``; drive it with ``tick()`` in tests,
+        ``start_scheduler()`` manually, or ``SchedulerPlugin`` on lifespan."""
         from .scheduler import Scheduler
 
         sched = getattr(self, "_sched", None)
         if sched is None:
             sched = self._sched = Scheduler()
         return sched
+
+    def _scheduler(self) -> Any:
+        return self.scheduler()
 
     async def start_scheduler(self, stop: Any = None, poll: float = 1.0) -> None:
         """Run registered cron/interval jobs until stop() is truthy."""

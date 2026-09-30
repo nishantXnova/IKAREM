@@ -90,6 +90,9 @@ a:hover { color: var(--red); text-decoration-color: var(--red); }
 .side a.on { color: var(--ink); border-left-color: var(--red); }
 .side .n { font-family: var(--mono); font-size: 11px; color: var(--dim); flex: none; }
 .side a.on .n { color: var(--red); }
+.side li.partlabel { padding: 18px 12px 5px; font-family: var(--mono); font-size: 10.5px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--dim); }
+section.partdiv { border-top: 1px solid var(--line); padding-top: 44px; margin-bottom: 76px; }
+section.partdiv h2 { font-size: 34px; }
 main { flex: 1; min-width: 0; max-width: 880px; padding-top: 76px; padding-bottom: 170px; }
 section { margin: 0 0 116px; scroll-margin-top: calc(var(--topbar-h) + 16px); }
 section:last-child { margin-bottom: 0; }

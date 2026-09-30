@@ -5,6 +5,11 @@ from __future__ import annotations
 from typing import Any, Callable
 
 
+class WebSocketDisconnect(RuntimeError):
+    """The peer went away. Catch this — not bare RuntimeError — around
+    receive loops, so real bugs still surface."""
+
+
 class WebSocket:
     def __init__(self, scope: dict, receive: Any, send: Any):
         self.scope = scope
@@ -22,7 +27,7 @@ class WebSocket:
             msg = await self._receive()
             t = msg.get("type", "")
             if t in ("websocket.disconnect", "websocket.close"):
-                raise RuntimeError("websocket disconnected")
+                raise WebSocketDisconnect("websocket disconnected")
             if "text" in msg:
                 return msg["text"]
             # skip handshake/control frames (e.g. websocket.connect)
@@ -71,7 +76,7 @@ class Room:
             try:
                 while True:
                     await room.broadcast(await ws.receive_text(), exclude=ws)
-            except RuntimeError:  # disconnect
+            except WebSocketDisconnect:
                 pass
             finally:
                 room.leave(ws)

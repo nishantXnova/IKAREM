@@ -217,7 +217,7 @@ class SchedulerPlugin:
 
     def register(self, app: Any) -> None:
         async def _startup() -> None:
-            sched = app._scheduler()
+            sched = app.scheduler()
             app.state_scheduler = sched  # type: ignore
             if not self.autostart:
                 return

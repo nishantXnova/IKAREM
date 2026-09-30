@@ -61,7 +61,7 @@ from .static import FileResponse
 from .templating import Templates
 from .validation import Field, FieldInfo, Schema, ValidationError
 from .views import MethodView
-from .websocket import Room, WebSocket
+from .websocket import Room, WebSocket, WebSocketDisconnect
 
 __all__ = [
     "Ikarem",
@@ -142,6 +142,7 @@ __all__ = [
     "cached",
     "Room",
     "WebSocket",
+    "WebSocketDisconnect",
     "RequestIDMiddleware",
     "MetricsMiddleware",
     "configure_logging",
