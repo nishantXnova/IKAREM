@@ -10,23 +10,23 @@
 <meta property="og:site_name" content="IKAREM">
 <meta property="og:url" content="https://ikarem.vercel.app/">
 <meta property="og:title" content="IKAREM — Python ASGI Backend Framework">
-<meta property="og:description" content="Meraki, reversed. And crushed. Zero-dep core, compiled DI, auth, OpenAPI + MCP. pip install ikarem.">
+<meta property="og:description" content="Zero-dependency Python ASGI framework, built for humans and LLMs. Compiled DI, auth, OpenAPI + MCP. pip install ikarem.">
 <meta property="og:image" content="https://ikarem.vercel.app/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="IKAREM — Python ASGI Backend Framework">
-<meta name="twitter:description" content="Meraki, reversed. And crushed. pip install ikarem.">
+<meta name="twitter:description" content="Zero-dependency Python ASGI framework, built for humans and LLMs. pip install ikarem.">
 <meta name="twitter:image" content="https://ikarem.vercel.app/og.png">
 <script type="application/ld+json">
 {"@context": "https://schema.org", "@type": "SoftwareApplication",
  "name": "IKAREM", "applicationCategory": "DeveloperApplication",
  "operatingSystem": "Any (Python >= 3.10)", "programmingLanguage": "Python",
- "softwareVersion": "1.0.0", "license": "https://github.com/nishantXnova/IKAREM/blob/main/LICENSE",
- "offers": {"@type": "Offer", "price": "0"},
- "codeRepository": "https://github.com/nishantXnova/IKAREM",
- "downloadUrl": "https://pypi.org/project/ikarem/",
- "description": "Industry-grade Python ASGI backend framework with a zero-dependency core."}
+  "softwareVersion": "1.1.0", "license": "https://github.com/nishantXnova/IKAREM/blob/main/LICENSE",
+  "offers": {"@type": "Offer", "price": "0"},
+  "codeRepository": "https://github.com/nishantXnova/IKAREM",
+  "downloadUrl": "https://pypi.org/project/ikarem/",
+  "description": "Zero-dependency Python ASGI framework, built for humans and LLMs."}
 </script>
 <link rel="icon" href="../assets/ikarem-icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="style.css">
@@ -35,7 +35,7 @@
 <body>
 <header class="topbar">
   <a class="brand" href="index.html"><img src="../assets/ikarem-icon.svg" alt="IKAREM"><b>IKAREM</b></a>
-  <span class="ver">v1.0.0</span>
+  <span class="ver">v1.1.0</span>
   <nav>
 <a href="index.html" class="on">Docs</a>
 <a href="migrate.html">Migrate</a>
@@ -61,11 +61,14 @@
 
 <main>
 <section class="hero" id="top">
-  <p class="kicker"><span class="strike">MERAKI</span> &nbsp;<span class="r">→ reversed. And crushed.</span></p>
+  <p class="kicker">ZERO-DEPENDENCY PYTHON ASGI</p>
   <h1>IKAREM</h1>
-  <p class="lede">Industry-grade Python ASGI backend framework. FastAPI-style DX (DI, validation,
-  OpenAPI, auth) plus Django/Nest-style structure (plugins, config, RBAC) — on a core that runs
-  on the standard library alone.</p>
+  <p class="lede">Zero-dependency Python ASGI framework, built for humans and LLMs.
+  FastAPI-style DX (DI, validation, OpenAPI, auth) plus Django/Nest-style structure
+  (plugins, config, RBAC) — on a core that runs on the standard library alone.</p>
+  <p class="mut small">Footprint of an origin story: IKAREM started as an answer to
+  <a href="migrate.html">Meraki</a> — same decorator shape, working plugins, everything
+  promised but never shipped. The rivalry is archived; the framework stayed.</p>
   <div class="heroimg" aria-label="IKAREM logo">
     <svg viewBox="0 0 1400 520" xmlns="http://www.w3.org/2000/svg" role="img">
       <rect x="56" y="56" width="408" height="408" rx="96" fill="#101016"/>
@@ -85,7 +88,7 @@
     <a class="btn" href="migrate.html">Migrate from Meraki</a>
   </div>
   <div class="stats">
-    <div class="stat"><b class="g">108</b><span>tests, all green</span></div>
+    <div class="stat"><b class="g">208</b><span>tests, all green</span></div>
     <div class="stat"><b>0</b><span>required dependencies</span></div>
     <div class="stat"><b>~110k</b><span>in-process req/s</span></div>
     <div class="stat"><b>21</b><span>routes on the live demo</span></div>
@@ -129,8 +132,8 @@ $ ikarem check myapp:app       <span class="tok-c"># static audit: deps, cycles,
 </section>
 
 <section id="why">
-  <p class="secnum">03 / WHY SWITCH</p>
-  <h2>Better than Meraki. Stated plainly.</h2>
+  <p class="secnum">03 / WHY IKAREM</p>
+  <h2>Stated plainly.</h2>
   <table>
     <tr><th>Meraki</th><th>IKAREM answer</th></tr>
     <tr><td>Hard-requires uvicorn</td><td><b>Zero required deps.</b> Core is stdlib + ASGI.</td></tr>
@@ -138,7 +141,7 @@ $ ikarem check myapp:app       <span class="tok-c"># static audit: deps, cycles,
     <tr><td>Requests can't read bodies</td><td><code>await body()/json()/form()</code> — JSON <i>and</i> multipart uploads.</td></tr>
     <tr><td>Plugin/config files are empty</td><td>Working plugin system (deps sorted, cycles caught) + layered config. Extensions: <a href="https://github.com/nishantXnova/IKAREM/blob/main/docs/ECOSYSTEM.md">ecosystem registry</a>.</td></tr>
     <tr><td>No validation, auth, or docs</td><td><code>Schema</code> + <code>Field()</code>, JWT + RBAC + sessions, OpenAPI + MCP tools.</td></tr>
-    <tr><td>No test story</td><td>Cookie-jar <code>TestClient</code>, 108-test suite, <code>ikarem check</code>.</td></tr>
+    <tr><td>No test story</td><td>Cookie-jar <code>TestClient</code>, 208-test suite, <code>ikarem check</code>.</td></tr>
   </table>
   <div class="note"><b>Honest footnote.</b> On empty-route micro-benchmarks Meraki is faster —
   it does ~nothing per request (no header parsing, no body, no DI). Past ~50k in-process req/s both
@@ -192,7 +195,8 @@ $ ikarem check myapp:app       <span class="tok-c"># static audit: deps, cycles,
     <tr><td>Machine clients</td><td>OpenAPI 3.1 + Swagger UI; every route as an MCP tool (<code>ikarem mcp</code>)</td></tr>
     <tr><td>Modularity</td><td><code>Blueprint</code> groups + <code>MethodView</code> classes + <code>abort()</code></td></tr>
     <tr><td>Templates</td><td><code>Templates(dir)</code> (Jinja2) + <code>flash()</code> notifications</td></tr>
-    <tr><td>CLI</td><td><code>ikarem run|check|mcp|new</code> — serve, audit, expose tools, scaffold</td></tr>
+    <tr><td>CLI</td><td><code>ikarem run|check|mcp|new|migrate|worker|inspect</code> — serve, audit, expose tools, scaffold, migrate, drain queues, print manifests</td></tr>
+    <tr><td>Recipes</td><td><a href="recipes.html">20 copy-paste recipes</a> — every snippet executed in CI, so the docs can't drift</td></tr>
   </table>
 </section>
 
@@ -226,8 +230,8 @@ $ ikarem check myapp:app          <span class="tok-c"># gate deploys on this</sp
 </div>
 
 <footer><div class="wrap">
-  <span>IKAREM v1.0.0 — MIT. Meraki, reversed. And crushed.</span>
-  <span style="margin-left:auto"><a href="https://github.com/nishantXnova/IKAREM">GitHub</a> · <a href="https://pypi.org/project/ikarem/">PyPI</a></span>
+  <span>IKAREM v1.1.0 — MIT. Zero-dependency Python ASGI.</span>
+  <span style="margin-left:auto"><a href="https://github.com/nishantXnova/IKAREM/blob/main/SECURITY.md">Security</a> · <a href="https://github.com/nishantXnova/IKAREM/blob/main/CHANGELOG.md">Changelog</a> · <a href="https://github.com/nishantXnova/IKAREM">GitHub</a> · <a href="https://pypi.org/project/ikarem/">PyPI</a></span>
 </div></footer>
 <script src="script.js" defer></script>
 </body>

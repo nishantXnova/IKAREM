@@ -10,14 +10,14 @@ git clone https://github.com/nishantXnova/IKAREM
 cd IKAREM
 python -m venv .venv && .venv/Scripts/activate   # Windows; source .venv/bin/activate elsewhere
 pip install -e ".[dev]"
-python -m pytest tests/ ledger/tests -q
+python -m pytest tests/ ledger/tests cadence/tests -q
 ```
 
 ## What to run before every PR
 
 ```bash
 ruff check . && ruff format --check .
-python -m pytest tests/ ledger/tests -q
+python -m pytest tests/ ledger/tests cadence/tests -q
 python -m ikarem.cli check ledger.app:app
 python bench/bench_switch.py   # only if you touched the hot path
 ```
@@ -26,8 +26,9 @@ python bench/bench_switch.py   # only if you touched the hot path
 
 - **Zero-dep core is sacred.** `ikarem/` must import from stdlib only.
   Optional integrations live behind lazy imports + extras in `pyproject.toml`.
-- **Every behavior ships with a test** in `tests/` (framework) or
-  `ledger/tests/` (showcase app). Bugfix PRs include a regression test.
+- **Every behavior ships with a test** in `tests/` (framework),
+  `ledger/tests/` or `cadence/tests/` (showcase apps). Bugfix PRs include a
+  regression test.
 - **Docs move with code.** User-facing change → update `README.md` and
   (for switches/upgrades) `docs/MIGRATING_FROM_MERAKI.md`.
 - **Keep the flame graphs flat.** No per-request `inspect.signature`,

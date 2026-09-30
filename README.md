@@ -1,4 +1,6 @@
-# IKAREM — Meraki, reversed. And crushed.
+# IKAREM
+
+**Zero-dependency Python ASGI framework, built for humans and LLMs.**
 
 <img src="assets/ikarem-logo.svg" width="420" alt="IKAREM logo — a reversed K slashed through, over mirrored MERAKI, also slashed">
 
@@ -6,13 +8,10 @@
 [![PyPI](https://img.shields.io/pypi/v/ikarem)](https://pypi.org/project/ikarem/)
 [![Python](https://img.shields.io/pypi/pyversions/ikarem)](https://pypi.org/project/ikarem/)
 [![License](https://img.shields.io/pypi/l/ikarem)](https://github.com/nishantXnova/IKAREM/blob/main/LICENSE)
-[![M8ven Verified](https://m8ven.ai/badge/mcp/nishantxnova-ikarem-1yam5c?variant=verified&v=f97b1e1df496f42096a0d7689cc7dad9)](https://m8ven.ai/mcp/nishantxnova-ikarem-1yam5c)
-
-Industry-grade Python ASGI backend framework. Pip-installable, **zero-dep core**.
-[Meraki](https://github.com/sulfurcodes/Meraki) promised plugins. IKAREM shipped them.
 
 FastAPI-style DX (DI, validation, OpenAPI, auth) + Django/Nest-style structure
-(plugins, config, RBAC) + a core that runs on stdlib alone.
+(plugins, config, RBAC) + a core that runs on stdlib alone. Pip-installable,
+**zero required dependencies**.
 
 ## Install
 
@@ -38,8 +37,8 @@ async def home(req):
 
 
 @app.get("/users/{uid:int}")
-async def get_user(req):
-    return {"uid": req.path_params["uid"]}
+async def get_user(req, uid: int):
+    return {"uid": uid}
 
 
 if __name__ == "__main__":
@@ -116,8 +115,12 @@ class Signup(Schema):
     password: str = Field(..., min_length=8, max_length=128)
 
 
+class Note(Schema):
+    text: str = Field(..., min_length=1, max_length=500)
+
+
 @app.post("/notes")
-async def add(req, note: NoteIn):  # validates JSON *and* HTML form bodies
+async def add(req, note: Note):  # validates JSON *and* HTML form bodies
     form = await req.form()  # urlencoded + multipart, UploadFile files,
     f = form.get("doc")  # 413 past size caps
     await f.write(f"/uploads/{f.filename}")
@@ -165,6 +168,7 @@ explicit `req` params plus plugins and middleware cover that ground without the 
 
 ```python
 from ikarem import Migrator, QueuePlugin, require_scopes, APIKeyAuth, task
+from ikarem.db import DatabasePlugin
 
 app.register(DatabasePlugin("postgresql://..."))
 app.register(QueuePlugin())  # durable jobs in app.state_queue
@@ -201,7 +205,7 @@ OAuth2 dance (JWT bearer covers service auth).
 ## Stronger: timeouts, bulkheads, idempotency, rooms
 
 ```python
-from ikarem import TimeoutMiddleware, ConcurrencyLimitMiddleware, IdempotencyMiddleware
+from ikarem import TimeoutMiddleware, ConcurrencyLimitMiddleware, IdempotencyMiddleware, TrustedHostMiddleware
 
 app.use(TimeoutMiddleware(30))  # hung handler -> 503 + Retry-After
 app.use(ConcurrencyLimitMiddleware(100))  # bulkhead: fail fast past N in-flight
@@ -231,9 +235,14 @@ IKAREM engine — then migrate handler-by-handler. Full guide:
 honest benchmarks: [`bench/RESULTS.md`](bench/RESULTS.md) ·
 extension registry: [`docs/ECOSYSTEM.md`](docs/ECOSYSTEM.md) ·
 20 runnable recipes: [`docs/COOKBOOK.md`](docs/COOKBOOK.md) ·
-install: `pip install ikarem` (`dist/ikarem-1.0.0-py3-none-any.whl` builds offline).
+install: `pip install ikarem`.
 
-## Why IKAREM beats Meraki Phase 1 — and the industry
+*Footnote: IKAREM started as an answer to [Meraki](https://github.com/sulfurcodes/Meraki)
+— same decorator shape, working plugins, and everything Meraki's README
+promised but never shipped. The rivalry is archived; this section is just the
+moving van.*
+
+## Why IKAREM
 
 | Rival feature | IKAREM answer |
 |---|---|
@@ -257,63 +266,76 @@ install: `pip install ikarem` (`dist/ikarem-1.0.0-py3-none-any.whl` builds offli
 
 ## Verification
 
-108 tests, all green — including exhaustive branch matrices:
-
-```
-tests/test_di.py         Depends() x12 (nesting, cache on/off, sync/async/yield,
-                         cleanup after send — send-order proved — after exception,
-                         failure mapping, cycles)
-tests/test_jwt.py        JWT x7 (valid, expired, bad sig, malformed, alg=none +
-                         RS256-confusion attacks, missing sub, wrong secret)
-tests/test_ratelimit.py  Rate limit x7 (limit, 60s window reset, 429 + Retry-After,
-                         countdown, headers everywhere, per-IP, 10-way concurrency)
-tests/test_app.py        routing, converters, 405, echo
-tests/test_middleware.py after-hooks, short-circuit
-tests/test_plugins.py    hooks, dep order, missing dep, lifecycle
-tests/test_db.py         factory routing, SQLite CRUD, plugin lifecycle
-tests/test_industry.py   validation, DI+body, RBAC, security stack, background, cache, docs
-tests/test_mcp_openapi.py  requestBody/query/auth in OpenAPI, MCP list/call/errors/JSON-RPC
-tests/test_forms.py        urlencoded, multipart uploads, 413 caps
-tests/test_session.py      login cookies, tamper/expiry, CSRF allow/deny/exempt
-tests/test_fields.py       Field() ranges/lengths/patterns/emails, json_schema output
-```
+208 passed, 3 skipped — framework plus both showcase apps, one command:
 
 ```bash
-python -m pytest tests/ -q   # 108 passed
+python -m pytest tests/ ledger/tests cadence/tests -q
 ```
+
+CI runs the same suite on Python 3.10–3.13 × Ubuntu/macOS/Windows, plus a
+live-Postgres job, a Docker showcase build, a starter-template smoke job
+(`ikarem new` + template tests), ruff lint + format, and
+`ikarem check ledger.app:app`. Every behavior ships with a test; bugfix PRs
+include a regression test.
 
 ## Layout
 
 ```
-ikarem/
-  __init__.py     public exports (v1.0.0)
-  app.py          Ikarem core + ASGI callable + DI/background/cleanup wiring
-  routing.py      compiled routes + converters
+ikarem/            zero-dep stdlib core (v1.1.0) — optional integrations lazy-load behind extras
+  app.py          Ikarem core + ASGI callable + lifespan + background/cleanup wiring
+  compiled.py     one-time handler plans (no per-request reflection) + check/describe IR
+  routing.py      compiled routes + converters + Did-you-mean 404s
   http.py         Request (+forms/uploads) + Response family (+cookies)
-  session.py      signed-cookie sessions + CSRF
+  di.py           Depends + nesting + cycle detection + run_cleanups
   validation.py   Schema models + Field() constraints (zero-dep validation)
+  auth.py         JWT + passwords + Bearer/API-key auth + roles/scopes guards
+  session.py      signed-cookie sessions + CSRF
+  security.py     CORS + security headers + trusted hosts + rate limiting
+  resilience.py   timeouts + bulkheads + idempotency
+  cache.py        CacheBackend + MemoryCache + RedisCache + @cached
+  db/             DatabaseConnector ABC + sqlite/postgres/mysql/sqlserver + plugin + factory
+  queue.py        durable task queue + QueuePlugin + `ikarem worker`
+  scheduler.py    cron/intervals + SchedulerPlugin
+  migrations.py   versioned migrations + `ikarem migrate`
+  resources.py    app.resource() validated CRUD
+  blueprints.py   prefixed route groups + MethodView (views.py)
   middleware.py   Middleware base + stack
   plugins.py      Plugin protocol + dependency-sorted PluginManager
   config.py       layered Config
   errors.py       HTTPException hierarchy + handler registry
-  validation.py   Schema models (zero-dep validation)
-  di.py           Depends + cycle detection + run_cleanups
   openapi.py      OpenAPI 3.1 builder + /openapi.json + /docs
-  auth.py         JWT + passwords + BearerAuth + require_roles
-  security.py     CORS + security headers + rate limiting
-  cache.py        CacheBackend + MemoryCache + @cached
-  background.py   BackgroundTasks
-  websocket.py    WebSocket + WSRouter
-  static.py       FileResponse + static mounts
-  observability.py  logging + request-ID + metrics + /healthz + /metrics
-  db/             DatabaseConnector ABC + sqlite/postgres/mysql/sqlserver + plugin + factory
-  cli.py          `ikarem run|check|mcp|new|migrate|worker|inspect` helper
-  testing.py      TestClient (cookie jar, all verbs — no server needed)
-  compiled.py     one-time handler plans (perf) + check/describe IR
-  mcp.py          routes-as-MCP-tools + stdio server
-  openapi.py      OpenAPI 3.1 builder + /openapi.json + /docs
+  mcp.py          routes-as-MCP-tools + resources + stdio server
+  websocket.py    WebSocket + Room pub/sub + WSRouter
+  static.py       FileResponse + escape-proof static mounts
+  templating.py   Jinja2 via ikarem[jinja] + flashing.py one-shot messages
+  observability.py  logging + request-ID + metrics + /healthz + /readyz + /metrics
+  cli.py          `ikarem run|check|mcp|new|migrate|worker|inspect`
+  testing.py      TestClient (cookie jar, all verbs, WS driving — no server needed)
   scaffold.py     `ikarem new` starter generator
-tests/            108-test suite (see Verification)
-examples/basic.py CRUD + DB plugin app
-docs/PHASE1.md    Phase 1 spec (rival crusher)
+  deprecation.py  deprecated() upgrade path + meraki_compat.py drop-in shim
+tests/ + ledger/tests + cadence/tests   208-test suite (see Verification)
+ledger/ + cadence/   production showcase apps (finance tracker, habit tracker)
+examples/basic.py    minimal CRUD + DB plugin app
+bench/            honest benches (bench_switch.py) + sustained-load proof (load.py)
+docs/             COOKBOOK.md (20 runnable recipes) · ECOSYSTEM.md (extension registry) ·
+                  MIGRATING_FROM_MERAKI.md · DEPLOY.md · PLUGINS.md · PHASE1.md (original spec)
+site/             static docs site (no build step) + llms.txt framework manual
 ```
+
+## Project basics
+
+- **Security:** [`SECURITY.md`](SECURITY.md) — supported versions, how to report
+  (GitHub private vulnerability reporting; no public issues for vulns).
+- **Contributing:** [`CONTRIBUTING.md`](CONTRIBUTING.md) — setup, per-PR checks,
+  the five agent laws (zero-dep core, tests, no per-request reflection,
+  fix-saying errors, Conventional Commits).
+- **Changelog:** [`CHANGELOG.md`](CHANGELOG.md) — every release cut from
+  Conventional Commits, Keep-a-Changelog format.
+- **Versioning (SemVer):** `1.x` keeps the public API backward-compatible —
+  `ikarem/__init__.py` exports, ASGI behavior, CLI commands, response shapes.
+  Minor versions add; breaking changes wait for a major.
+- **Deprecation policy:** removals land only in majors, announced at least one
+  minor earlier via `deprecated(since=, removal=, use_instead=)` — upgrades
+  warn with the version, the removal target, and the replacement.
+- **CI:** Python 3.10–3.13 × Ubuntu/macOS/Windows, live Postgres, Docker build,
+  scaffold smoke, ruff lint + format.

@@ -7,6 +7,15 @@ All notable changes to this project are documented here. Format follows
 ## [Unreleased]
 
 ### Added
+- `SECURITY.md` (supported versions, private reporting); README
+  "Project basics" (Security, Contributing, Changelog, SemVer,
+  deprecation policy, CI matrix).
+
+### Changed
+- README + site headline: "Zero-dependency Python ASGI framework, built
+  for humans and LLMs"; Meraki origin kept as a footnote; unexplained
+  third-party badge removed; examples use typed handler params
+  (`get_user(req, uid: int)`); layout lists every module once.
 - `docs/COOKBOOK.md`: 20 copy-paste recipes, each runnable and
   self-asserting, all executed in CI (`tests/test_cookbook.py`);
   published as `site/recipes.html` (+ nav, `/recipes` route, sitemap).

@@ -15,7 +15,7 @@ async def init_db():
 
 @app.get("/")
 async def home(req):
-    return {"framework": "IKAREM", "rival": "crushed"}
+    return {"framework": "ikarem"}
 
 
 @app.get("/notes")
