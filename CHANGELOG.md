@@ -32,7 +32,8 @@ All notable changes to this project are documented here. Format follows
   rows and calm dividers; topbar nav scrolls instead of wrapping on mobile.
 - Site calm pass: wider section rhythm, muted eyebrows and link
   underlines (red reserved for hover and single accents), unboxed stats
-  band, quieter sidebar/buttons, airier tables and footer.
+  band, quieter sidebar/buttons, airier tables and footer. Dark-styled
+  scrollbars (no native white bars) + `color-scheme: dark`.
 - README + site headline: "Zero-dependency Python ASGI framework, built
   for humans and LLMs"; Meraki origin kept as a footnote; unexplained
   third-party badge removed; examples use typed handler params

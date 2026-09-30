@@ -22,7 +22,11 @@
   --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
 }
 * { box-sizing: border-box; }
-html { scroll-behavior: smooth; }
+html { scroll-behavior: smooth; color-scheme: dark; }
+.side, pre, table, .topbar-inner { scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+.side::-webkit-scrollbar, pre::-webkit-scrollbar, table::-webkit-scrollbar, .topbar-inner::-webkit-scrollbar { width: 10px; height: 10px; }
+.side::-webkit-scrollbar-thumb, pre::-webkit-scrollbar-thumb, table::-webkit-scrollbar-thumb, .topbar-inner::-webkit-scrollbar-thumb { background: var(--line); border-radius: 5px; border: 2px solid var(--bg); }
+.side::-webkit-scrollbar-track, pre::-webkit-scrollbar-track, table::-webkit-scrollbar-track, .topbar-inner::-webkit-scrollbar-track { background: transparent; }
 body {
   margin: 0;
   background: var(--bg);
