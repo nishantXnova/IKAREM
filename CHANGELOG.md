@@ -23,6 +23,10 @@ All notable changes to this project are documented here. Format follows
   `tests/test_flask_takes.py`.
 
 ### Changed
+- Site redesign: editorial type system (serif display, sans body, mono
+  code only), framed hero mark with caption, rules-and-measure layout,
+  tabular stats, sticky scroll-aware sidebar intact, reduced-motion
+  respected. Content and anchors unchanged.
 - README + site headline: "Zero-dependency Python ASGI framework, built
   for humans and LLMs"; Meraki origin kept as a footnote; unexplained
   third-party badge removed; examples use typed handler params
