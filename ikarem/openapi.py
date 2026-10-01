@@ -106,9 +106,16 @@ def mount_docs(app: Any, title: str = "IKAREM", spec_url: str = "/openapi.json")
     async def _docs(req: Any) -> Any:
         return HTMLResponse(DOCS_HTML.format(title=title, spec_url=spec_url))
 
+    async def _nish(req: Any) -> Any:
+        from .nish import NISHResponse
+
+        return NISHResponse(build_openapi(app, title=title, version=getattr(app, "_version", "0.1.0")))
+
     _spec._ikarem_internal = True  # type: ignore
     _docs._ikarem_internal = True  # type: ignore
+    _nish._ikarem_internal = True  # type: ignore
     # No silent try/except: _docs_mounted guards double-mount; real
     # failures must surface.
     app.router.add(spec_url, {"GET"}, _spec, name="openapi")
     app.router.add("/docs", {"GET"}, _docs, name="docs")
+    app.router.add("/openapi.nish", {"GET"}, _nish, name="openapi-nish")

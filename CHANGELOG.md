@@ -11,6 +11,10 @@ All notable changes to this project are documented here. Format follows
   `NISHResponse`, `negotiate` for `?format=nish`/Accept); Ledger
   `/api/summary` negotiates so the NISH Viewer extension paints it.
   Output verified against both real NISH engines; `docs/NISH.md`.
+- NISH full duplex: `from_nish` core reader (engine-agreed on 29 edge
+  cases, 2 documented differences), `await req.nish()` (blank → None,
+  malformed → 400 with line), content-hash ETags + `ConditionalMiddleware`
+  (304s), `Config.load_nish()`, `/openapi.nish` on every app.
 - `docs/GUIDE.md`: "From Zero to Production", 25 chapters in 5 parts
   from install to internals, each runnable and self-asserting, all
   executed in CI (`tests/test_guide.py`); published as `site/guide.html`

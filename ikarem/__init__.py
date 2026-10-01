@@ -15,6 +15,7 @@ from .auth import (
 from .background import BackgroundTasks
 from .blueprints import Blueprint
 from .cache import CacheBackend, MemoryCache, RedisCache, cached
+from .conditional import ConditionalMiddleware
 from .config import Config
 from .deprecation import deprecated
 from .di import Depends
@@ -48,7 +49,7 @@ from .http import (
 from .mcp import MCPServer
 from .middleware import Middleware, MiddlewareStack
 from .migrations import Migrator
-from .nish import NISHResponse, negotiate, to_nish
+from .nish import NISHResponse, from_nish, negotiate, to_nish
 from .observability import MetricsMiddleware, RequestIDMiddleware, configure_logging
 from .plugins import BasePlugin, Plugin, PluginManager
 from .queue import Queue, QueuePlugin, run_worker, task
@@ -141,6 +142,7 @@ __all__ = [
     "MemoryCache",
     "RedisCache",
     "cached",
+    "ConditionalMiddleware",
     "Room",
     "WebSocket",
     "WebSocketDisconnect",
@@ -149,6 +151,7 @@ __all__ = [
     "configure_logging",
     "MCPServer",
     "NISHResponse",
+    "from_nish",
     "negotiate",
     "to_nish",
 ]

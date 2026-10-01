@@ -63,3 +63,14 @@ class Config(dict):
 
     def load_dict(self, data: dict) -> None:
         self.update(data)
+
+    def load_nish(self, path: str) -> None:
+        """Load a ``.nish`` config file at dict/file precedence (below env).
+
+        Values arrive typed by the format (no string coercion like env).
+        """
+        from pathlib import Path
+
+        from .nish import from_nish
+
+        self.update(from_nish(Path(path).read_text(encoding="utf-8")))

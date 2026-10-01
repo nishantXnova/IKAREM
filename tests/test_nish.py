@@ -1,11 +1,11 @@
-"""NISH writer: exact output, viewer precondition, negotiation, errors."""
+"""NISH writer + reader: exact output, engine-agreed parsing, negotiation."""
 
 import datetime
 
 import pytest
 
-from ikarem import Ikarem
-from ikarem.nish import NISHResponse, negotiate, to_nish
+from ikarem import ConditionalMiddleware, Ikarem
+from ikarem.nish import NISHResponse, from_nish, negotiate, to_nish
 from ikarem.testing import TestClient
 
 
@@ -88,3 +88,104 @@ def test_negotiate_query_and_accept_header():
     assert nish.body.startswith(b"NISH/1.0") and b"n = 1" in nish.body
     acc = c.get("/d", headers={"accept": "application/x-nish"})
     assert acc.body.startswith(b"NISH/1.0")
+
+
+def test_reader_sections_arrays_dotted_keys():
+    doc = (
+        'NISH/1.0\ntitle = "shop"\n[user]\nname = "amy"\n'
+        '[user.profile]\nbio = "hi"\n[[orders]]\nid = 1\n[[orders]]\nid = 2\n'
+    )
+    assert from_nish(doc) == {
+        "title": "shop",
+        "user": {"name": "amy", "profile": {"bio": "hi"}},
+        "orders": [{"id": 1}, {"id": 2}],
+    }
+
+
+def test_reader_comments_anchors_ext():
+    doc = 'NISH/1.0\n# hello\na = 1 # trailing\nowner = &me {name = "n"}\nreviewer = *me\nc = !nish.color "#ff00aa"\n'
+    out = from_nish(doc)
+    assert out["a"] == 1 and out["owner"] == {"name": "n"} and out["reviewer"] == {"name": "n"}
+    assert out["c"] == {"$tag": "nish.color", "value": "#ff00aa"}
+
+
+def test_reader_types_and_errors():
+    assert from_nish("d = bytes:b64:SGVsbG8=") == {"d": b"Hello"}
+    assert from_nish("t = time:2026-09-30T12:00:00Z") == {
+        "t": datetime.datetime(2026, 9, 30, 12, 0, tzinfo=datetime.timezone.utc)
+    }
+    assert from_nish("t = time:nope") == {"t": "nope"}  # unparseable payload kept, like the engine
+    assert from_nish("x = hello") == {"x": "hello"}  # bare words are strings, like the engine
+    with pytest.raises(ValueError, match="line 3"):
+        from_nish("NISH/1.0\na = [1,\n")
+    with pytest.raises(ValueError, match="duplicate key"):
+        from_nish("a = 1\na = 2\n")
+    with pytest.raises(ValueError, match="redefines"):
+        from_nish("a = 1\n[a]\n")
+
+
+def test_request_nish_round_trip_and_400s():
+    app = Ikarem(enable_docs=False)
+
+    @app.post("/echo")
+    async def echo(req):
+        body = await req.nish()
+        return {"got": body["n"]}
+
+    @app.post("/maybe")
+    async def maybe(req):
+        return {"blank": (await req.nish()) is None}
+
+    c = TestClient(app)
+    assert c.post("/echo", body="NISH/1.0\nn = 3\n", content_type="text/plain").json() == {"got": 3}
+    assert c.post("/echo", body="n = [\n", content_type="text/plain").status_code == 400
+    assert c.post("/maybe", body="").json() == {"blank": True}
+
+
+def test_etag_and_conditional_304():
+    app = Ikarem(enable_docs=False)
+    app.use(ConditionalMiddleware())
+
+    @app.get("/d")
+    async def d(req):
+        return NISHResponse({"n": 1})
+
+    @app.get("/plain")
+    async def plain(req):
+        from ikarem import TextResponse
+
+        return TextResponse("hi")  # no ETag: middleware invisible
+
+    c = TestClient(app)
+    first = c.get("/d")
+    etag = first.headers.get("etag")
+    assert etag and etag.startswith('"')
+    again = c.get("/d", headers={"if-none-match": etag})
+    assert again.status_code == 304 and again.body == b""
+    assert c.get("/d", headers={"if-none-match": '"other"'}).status_code == 200
+    assert c.get("/plain", headers={"if-none-match": "*"}).status_code == 200
+    assert c.get("/d", headers={"if-none-match": "*"}).status_code == 304
+
+
+def test_config_load_nish(tmp_path):
+    from ikarem import Config
+
+    (tmp_path / "app.nish").write_text("NISH/1.0\n\npage_size = 25\ndebug = false\n")
+    cfg = Config()
+    cfg.load_nish(str(tmp_path / "app.nish"))
+    assert cfg.get("page_size") == 25 and cfg.get("debug") is False
+
+
+def test_openapi_nish_self_hosting():
+    app = Ikarem()
+
+    @app.get("/items/{uid:int}")
+    async def get_user(req, uid: int):
+        return {"uid": uid}
+
+    c = TestClient(app)
+    r = c.get("/openapi.nish")
+    assert r.status_code == 200 and r.body.startswith(b"NISH/1.0")
+    spec = from_nish(r.text)
+    assert "/users/{uid}" not in spec["paths"]
+    assert "get" in spec["paths"]["/items/{uid}"]

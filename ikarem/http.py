@@ -71,6 +71,26 @@ class Request:
             max_bytes = getattr(self, "max_body_bytes", None)
         return json.loads((await self.body(max_bytes)).decode() or "null")
 
+    async def nish(self, max_bytes: int | None = None) -> Any:
+        """Parse a NISH request body (full duplex with ``NISHResponse``).
+
+        Blank bodies yield ``None`` (mirrors ``json()``); malformed NISH
+        raises ``BadRequest`` naming the line. See ``ikarem/nish.py``.
+        """
+        from .errors import BadRequest
+        from .nish import from_nish
+
+        try:
+            text = (await self.body(max_bytes)).decode()
+        except UnicodeDecodeError as e:
+            raise BadRequest(f"NISH body is not UTF-8: {e}") from e
+        if not text.strip():
+            return None
+        try:
+            return from_nish(text)
+        except ValueError as e:
+            raise BadRequest(f"invalid NISH body: {e}") from e
+
     async def text(self, max_bytes: int | None = None) -> str:
         return (await self.body(max_bytes)).decode()
 

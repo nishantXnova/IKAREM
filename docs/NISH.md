@@ -30,6 +30,48 @@ Live proof: Ledger's `/api/summary` negotiates — log in at `/login`
 (`demo@example.com` / `demo1234`), then open
 `/api/summary?format=nish` with the extension installed.
 
+## Full duplex: reading NISH back
+
+Clients can POST NISH as well as GET it. `from_nish()` parses core
+documents (sections, arrays, dotted keys, comments, ext tags as
+`{"$tag", "value"}`, anchors) and `await req.nish()` reads a request
+body — blank yields `None` like `json()`, malformed raises 400 naming
+the line:
+
+```python
+@app.post("/notes")
+async def create(req):
+    body = await req.nish()
+    return {"got": body["text"]}
+```
+
+The reader agrees with the reference engine on 29 edge cases (bare
+words, `inf`/`nan` kept as strings, duplicate keys rejected, lenient
+base64, unparseable timestamps preserved) with two documented
+differences: a missing `NISH/x.y` header is accepted, and ext values
+arrive as plain dicts (JSON-serializable) instead of `Ext` objects.
+
+## Free 304s: content-hash ETags
+
+Every `NISHResponse` carries `ETag: "<sha256-of-bytes>"`. Add one line
+and repolls stop costing bodies:
+
+```python
+app.use(ConditionalMiddleware())
+```
+
+`GET /api/summary?format=nish` twice with `If-None-Match` returns 304
+with an empty body the second time. The middleware is generic — any
+response carrying an ETag qualifies, NISH or otherwise. Non-GET and
+ETag-less responses pass through untouched.
+
+## Config files and self-describing APIs
+
+`Config.load_nish("app.nish")` loads typed config at dict/file
+precedence (below env, no string coercion — the format already typed
+it). And every app serves its own contract twice: `/openapi.json` plus
+`/openapi.nish`, both generated from the same compiled plans.
+
 ## Why text/plain (read this before "fixing" it)
 
 Browsers *download* unknown MIME types instead of rendering them, so
