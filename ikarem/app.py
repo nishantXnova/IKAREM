@@ -29,6 +29,7 @@ class Ikarem:
         self._docs_mounted = False
         self._system_mounted = False
         self._enable_docs = enable_docs
+        self._nish_mode = False
         from .websocket import WSRouter
 
         self.ws_router = WSRouter()
@@ -175,6 +176,46 @@ class Ikarem:
         reg = getattr(plugin, "register", None)
         if reg:
             reg(self)
+
+    def nish_mode(self, config: str | None = None) -> Ikarem:
+        """One switch for NISH, app-wide. After this call:
+
+        - every ``JSONResponse`` (handlers, validation 400s, 404s, 500s)
+          converts to NISH when the client asks (``?format=nish`` or an
+          ``Accept`` mentioning it); anything else stays as-is;
+        - converted responses carry content-hash ETags, and repolls with
+          matching ``If-None-Match`` answer 304 with no body;
+        - ``/openapi.nish`` serves the contract (mounted with docs);
+        - ``await req.nish()`` parses request bodies (always available).
+
+        ``config="app.nish"`` loads a NISH config file first. Idempotent:
+        calling twice changes nothing. Returns ``self`` for chaining.
+        """
+        if config is not None:
+            self.config.load_nish(config)
+        if self._nish_mode:
+            return self
+        from .conditional import ConditionalMiddleware
+        from .nish import _NISHNegotiation
+
+        self.use(ConditionalMiddleware())
+        self.use(_NISHNegotiation())
+        self._nish_mode = True
+        return self
+
+    @property
+    def nish(self) -> bool:
+        """Whether NISH mode is on (see ``nish_mode()``)."""
+        return self._nish_mode
+
+    @nish.setter
+    def nish(self, value: Any) -> None:
+        if isinstance(value, str):
+            self.nish_mode(config=value)
+        elif value:
+            self.nish_mode()
+        elif self._nish_mode:
+            raise RuntimeError("NISH mode is one-way: middleware cannot be un-added once registered")
 
     def on_startup(self, fn: Callable) -> Callable:
         self._startup.append(fn)

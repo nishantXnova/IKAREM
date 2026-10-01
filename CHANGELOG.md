@@ -15,6 +15,9 @@ All notable changes to this project are documented here. Format follows
   cases, 2 documented differences), `await req.nish()` (blank → None,
   malformed → 400 with line), content-hash ETags + `ConditionalMiddleware`
   (304s), `Config.load_nish()`, `/openapi.nish` on every app.
+- NISH Mode: `app.nish = True` (or `nish_mode(config=...)`) converts
+  every JSON response app-wide on request, etags both shapes, keeps
+  errors in NISH, loads config files — one-way, idempotent, tested.
 - `docs/GUIDE.md`: "From Zero to Production", 25 chapters in 5 parts
   from install to internals, each runnable and self-asserting, all
   executed in CI (`tests/test_guide.py`); published as `site/guide.html`

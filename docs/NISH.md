@@ -1,30 +1,39 @@
-# NISH responses: APIs the Viewer extension paints
+# NISH Mode: one switch, the whole format
 
 The NISH Viewer browser extension (the NISH project's `web/` folder —
 sideload it unpacked via `chrome://extensions`) watches page bodies: when
 the first non-empty line is `NISH/1.0`, it parses the document and renders
-a formatted tree. `ikarem/nish.py` exists so your endpoints can feed it —
-a stdlib-only writer for the response subset, no new dependency.
-
-## One line per route
+a formatted tree. One switch feeds it from your entire app:
 
 ```python
-from ikarem import Ikarem, negotiate
-
 app = Ikarem()
-
-
-@app.get("/api/summary")
-async def summary(req):
-    data = {"income_cents": 200000, "rows": [{"id": 1}]}
-    return negotiate(req, data)
+app.nish = True  # or app.nish_mode(config="app.nish")
 ```
 
-- Default: JSON, unchanged. Every existing client keeps working.
-- `?format=nish`: NISH text. Open it in a browser with the extension and
-  the tree paints itself; without the extension it reads as clean text.
-- `Accept: application/x-nish` (or anything mentioning `nish`): same NISH
-  answer for machine clients that ask for it.
+Suddenly, and only when a client asks (`?format=nish` or an `Accept`
+mentioning `nish`):
+
+- **Responses negotiate NISH** — every `JSONResponse` converts: handlers,
+  validation 400s, 404s, 500s. Defaults stay JSON; existing clients
+  never notice. (Non-dict JSON like `[1, 2]` stays JSON: NISH documents
+  are maps.)
+- **Request bodies parse** with `await req.nish()` — blank yields `None`
+  like `json()`, malformed raises 400 naming the line.
+- **`/openapi.nish` exists** on every app, generated from the same plans
+  as `/openapi.json`.
+- **The Viewer recognizes it** — `text/plain` bodies render in browsers
+  (unknown MIME types would download instead of painting; pass
+  `media_type="application/x-nish"` only for strict machine APIs).
+- **ETags work automatically** — every JSON response carries a
+  content-hash ETag in NISH mode (both shapes, each hashing its own
+  bytes), and repolls with matching `If-None-Match` answer 304.
+- **Errors speak NISH** — same conversion covers error responses.
+- **Config reads NISH** — `app.nish_mode(config="app.nish")` (or
+  `app.nish = "app.nish"`) loads a typed config file below env.
+
+The switch is one-way and idempotent: setting `app.nish = False` after
+enabling raises instead of pretending middleware can be un-added.
+Per-route control stays available via `negotiate(req, data)`.
 
 Live proof: Ledger's `/api/summary` negotiates — log in at `/login`
 (`demo@example.com` / `demo1234`), then open
@@ -53,17 +62,18 @@ arrive as plain dicts (JSON-serializable) instead of `Ext` objects.
 
 ## Free 304s: content-hash ETags
 
-Every `NISHResponse` carries `ETag: "<sha256-of-bytes>"`. Add one line
-and repolls stop costing bodies:
+NISH mode etags every JSON response (each shape hashing its own bytes)
+and `ConditionalMiddleware` — installed by the switch — answers matching
+`If-None-Match` repolls with 304 and no body. Composing manually is one
+line for apps that want ETags without conversion:
 
 ```python
 app.use(ConditionalMiddleware())
 ```
 
-`GET /api/summary?format=nish` twice with `If-None-Match` returns 304
-with an empty body the second time. The middleware is generic — any
-response carrying an ETag qualifies, NISH or otherwise. Non-GET and
-ETag-less responses pass through untouched.
+The middleware is generic — any response carrying an ETag qualifies,
+NISH or otherwise. Non-GET and ETag-less responses pass through
+untouched.
 
 ## Config files and self-describing APIs
 

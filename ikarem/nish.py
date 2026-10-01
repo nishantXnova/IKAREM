@@ -31,10 +31,13 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import json
 import math
 import re
 from datetime import date, datetime, timezone
 from typing import Any
+
+from .middleware import Middleware
 
 NISH_VERSION = "NISH/1.0"
 
@@ -195,14 +198,60 @@ def NISHResponse(
     return Response(body, status_code, merged, media_type)
 
 
+def _wants_nish(req: Any) -> bool:
+    """The client asked for NISH: ``?format=nish`` or ``Accept`` mentioning it."""
+    try:
+        return req.query.get("format") == "nish" or "nish" in req.headers.get("accept", "").lower()
+    except Exception:
+        return False
+
+
 def negotiate(req: Any, data: dict, status_code: int = 200) -> Any:
     """``?format=nish`` or an ``Accept`` mentioning ``nish`` answers NISH;
-    everything else answers JSON. One line per route, both shapes tested."""
+    everything else answers JSON. One line per route, both shapes tested.
+    For the whole app at once, see ``app.nish_mode()``."""
     from .http import JSONResponse
 
-    if req.query.get("format") == "nish" or "nish" in req.headers.get("accept", "").lower():
+    if _wants_nish(req):
         return NISHResponse(data, status_code)
     return JSONResponse(data, status_code=status_code)
+
+
+class _NISHNegotiation(Middleware):
+    """App-wide NISH conversion (installed by ``app.nish_mode()``).
+
+    Every ``JSONResponse`` — handlers, validation 400s, 404s, 500s —
+    becomes NISH when the client asks. Anything else passes through:
+    non-JSON responses, non-dict JSON (NISH documents are maps;
+    ``[1, 2]`` stays JSON), and unparseable bodies.
+
+    Every JSON response also gains a content-hash ETag (both shapes),
+    so ``ConditionalMiddleware`` answers 304s for JSON and NISH alike.
+    Converted responses hash their NISH bytes, not the JSON ones.
+    """
+
+    async def __call__(self, req: Any, call_next: Any) -> Any:
+        from .http import JSONResponse
+
+        resp = await call_next(req)
+        if not isinstance(resp, JSONResponse):
+            return resp
+        if not any(k.lower() == "etag" for k in resp.headers):
+            resp.headers["etag"] = f'"{hashlib.sha256(resp.body).hexdigest()}"'
+        if not _wants_nish(req):
+            return resp
+        try:
+            data = json.loads(resp.body.decode())
+        except Exception:
+            return resp
+        if not isinstance(data, dict):
+            return resp
+        headers = {
+            k: v
+            for k, v in resp.headers.items()
+            if k.lower() not in ("content-type", "content-length", "etag")
+        }
+        return NISHResponse(data, resp.status_code, headers)
 
 
 _BARE_KEY = frozenset("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_.-")

@@ -167,6 +167,75 @@ def test_etag_and_conditional_304():
     assert c.get("/d", headers={"if-none-match": "*"}).status_code == 304
 
 
+def test_nish_mode_switch():
+    from ikarem import Schema
+
+    app = Ikarem(enable_docs=False)
+    assert app.nish is False
+
+    class Item(Schema):
+        name: str
+
+    @app.get("/d")
+    async def d(req):
+        return {"n": 1}
+
+    @app.get("/lst")
+    async def lst(req):
+        return [1, 2]
+
+    @app.post("/items")
+    async def create(item: Item):
+        return {"name": item.name}
+
+    app.nish = True  # the property spelling; method spelling below
+    assert app.nish is True
+
+    c = TestClient(app)
+    plain = c.get("/d")
+    assert plain.json() == {"n": 1}  # default untouched
+    assert "etag" in plain.headers  # ETags automatic, both shapes
+    assert c.get("/d", headers={"if-none-match": plain.headers["etag"]}).status_code == 304
+    nish = c.get("/d", query="format=nish")
+    assert nish.body.startswith(b"NISH/1.0") and b"n = 1" in nish.body
+    assert "etag" in nish.headers
+    assert nish.headers["etag"] != plain.headers["etag"]  # different bytes, different validator
+    assert (
+        c.get("/d", query="format=nish", headers={"if-none-match": nish.headers["etag"]}).status_code == 304
+    )
+    assert c.get("/d", headers={"accept": "application/x-nish"}).body.startswith(b"NISH/1.0")
+    stayed = c.get("/lst", query="format=nish")
+    assert stayed.json() == [1, 2]  # NISH documents are maps; lists stay JSON
+    missing = c.get("/nope", query="format=nish")
+    assert missing.status_code == 404 and missing.body.startswith(b"NISH/1.0")
+    assert b"detail" in missing.body  # errors in NISH too
+    bad = c.post("/items", body={}, query="format=nish")
+    assert bad.status_code == 400 and bad.body.startswith(b"NISH/1.0")
+
+
+def test_nish_mode_method_config_idempotent(tmp_path):
+    from ikarem.conditional import ConditionalMiddleware
+    from ikarem.nish import _NISHNegotiation
+
+    (tmp_path / "app.nish").write_text("NISH/1.0\n\npage_size = 42\n")
+    app = Ikarem(enable_docs=False)
+    out = app.nish_mode(config=str(tmp_path / "app.nish"))
+    assert out is app and app.config.get("page_size") == 42
+    app.nish_mode()  # second call: no duplicate layers
+    kinds = [type(m) for m in app.middleware.stack]
+    assert kinds.count(ConditionalMiddleware) == 1
+    assert kinds.count(_NISHNegotiation) == 1
+    with pytest.raises(RuntimeError, match="one-way"):
+        app.nish = False
+
+
+def test_nish_mode_string_property_loads_config(tmp_path):
+    (tmp_path / "a.nish").write_text("NISH/1.0\nflag = true\n")
+    app = Ikarem(enable_docs=False)
+    app.nish = str(tmp_path / "a.nish")
+    assert app.nish is True and app.config.get("flag") is True
+
+
 def test_config_load_nish(tmp_path):
     from ikarem import Config
 
