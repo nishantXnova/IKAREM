@@ -331,7 +331,12 @@ CI runs the same suite on Python 3.10–3.13 × Ubuntu/macOS/Windows, plus a
 live-Postgres job, a Docker showcase build, a starter-template smoke job
 (`ikarem new` + template tests), ruff lint + format, and
 `ikarem check ledger.app:app`. Every behavior ships with a test; bugfix PRs
-include a regression test.
+include a regression test. `check` also AST-audits handler source —
+f-string/`.format()`/`%` SQL and blocking calls warn with remedies
+(the interpreter accepts both; production regrets both). Gate harder
+with `check --strict`, emit machine output with `check --format json`,
+review exposure with `inspect --format auth`, dump the spec with
+`inspect --format openapi`, and list tools with `mcp --list`.
 
 ## Layout
 
@@ -366,7 +371,7 @@ ikarem/            zero-dep stdlib core (v1.1.0) — optional integrations lazy-
   static.py       FileResponse + escape-proof static mounts
   templating.py   Jinja2 via ikarem[jinja] + flashing.py one-shot messages
   observability.py  logging + request-ID + metrics + /healthz + /readyz + /metrics
-  cli.py          `ikarem run|check|mcp|new|migrate|worker|inspect`
+  cli.py          `ikarem run|check|mcp|new|migrate|worker|inspect` (+ audit.py source checks)
   testing.py      TestClient (cookie jar, all verbs, WS driving — no server needed)
   scaffold.py     `ikarem new` starter generator
   deprecation.py  deprecated() upgrade path + meraki_compat.py drop-in shim

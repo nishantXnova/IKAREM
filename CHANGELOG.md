@@ -7,6 +7,14 @@ All notable changes to this project are documented here. Format follows
 ## [Unreleased]
 
 ### Added
+- Devtools with teeth: `check` AST-audits handler source — f-string /
+  `.format()` / `%` SQL in db calls and blocking `time.sleep` /
+  `requests.*` warn with remedies (warnings, never errors: allowlisted
+  identifiers can't use `?`). Unwraps Blueprint/MethodView handlers.
+- `check --strict` (warnings fail), `check --format json`,
+  `inspect --format openapi` (spec to stdout),
+  `inspect --format auth` (per-route public/auth inventory),
+  `mcp --list` (tools without serving).
 - `forge/` third showcase: workshop OS (jobs, kanban, crew chat over
   `Room`, wiki, ledger + CSV, habits, team invites via queue, settings
   with JWT/API keys, NISH-first `/api/*` with triple auth + idempotent

@@ -769,4 +769,8 @@ def check_app(app: Any) -> dict:
         for hp in plan.params:
             if hp.kind == "depends" and hp.dep is not None:
                 _walk(hp.dep, set())
+        from .audit import audit_handler
+
+        for finding in audit_handler(r.handler):
+            report["warnings"].append(f"{r.path} [{plan.handler_name}]: {finding}")
     return report

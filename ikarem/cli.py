@@ -17,7 +17,7 @@ def _cmd_run(app, host: str, port: int, reload: bool) -> None:
     app.run(host=host, port=port, reload=reload)
 
 
-def _cmd_check(app) -> int:
+def _cmd_check(app, args) -> int:
     report = (
         app.check()
         if hasattr(app, "check")
@@ -26,17 +26,26 @@ def _cmd_check(app) -> int:
     routes = report.get("routes", [])
     warnings = report.get("warnings", [])
     errors = report.get("errors", [])
-    print(f"checked {len(routes)} route(s)")
-    for r in routes:
-        print(f"  {'/'.join(sorted(r['methods']))} {r['path']} -> {r['handler']}")
-    for w in warnings:
-        print(f"WARN: {w}")
-    for e in errors:
-        print(f"ERROR: {e}")
+    if getattr(args, "format", "text") == "json":
+        import json
+
+        print(json.dumps(report, indent=1, default=str))
+    else:
+        print(f"checked {len(routes)} route(s)")
+        for r in routes:
+            print(f"  {'/'.join(sorted(r['methods']))} {r['path']} -> {r['handler']}")
+        for w in warnings:
+            print(f"WARN: {w}")
+        for e in errors:
+            print(f"ERROR: {e}")
     if errors:
         print(f"check FAILED: {len(errors)} error(s)")
         return 1
-    print("check OK" + (f" ({len(warnings)} warning(s))" if warnings else ""))
+    if warnings and getattr(args, "strict", False):
+        print(f"check FAILED: {len(warnings)} warning(s) under --strict")
+        return 1
+    if getattr(args, "format", "text") != "json":
+        print("check OK" + (f" ({len(warnings)} warning(s))" if warnings else ""))
     return 0
 
 
@@ -73,9 +82,12 @@ def main() -> None:
 
     pc = sub.add_parser("check", help="statically compile + audit all handlers")
     pc.add_argument("target", nargs="?", default="examples.basic:app", help="module:attr, e.g. myapp:app")
+    pc.add_argument("--strict", action="store_true", help="warnings fail the audit too")
+    pc.add_argument("--format", choices=["text", "json"], default="text", help="machine-readable report")
 
     pm = sub.add_parser("mcp", help="serve routes as MCP tools over stdio")
     pm.add_argument("target", nargs="?", default="examples.basic:app", help="module:attr, e.g. myapp:app")
+    pm.add_argument("--list", action="store_true", help="print tools and exit (no stdio server)")
 
     pn = sub.add_parser("new", help="scaffold a production-grade starter project")
     pn.add_argument("dir", help="directory to create (must not exist or be empty)")
@@ -97,7 +109,7 @@ def main() -> None:
 
     pi = sub.add_parser("inspect", help="print a compact route manifest (built for LLM context)")
     pi.add_argument("target", nargs="?", default="examples.basic:app", help="module:attr")
-    pi.add_argument("--format", choices=["json", "summary"], default="json")
+    pi.add_argument("--format", choices=["json", "summary", "openapi", "auth"], default="json")
 
     args = p.parse_args()
     if args.cmd == "new":
@@ -116,6 +128,8 @@ def main() -> None:
     if args.cmd == "run":
         _cmd_run(app, args.host, args.port, args.reload)
     elif args.cmd == "mcp":
+        if args.list:
+            raise SystemExit(_cmd_mcp_list(app))
         raise SystemExit(asyncio.run(app.mcp_server().run_stdio()))
     elif args.cmd == "migrate":
         raise SystemExit(_cmd_migrate(app, args))
@@ -124,7 +138,15 @@ def main() -> None:
     elif args.cmd == "inspect":
         raise SystemExit(_cmd_inspect(app, args))
     else:
-        raise SystemExit(_cmd_check(app))
+        raise SystemExit(_cmd_check(app, args))
+
+
+def _cmd_mcp_list(app) -> int:
+    tools = app.mcp_tools()
+    print(f"{len(tools)} tool(s)")
+    for t in tools:
+        print(f"  {t['name']}: {t.get('description', '')[:120]}")
+    return 0
 
 
 def _cmd_inspect(app, args) -> int:
@@ -142,6 +164,23 @@ def _cmd_inspect(app, args) -> int:
         for r in manifest["routes"]:
             auth = f" [auth:{r['auth']['scheme']}]" if "auth" in r else ""
             print(f"  {r['method']:6} {r['path']} -> {r['handler']}{auth}")
+    elif args.format == "openapi":
+        from .openapi import build_openapi
+
+        print(json.dumps(build_openapi(app), indent=1))
+    elif args.format == "auth":
+        print(f"{manifest['count']} route(s)")
+        for r in manifest["routes"]:
+            auth = r.get("auth")
+            if auth is None:
+                print(f"  {r['method']:6} {r['path']} -> {r['handler']} [public]")
+            else:
+                detail = auth["scheme"]
+                if auth.get("roles"):
+                    detail += f" roles={','.join(auth['roles'])}"
+                if auth.get("scopes"):
+                    detail += f" scopes={','.join(auth['scopes'])}"
+                print(f"  {r['method']:6} {r['path']} -> {r['handler']} [auth:{detail}]")
     else:
         print(json.dumps(manifest, indent=1))
     return 0
