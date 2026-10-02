@@ -18,6 +18,10 @@
     { "src": "/guide.pdf", "dest": "/site/guide.pdf" },
     { "src": "/style.css", "dest": "/site/style.css" },
     { "src": "/script.js", "dest": "/site/script.js" },
+    { "src": "/robots.txt", "dest": "/site/robots.txt" },
+    { "src": "/sitemap.xml", "dest": "/site/sitemap.xml" },
+    { "src": "/llms.txt", "dest": "/site/llms.txt" },
+    { "src": "/og.png", "dest": "/site/og.png" },
     { "src": "/favicon.ico", "dest": "/assets/ikarem-icon.svg" },
     { "src": "/assets/(.*)", "dest": "/assets/$1" }
   ],

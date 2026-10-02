@@ -11,6 +11,11 @@ All notable changes to this project are documented here. Format follows
   `Room`, wiki, ledger + CSV, habits, team invites via queue, settings
   with JWT/API keys, NISH-first `/api/*` with triple auth + idempotent
   writes). 15 hermetic tests; CI runs it; README showcases all three.
+- Crawlable site: `/robots.txt`, `/sitemap.xml`, `/llms.txt`, `/og.png`
+  routes (all 404'd before), current lastmods, PDF in sitemap, JSON-LD
+  on every page, twitter descriptions, `llms.txt` footer links.
+- README: keyword-rich intro, contents, NISH Mode section with runnable
+  snippet, refreshed feature table and layout.
 - NISH responses (`ikarem/nish.py`: stdlib-only `to_nish` writer,
   `NISHResponse`, `negotiate` for `?format=nish`/Accept); Ledger
   `/api/summary` negotiates so the NISH Viewer extension paints it.

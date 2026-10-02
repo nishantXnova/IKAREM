@@ -13,6 +13,19 @@ FastAPI-style DX (DI, validation, OpenAPI, auth) + Django/Nest-style structure
 (plugins, config, RBAC) + a core that runs on stdlib alone. Pip-installable,
 **zero required dependencies**.
 
+A Python web framework for REST APIs, HTML apps, websockets, background jobs,
+and LLM tool servers — one package from prototype to production.
+
+- [Install](#install) · [30-second example](#30-second-example) ·
+  [Industry-grade example](#industry-grade-example) ·
+  [Production web apps](#production-web-apps) ·
+  [Flask's best, taken](#flasks-best-taken) ·
+  [Ops batch](#ops-batch-migrations-queues-cron-api-keys) · [NISH Mode](#nish-mode-one-switch) ·
+  [Stronger](#stronger-timeouts-bulkheads-idempotency-rooms) ·
+  [Switching](#switching-bring-your-routes) ·
+  [Why IKAREM](#why-ikarem) · [Verification](#verification) ·
+  [Layout](#layout) · [Project basics](#project-basics)
+
 ## Install
 
 ```bash
@@ -218,6 +231,33 @@ atomic SQLite transactions, `Room` pub/sub for websockets (tested via
 `TestClient.ws_connect`), and a `py.typed` marker so downstream type checkers
 see the real types.
 
+## NISH Mode: one switch
+
+```python
+from ikarem import Ikarem
+from ikarem.testing import TestClient
+
+app = Ikarem(enable_docs=False)
+app.nish_mode()  # or app.nish = True
+
+
+@app.get("/hello")
+async def hello(req):
+    return {"hello": "ikarem"}
+
+
+c = TestClient(app)
+assert c.get("/hello").json() == {"hello": "ikarem"}
+nish = c.get("/hello", query="format=nish")
+assert nish.body.startswith(b"NISH/1.0") and "etag" in nish.headers
+```
+
+One switch and the whole API negotiates NISH (`?format=nish` or `Accept`),
+both shapes get content-hash ETags with automatic 304s, errors speak NISH,
+`await req.nish()` parses bodies, `/openapi.nish` serves the contract, and
+`app.nish_mode(config="app.nish")` loads typed config. Full story:
+[`docs/NISH.md`](docs/NISH.md).
+
 Live proof it all works, three apps deep: [`ledger/`](ledger/) — a
 personal-finance app (auth, dashboard with SVG charts, CRUD, receipt
 uploads, CSV export, JSON API); [`cadence/`](cadence/) — a habit tracker
@@ -247,7 +287,7 @@ IKAREM engine — then migrate handler-by-handler. From anywhere else:
 Plus honest benchmarks: [`bench/RESULTS.md`](bench/RESULTS.md) ·
 extension registry: [`docs/ECOSYSTEM.md`](docs/ECOSYSTEM.md) ·
 20 runnable recipes: [`docs/COOKBOOK.md`](docs/COOKBOOK.md) ·
-from scratch to genius: [`docs/GUIDE.md`](docs/GUIDE.md) ([PDF](https://ikarem.vercel.app/guide.pdf)) ·
+From Zero to Production guide: [`docs/GUIDE.md`](docs/GUIDE.md) ([PDF](https://ikarem.vercel.app/guide.pdf)) ·
 NISH responses for the Viewer extension: [`docs/NISH.md`](docs/NISH.md) ·
 install: `pip install ikarem`.
 
@@ -272,11 +312,12 @@ moving van.*
 | DB Strategy (pg/mysql/sqlite/mssql) | `DatabaseConnector` async ABC (`connect/disconnect/execute/fetch_one/fetch_all/execute_many/transaction`). Lazy driver imports. SQLite runs on stdlib today. `DatabasePlugin` proves the extension model. |
 | DI (FastAPI parity) | `Depends()` with nesting, per-request cache (+ opt-out), sync/async/yield deps, finalizers guaranteed **after response send** and on the exception path, circular-dep rejection. |
 | Validation (Pydantic-lite) | `Schema` models from type hints: coercion, required/optional, nested models, `ValidationError` → 400. Zero deps. |
-| Auth | Stdlib HS256 JWT (algorithm-confusion resistant, `sub` required, expiry enforced), pbkdf2 passwords, `BearerAuth`, `require_roles()` RBAC. |
-| Caching | `MemoryCache` + `@cached` (Redis-swappable `CacheBackend` interface). |
-| Background work | `BackgroundTasks` param — runs after the response is sent, never fails the response. |
-| Realtime / files | `app.websocket(path)` + `WebSocket` helper; `mount_static()` + `FileResponse`. |
-| Observability | JSON logging, `x-request-id` + `x-process-time-ms`, `/healthz`, Prometheus-style `/metrics`. |
+| Auth | Stdlib HS256 JWT (algorithm-confusion resistant, `sub` required, expiry enforced), pbkdf2 passwords, `BearerAuth` + `APIKeyAuth`, `require_roles()` / `require_scopes()` / `require_if()`. |
+| Caching | `MemoryCache` + `RedisCache` + `@cached` over a swappable `CacheBackend` interface. |
+| Background work | `BackgroundTasks` param (after send) + durable `Queue` (survives deploys) + cron. |
+| Realtime / files | `app.websocket(path)` + `Room` pub/sub + `WebSocket` helper; `mount_static()` + `FileResponse`. |
+| NISH | `app.nish_mode()`: whole-API negotiation, ETags + 304s, `req.nish()`, `/openapi.nish`, NISH config. |
+| Observability | JSON logging, `x-request-id` + `x-process-time-ms`, `/healthz` + `/readyz` + `/metrics`. |
 
 ## Verification
 
@@ -307,6 +348,8 @@ ikarem/            zero-dep stdlib core (v1.1.0) — optional integrations lazy-
   security.py     CORS + security headers + trusted hosts + rate limiting
   resilience.py   timeouts + bulkheads + idempotency
   cache.py        CacheBackend + MemoryCache + RedisCache + @cached
+  nish.py         NISH writer/reader + NISHResponse + negotiate (see NISH Mode)
+  conditional.py  ConditionalMiddleware (ETag 304s)
   db/             DatabaseConnector ABC + sqlite/postgres/mysql/sqlserver + plugin + factory
   queue.py        durable task queue + QueuePlugin + `ikarem worker`
   scheduler.py    cron/intervals + SchedulerPlugin
@@ -315,11 +358,11 @@ ikarem/            zero-dep stdlib core (v1.1.0) — optional integrations lazy-
   blueprints.py   prefixed route groups + MethodView (views.py)
   middleware.py   Middleware base + stack
   plugins.py      Plugin protocol + dependency-sorted PluginManager
-  config.py       layered Config
+  config.py       layered Config + NISH config files
   errors.py       HTTPException hierarchy + handler registry
-  openapi.py      OpenAPI 3.1 builder + /openapi.json + /docs
+  openapi.py      OpenAPI 3.1 builder + /openapi.json + /openapi.nish + /docs
   mcp.py          routes-as-MCP-tools + resources + stdio server
-  websocket.py    WebSocket + Room pub/sub + WSRouter
+  websocket.py    WebSocket disconnects + Room pub/sub + WSRouter
   static.py       FileResponse + escape-proof static mounts
   templating.py   Jinja2 via ikarem[jinja] + flashing.py one-shot messages
   observability.py  logging + request-ID + metrics + /healthz + /readyz + /metrics
@@ -331,8 +374,9 @@ tests/ + ledger/tests + cadence/tests + forge/tests   278-test suite (see Verifi
 ledger/ + cadence/ + forge/   production showcase apps (finance, habits, workshop OS)
 examples/basic.py    minimal CRUD + DB plugin app
 bench/            honest benches (bench_switch.py) + sustained-load proof (load.py)
-docs/             COOKBOOK.md (20 runnable recipes) · ECOSYSTEM.md (extension registry) ·
-                  MIGRATING_FROM_MERAKI.md · DEPLOY.md · PLUGINS.md · PHASE1.md (original spec)
+docs/             COOKBOOK.md (20 runnable recipes) · GUIDE.md (25 chapters) · NISH.md ·
+                  ECOSYSTEM.md (extension registry) · MIGRATING_FROM_*.md (6 frameworks) ·
+                  DEPLOY.md · PLUGINS.md · SECURITY.md · PHASE1.md (original spec)
 site/             static docs site (no build step) + llms.txt framework manual
 ```
 
