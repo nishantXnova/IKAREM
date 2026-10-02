@@ -4,7 +4,7 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning follows
 [SemVer](https://semver.org/). Releases are cut from Conventional Commits.
 
-## [Unreleased]
+## [1.2.0] — 2026-10-02
 
 ### Added
 - Devtools with teeth: `check` AST-audits handler source — f-string /
@@ -102,7 +102,7 @@ All notable changes to this project are documented here. Format follows
   IKAREM-only rows, exit 0; full duel when `meraki` is importable.
   Covered in `tests/test_bench.py`.
 
-## [1.1.0] — 2026-09-30
+## [1.1.0] — never published (folded into 1.2.0 above)
 
 ### Added
 - `ikarem inspect` compact route manifest (token-efficient LLM context).
