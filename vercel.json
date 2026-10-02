@@ -22,6 +22,7 @@
     { "src": "/sitemap.xml", "dest": "/site/sitemap.xml" },
     { "src": "/llms.txt", "dest": "/site/llms.txt" },
     { "src": "/og.png", "dest": "/site/og.png" },
+    { "src": "/googlea9cfe027d0f563c5.html", "dest": "/site/googlea9cfe027d0f563c5.html" },
     { "src": "/favicon.ico", "dest": "/assets/ikarem-icon.svg" },
     { "src": "/assets/(.*)", "dest": "/assets/$1" }
   ],
