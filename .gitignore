@@ -19,6 +19,8 @@ venv/
 
 # App runtime artifacts (see ledger/.gitignore for the showcase app)
 *.db
+*.db-shm
+*.db-wal
 *.sqlite3
 
 # OS / editors

@@ -7,6 +7,10 @@ All notable changes to this project are documented here. Format follows
 ## [Unreleased]
 
 ### Added
+- `forge/` third showcase: workshop OS (jobs, kanban, crew chat over
+  `Room`, wiki, ledger + CSV, habits, team invites via queue, settings
+  with JWT/API keys, NISH-first `/api/*` with triple auth + idempotent
+  writes). 15 hermetic tests; CI runs it; README showcases all three.
 - NISH responses (`ikarem/nish.py`: stdlib-only `to_nish` writer,
   `NISHResponse`, `negotiate` for `?format=nish`/Accept); Ledger
   `/api/summary` negotiates so the NISH Viewer extension paints it.

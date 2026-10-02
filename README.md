@@ -218,9 +218,12 @@ atomic SQLite transactions, `Room` pub/sub for websockets (tested via
 `TestClient.ws_connect`), and a `py.typed` marker so downstream type checkers
 see the real types.
 
-Live proof it all works: [`ledger/`](ledger/) — a personal-finance app
-(auth, dashboard with SVG charts, CRUD, receipt uploads, CSV export, JSON API)
-running on stock IKAREM + uvicorn.
+Live proof it all works, three apps deep: [`ledger/`](ledger/) — a
+personal-finance app (auth, dashboard with SVG charts, CRUD, receipt
+uploads, CSV export, JSON API); [`cadence/`](cadence/) — a habit tracker
+(streaks, heatmaps); [`forge/`](forge/) — a workshop OS (jobs, kanban,
+crew chat, ledger, habits, NISH-first API). All running on stock IKAREM
++ uvicorn.
 
 ## Switching? Bring your routes
 
@@ -277,10 +280,10 @@ moving van.*
 
 ## Verification
 
-208 passed, 3 skipped — framework plus both showcase apps, one command:
+278 passed, 3 skipped — framework plus three showcase apps, one command:
 
 ```bash
-python -m pytest tests/ ledger/tests cadence/tests -q
+python -m pytest tests/ ledger/tests cadence/tests forge/tests -q
 ```
 
 CI runs the same suite on Python 3.10–3.13 × Ubuntu/macOS/Windows, plus a
@@ -324,8 +327,8 @@ ikarem/            zero-dep stdlib core (v1.1.0) — optional integrations lazy-
   testing.py      TestClient (cookie jar, all verbs, WS driving — no server needed)
   scaffold.py     `ikarem new` starter generator
   deprecation.py  deprecated() upgrade path + meraki_compat.py drop-in shim
-tests/ + ledger/tests + cadence/tests   208-test suite (see Verification)
-ledger/ + cadence/   production showcase apps (finance tracker, habit tracker)
+tests/ + ledger/tests + cadence/tests + forge/tests   278-test suite (see Verification)
+ledger/ + cadence/ + forge/   production showcase apps (finance, habits, workshop OS)
 examples/basic.py    minimal CRUD + DB plugin app
 bench/            honest benches (bench_switch.py) + sustained-load proof (load.py)
 docs/             COOKBOOK.md (20 runnable recipes) · ECOSYSTEM.md (extension registry) ·

@@ -24,7 +24,7 @@ jobs:
       - name: Lint
         run: ruff check . && ruff format --check .
       - name: Tests (framework + showcases)
-        run: python -m pytest tests/ ledger/tests cadence/tests -q
+        run: python -m pytest tests/ ledger/tests cadence/tests forge/tests -q
       - name: Static handler audit
         run: python -m ikarem.cli check ledger.app:app
 
