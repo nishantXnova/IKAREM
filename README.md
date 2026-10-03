@@ -341,7 +341,7 @@ review exposure with `inspect --format auth`, dump the spec with
 ## Layout
 
 ```
-ikarem/            zero-dep stdlib core (v1.2.0) — optional integrations lazy-load behind extras
+ikarem/            zero-dep stdlib core (v1.2.1) — optional integrations lazy-load behind extras
   app.py          Ikarem core + ASGI callable + lifespan + background/cleanup wiring
   compiled.py     one-time handler plans (no per-request reflection) + check/describe IR
   routing.py      compiled routes + converters + Did-you-mean 404s

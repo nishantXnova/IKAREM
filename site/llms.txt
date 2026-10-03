@@ -1,6 +1,6 @@
 # IKAREM — llms.txt
 
-IKAREM is a zero-dependency Python ASGI framework, built for humans and LLMs (v1.2.0, MIT).
+IKAREM is a zero-dependency Python ASGI framework, built for humans and LLMs (v1.2.1, MIT).
 Zero required dependencies; pure stdlib + ASGI core. Install: `pip install ikarem`
 (`ikarem[server]` for uvicorn, `ikarem[postgres]` for asyncpg, `ikarem[test]`,
 `ikarem[jinja]` for templates). Python >= 3.10. Docs: https://ikarem.vercel.app/

@@ -4,6 +4,14 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning follows
 [SemVer](https://semver.org/). Releases are cut from Conventional Commits.
 
+## [1.2.1] — 2026-10-02
+
+### Changed
+- Packaging metadata only (no code changes): PyPI tagline rewritten
+  (was the stale "Meraki reversed" line AI summaries quote), plus
+  keywords, classifiers, and project URLs (homepage, docs, repo,
+  changelog, issues) so indexes describe the current framework.
+
 ## [1.2.0] — 2026-10-02
 
 ### Added

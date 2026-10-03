@@ -4,12 +4,47 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ikarem"
-version = "1.2.0"
-description = "IKAREM — Meraki reversed. Lightweight, modular Python ASGI backend framework."
+version = "1.2.1"
+description = "Zero-dependency Python ASGI framework: DI, validation, JWT auth, OpenAPI, MCP tools, queues, NISH."
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
 dependencies = []
+keywords = [
+  "asgi",
+  "web framework",
+  "rest api",
+  "validation",
+  "jwt",
+  "authentication",
+  "openapi",
+  "mcp",
+  "model context protocol",
+  "websockets",
+  "sqlite",
+  "background tasks",
+  "rate limiting",
+]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Internet :: WWW/HTTP",
+  "Topic :: Internet :: WWW/HTTP :: ASGI",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Typing :: Typed",
+]
+
+[project.urls]
+Homepage = "https://ikarem.vercel.app/"
+Documentation = "https://ikarem.vercel.app/guide"
+Repository = "https://github.com/nishantXnova/IKAREM"
+Changelog = "https://github.com/nishantXnova/IKAREM/blob/main/CHANGELOG.md"
+Issues = "https://github.com/nishantXnova/IKAREM/issues"
 
 [project.optional-dependencies]
 server = ["uvicorn>=0.24"]
