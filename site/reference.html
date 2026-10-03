@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="author" content="Nishant Paudel">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>IKAREM API Reference — Routing, DI, Auth, DB, CLI</title>
 <meta name="description" content="Complete IKAREM API reference: app, request/response, Depends DI, Schema validation, JWT and RBAC, sessions, ops, CLI and config.">
@@ -20,7 +21,8 @@
 {"@context": "https://schema.org", "@type": "WebPage",
  "name": "IKAREM API Reference", "url": "https://ikarem.vercel.app/reference",
  "isPartOf": {"@type": "WebSite", "name": "IKAREM", "url": "https://ikarem.vercel.app/"},
- "description": "Complete IKAREM API reference: app, request/response, DI, validation, auth, databases, CLI."}
+ "description": "Complete IKAREM API reference: app, request/response, DI, validation, auth, databases, CLI.",
+ "author": {"@type": "Person", "name": "Nishant Paudel", "homeLocation": {"@type": "Place", "name": "Nepal"}}}
 </script>
 <link rel="icon" href="../assets/ikarem-icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="style.css">
@@ -51,12 +53,17 @@
   <li><a href="#sec"><span class="n">03</span>Security</a></li>
   <li><a href="#ops"><span class="n">04</span>Ops</a></li>
   <li><a href="#cli"><span class="n">05</span>CLI + config</a></li>
+  <li><a href="#next"><span class="n">06</span>Keep going</a></li>
 </ol></aside>
 
 <main>
 <section id="app">
   <p class="secnum">REFERENCE</p>
   <h1>API, no fluff.</h1>
+  <p>Every name below exists in <code>ikarem/__init__.py</code> and is covered
+  by the test suite. Signatures are the contract; the
+  <a href="guide.html">guide</a> teaches them in order, the
+  <a href="recipes.html">recipes</a> show them running.</p>
   <h2 class="sub"><code>Ikarem(debug, enable_docs, version, **config)</code></h2>
 <pre><code>app.get/post/put/patch/delete(path)  <span class="tok-c"># + .route(path, methods)</span>
 app.websocket(path)                   <span class="tok-c"># WSRouter</span>
@@ -144,12 +151,24 @@ $ ikarem check myapp:app     <span class="tok-c"># gate deploys on this</span>
 $ ikarem mcp myapp:app       <span class="tok-c"># routes as MCP tools over stdio</span>
 $ ikarem new mydir           <span class="tok-c"># production starter</span></code></pre>
   <p>Config precedence: defaults &lt; <code>Ikarem(**kwargs)</code> &lt; <code>load_dict</code> &lt;
-  <code>IKAREM_*</code> env. Typed reads: <code>config.get(key, default, cast=...)</code>.</p>
+  <code>IKAREM_*</code> env. Typed reads: <code>config.get(key, default, cast=...)</code>.
+  NISH files load with <code>config.load_nish(path)</code>.</p>
+</section>
+
+<section id="next">
+  <p class="secnum">KEEP GOING</p>
+  <h2>From reference to running code.</h2>
+  <p>New here? The <a href="guide.html">guide</a> takes you from install to
+  internals in 25 chapters. Copying? <a href="recipes.html">20 recipes</a>
+  cover validation, auth, queues, websockets, and more. Switching frameworks?
+  <a href="migrate.html">Migration guides</a> map FastAPI, Flask, Django,
+  Starlette, Litestar, and Meraki onto these exact names.</p>
+</section>
 </main>
 </div>
 
 <footer><div class="wrap">
-  <span>IKAREM v1.2.1 — MIT. Zero-dependency Python ASGI.</span>
+  <span>IKAREM v1.2.1 — MIT. Zero-dependency Python ASGI. Built by Nishant Paudel in Nepal.</span>
   <span style="margin-left:auto"><a href="https://github.com/nishantXnova/IKAREM/blob/main/SECURITY.md">Security</a> · <a href="https://github.com/nishantXnova/IKAREM/blob/main/CHANGELOG.md">Changelog</a> · <a href="https://github.com/nishantXnova/IKAREM">GitHub</a> · <a href="https://pypi.org/project/ikarem/">PyPI</a> · <a href="https://ikarem.vercel.app/llms.txt">llms.txt</a></span>
 </div></footer>
 <script src="script.js" defer></script>

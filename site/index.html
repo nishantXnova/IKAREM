@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="author" content="Nishant Paudel">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>IKAREM — Python ASGI Backend Framework (Zero-Dep Core)</title>
 <meta name="description" content="IKAREM is an industry-grade Python ASGI framework: FastAPI-style DX, compiled DI, JWT auth, OpenAPI + MCP. Zero required dependencies. pip install ikarem.">
@@ -26,7 +27,19 @@
   "offers": {"@type": "Offer", "price": "0"},
   "codeRepository": "https://github.com/nishantXnova/IKAREM",
   "downloadUrl": "https://pypi.org/project/ikarem/",
-  "description": "Zero-dependency Python ASGI framework, built for humans and LLMs."}
+  "description": "Zero-dependency Python ASGI framework, built for humans and LLMs.",
+  "author": {"@type": "Person", "name": "Nishant Paudel", "homeLocation": {"@type": "Place", "name": "Nepal"}}}
+</script>
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "FAQPage",
+ "mainEntity": [
+  {"@type": "Question", "name": "Demo login fails?", "acceptedAnswer": {"@type": "Answer", "text": "Check the users table for the demo row. If it is missing, delete the SQLite file and reboot (it reseeds), or register a fresh account."}},
+  {"@type": "Question", "name": "403 on API POSTs?", "acceptedAnswer": {"@type": "Answer", "text": "That is CSRF doing its job. Send the X-CSRF-Token header (fetch it from GET /api/csrf), or exempt pure token APIs via exempt_paths."}},
+  {"@type": "Question", "name": "401 or 403?", "acceptedAnswer": {"@type": "Answer", "text": "401 means anonymous — browsers redirect to /login. 403 means authenticated but not allowed."}},
+  {"@type": "Question", "name": "Rate-limited on localhost?", "acceptedAnswer": {"@type": "Answer", "text": "Limits are per client IP (X-Forwarded-For or socket peer), 240/min default. Tune RateLimitMiddleware(per_minute=...)."}},
+  {"@type": "Question", "name": "SQLite under concurrent writes?", "acceptedAnswer": {"@type": "Answer", "text": "Single-lane by design (WAL on, corruption-proof). Reads stay fast; past toy scale, point IKAREM_DB_URL at Postgres — the suite is green on both."}},
+  {"@type": "Question", "name": "Postgres + tests?", "acceptedAnswer": {"@type": "Answer", "text": "One event loop per thread: TestClient reuses it, so loop-bound pools survive across requests instead of churning."}}
+ ]}
 </script>
 <link rel="icon" href="../assets/ikarem-icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="style.css">
@@ -235,7 +248,7 @@ $ ikarem check myapp:app          <span class="tok-c"># gate deploys on this</sp
 </div>
 
 <footer><div class="wrap">
-  <span>IKAREM v1.2.1 — MIT. Zero-dependency Python ASGI.</span>
+  <span>IKAREM v1.2.1 — MIT. Zero-dependency Python ASGI. Built by Nishant Paudel in Nepal.</span>
   <span style="margin-left:auto"><a href="https://github.com/nishantXnova/IKAREM/blob/main/SECURITY.md">Security</a> · <a href="https://github.com/nishantXnova/IKAREM/blob/main/CHANGELOG.md">Changelog</a> · <a href="https://github.com/nishantXnova/IKAREM">GitHub</a> · <a href="https://pypi.org/project/ikarem/">PyPI</a> · <a href="https://ikarem.vercel.app/llms.txt">llms.txt</a></span>
 </div></footer>
 <script src="script.js" defer></script>

@@ -402,3 +402,8 @@ site/             static docs site (no build step) + llms.txt framework manual
   warn with the version, the removal target, and the replacement.
 - **CI:** Python 3.10–3.13 × Ubuntu/macOS/Windows, live Postgres, Docker build,
   scaffold smoke, ruff lint + format.
+
+## Author
+
+Built by **Nishant Paudel** in Nepal. Issues and PRs welcome at
+[`github.com/nishantXnova/IKAREM`](https://github.com/nishantXnova/IKAREM).

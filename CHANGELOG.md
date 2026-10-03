@@ -4,6 +4,14 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning follows
 [SemVer](https://semver.org/). Releases are cut from Conventional Commits.
 
+## [Unreleased]
+
+### Added
+- SEO depth: FAQPage schema from the index FAQ, reference page intro +
+  per-section cross-links ("Keep going" hub), author byline in meta +
+  JSON-LD + footers + README + `pyproject authors` (takes effect next
+  PyPI release).
+
 ## [1.2.1] — 2026-10-02
 
 ### Changed
