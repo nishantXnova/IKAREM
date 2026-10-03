@@ -145,6 +145,8 @@ serves every route as an LLM tool (plus `ikarem://openapi.json` and
 `ikarem://manifest` MCP resources), `ikarem inspect` prints a compact route
 manifest for LLM context, and `site/llms.txt` is the framework manual in one
 page. `AGENTS.md` holds the contributor laws for AI and human agents alike.
+`@app.tool` exposes plain functions and `@app.prompt` exposes message
+templates over the same protocol; safe GET reads carry `readOnlyHint`.
 
 ## Flask's best, taken
 

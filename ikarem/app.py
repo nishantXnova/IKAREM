@@ -30,6 +30,8 @@ class Ikarem:
         self._system_mounted = False
         self._enable_docs = enable_docs
         self._nish_mode = False
+        self._mcp_custom: dict[str, Any] = {}
+        self._mcp_prompts: dict[str, Any] = {}
         from .websocket import WSRouter
 
         self.ws_router = WSRouter()
@@ -135,6 +137,40 @@ class Ikarem:
         from .mcp import MCPServer
 
         return MCPServer(self)
+
+    def tool(self, name: str | None = None) -> Any:
+        """Expose a plain function as an MCP tool (beyond route-tools).
+
+        ``@app.tool()`` / ``@app.tool("add")`` — params become the
+        inputSchema (Schema annotations validate), sync or async.
+        Request/Depends/BackgroundTasks params are refused at
+        registration: tools take plain values. Custom names override
+        route-derived tools of the same name.
+        """
+
+        def deco(fn: Callable) -> Callable:
+            from .mcp import register_custom_tool
+
+            register_custom_tool(self, name or getattr(fn, "__name__", "tool"), fn)
+            return fn
+
+        return deco
+
+    def prompt(self, name: str | None = None) -> Any:
+        """Expose a function as an MCP prompt (``prompts/list`` + ``get``).
+
+        The function takes plain arguments like a tool and returns a
+        string (one user message) or a list of ``str`` / ``{role,
+        content}`` dicts. Same param rules as ``app.tool``.
+        """
+
+        def deco(fn: Callable) -> Callable:
+            from .mcp import register_prompt
+
+            register_prompt(self, name or getattr(fn, "__name__", "prompt"), fn)
+            return fn
+
+        return deco
 
     # ---- scheduling (explicit start; nothing runs unless you start it) ----
     def cron(self, expr: str, name: str | None = None) -> Any:

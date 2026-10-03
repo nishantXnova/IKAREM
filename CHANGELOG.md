@@ -7,6 +7,12 @@ All notable changes to this project are documented here. Format follows
 ## [Unreleased]
 
 ### Added
+- MCP beyond routes: `@app.tool` (plain sync/async functions as tools,
+  Schema params validate, request-scoped params refused at registration),
+  `@app.prompt` (`prompts/list` + `get`, str or message-list returns),
+  `readOnlyHint` on safe GET reads (nothing claimed otherwise), custom
+  names override route tools, prompts capability advertised only when
+  present.
 - SEO depth: FAQPage schema from the index FAQ, reference page intro +
   per-section cross-links ("Keep going" hub), author byline in meta +
   JSON-LD + footers + README + `pyproject authors` (takes effect next

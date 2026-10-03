@@ -1,8 +1,11 @@
-"""MCP (Model Context Protocol) server derived from compiled route plans. Zero deps.
+"""MCP (Model Context Protocol) server: routes, functions, and prompts. Zero deps.
 
-Every HTTP route becomes an LLM-callable tool: path/query/body params merge into
-one JSON inputSchema, auth boundaries stay enforced (401/403 surface as tool
-errors, pass tokens via the `headers` argument).
+Three tool sources, one namespace: every HTTP route becomes an
+LLM-callable tool (path/query/body params merge into one JSON
+inputSchema, auth boundaries enforced as tool errors); ``@app.tool``
+exposes plain functions (Schema params validate); ``@app.prompt``
+exposes message templates (``prompts/list`` + ``get``). GET-only safe
+reads carry ``readOnlyHint``; everything else makes no claims.
 
 Transport: newline-delimited JSON-RPC 2.0 over stdio (`ikarem mcp myapp:app`).
 """
@@ -10,6 +13,7 @@ Transport: newline-delimited JSON-RPC 2.0 over stdio (`ikarem mcp myapp:app`).
 from __future__ import annotations
 
 import asyncio
+import inspect
 import json
 import re
 import sys
@@ -46,7 +50,111 @@ def _conv_type(converter: str | None) -> str:
     )
 
 
-def build_tool(route: Any, desc: Any, name: str) -> dict:
+def _fn_schema(fn: Any) -> tuple[dict, list, dict]:
+    """(properties, required, annotations) for a plain function.
+
+    Schema-annotated params embed their model schema; everything else
+    maps its annotation (unannotated means string). Request, Depends,
+    and BackgroundTasks params are refused — tools take plain values.
+    """
+    import inspect as _inspect
+
+    from .compiled import _hints_of, _is_schema_ann, _json_type
+
+    try:
+        sig = _inspect.signature(fn)
+    except (ValueError, TypeError):
+        raise TypeError(
+            f"MCP function '{getattr(fn, '__name__', fn)}' needs a plain signature "
+            "(sync or async def with named params)"
+        )
+    try:
+        from .di import Depends
+    except ImportError:  # pragma: no cover - di is always present
+        Depends = ()  # type: ignore
+    hints = _hints_of(fn)
+    properties: dict[str, Any] = {}
+    required: list[str] = []
+    annotations: dict[str, Any] = {}
+    has_default = _inspect.Parameter.empty
+    for pname, p in sig.parameters.items():
+        if p.kind in (_inspect.Parameter.VAR_POSITIONAL, _inspect.Parameter.VAR_KEYWORD):
+            raise TypeError(f"MCP function '{getattr(fn, '__name__', fn)}' takes *{pname}: use named params")
+        if isinstance(p.default, Depends):
+            raise TypeError(
+                f"MCP function '{getattr(fn, '__name__', fn)}' takes Depends() for '{pname}': "
+                "tools take plain values, not request-scoped dependencies"
+            )
+        ann = hints.get(pname, p.annotation)
+        if _is_background_ann(ann) or _is_request_ann(ann):
+            raise TypeError(
+                f"MCP function '{getattr(fn, '__name__', fn)}' takes '{pname}' "
+                "as a request/background param: tools take plain values"
+            )
+        annotations[pname] = None if ann is _inspect._empty else ann
+        if ann is not _inspect._empty and _is_schema_ann(ann):
+            try:
+                properties[pname] = ann.json_schema()
+            except Exception:
+                properties[pname] = {"type": "object"}
+        else:
+            properties[pname] = _json_type(None if ann is _inspect._empty else ann)
+        if p.default is has_default:
+            required.append(pname)
+    return properties, sorted(required), annotations
+
+
+def _is_background_ann(ann: Any) -> bool:
+    return inspect.isclass(ann) and getattr(ann, "__name__", "") == "BackgroundTasks"
+
+
+def _is_request_ann(ann: Any) -> bool:
+    try:
+        from .http import Request
+
+        return inspect.isclass(ann) and issubclass(ann, Request)
+    except Exception:
+        return False
+
+
+def register_custom_tool(app: Any, name: str, fn: Any) -> None:
+    """Validate now (fail fast) and stash for the next MCPServer.build()."""
+    _fn_schema(fn)  # raises TypeError naming the problem
+    app._mcp_custom[name] = fn
+
+
+def register_prompt(app: Any, name: str, fn: Any) -> None:
+    """Validate now (fail fast) and stash for the next MCPServer.build()."""
+    _fn_schema(fn)  # raises TypeError naming the problem
+    app._mcp_prompts[name] = fn
+
+
+def _normalize_messages(result: Any, name: str) -> list[dict]:
+    """str -> one user message; list of str/dict -> messages. Anything
+    else is a usage error naming the contract."""
+
+    def _one(item: Any) -> dict:
+        if isinstance(item, str):
+            return {"role": "user", "content": [{"type": "text", "text": item}]}
+        if isinstance(item, dict) and isinstance(item.get("role"), str):
+            content = item.get("content", "")
+            if isinstance(content, str):
+                content = [{"type": "text", "text": content}]
+            return {"role": item["role"], "content": content}
+        raise TypeError(
+            f"MCP prompt '{name}' must return str or list[str | {{role, content}}], got {type(item).__name__}"
+        )
+
+    if isinstance(result, str):
+        return [_one(result)]
+    if isinstance(result, list):
+        return [_one(item) for item in result]
+    raise TypeError(
+        f"MCP prompt '{name}' must return str or list[str | {{role, content}}], got {type(result).__name__}"
+    )
+
+
+def build_tool(route: Any, desc: Any, name: str, background: bool = False) -> dict:
     """Public MCP tool definition for one route."""
     properties: dict[str, Any] = {}
     required: list[str] = []
@@ -83,11 +191,17 @@ def build_tool(route: Any, desc: Any, name: str) -> dict:
             description += f" Requires {header} header with API key{roles}{scopes}."
         else:
             description += f" Requires Authorization header with Bearer JWT{roles}{scopes}."
-    return {
+    tool: dict[str, Any] = {
         "name": name,
         "description": description,
         "inputSchema": {"type": "object", "properties": properties, "required": sorted(set(required))},
     }
+    methods = [m.upper() for m in (desc.methods or [])]
+    if methods == ["GET"] and not background:
+        # Only claimed when true: safe reads get readOnlyHint, everything
+        # else makes no claims (a POST that only reads is still not marked).
+        tool["annotations"] = {"readOnlyHint": True}
+    return tool
 
 
 def _coerce_arg(value: Any, ann: Any) -> Any:
@@ -108,6 +222,7 @@ class MCPServer:
         self.app = app
         self._entries: list[dict] = []
         self._by_name: dict[str, dict] = {}
+        self._prompts: dict[str, Any] = {}
         self._built = False
 
     def build(self) -> "MCPServer":
@@ -141,16 +256,99 @@ class MCPServer:
                         "route": route,
                         "method": method,
                         "desc": desc,
-                        "tool": build_tool(single, desc, name),
+                        "tool": build_tool(single, desc, name, background=plan.has_background),
                     }
                 )
                 self._by_name[name] = self._entries[-1]
+        for name, fn in getattr(self.app, "_mcp_custom", {}).items():
+            properties, required, annotations = _fn_schema(fn)
+            summary = (inspect.getdoc(fn) or "").strip().split("\n")[0] or name
+            # Custom names win: drop any route-derived tool they shadow so
+            # list and call agree on what `name` means.
+            self._entries = [e for e in self._entries if e["name"] != name]
+            self._by_name[name] = {
+                "name": name,
+                "custom": fn,
+                "annotations_map": annotations,
+                "tool": {
+                    "name": name,
+                    "description": summary,
+                    "inputSchema": {"type": "object", "properties": properties, "required": required},
+                },
+            }
+        for name, fn in getattr(self.app, "_mcp_prompts", {}).items():
+            properties, required, annotations = _fn_schema(fn)
+            summary = (inspect.getdoc(fn) or "").strip().split("\n")[0] or name
+            self._prompts[name] = {
+                "fn": fn,
+                "annotations_map": annotations,
+                "definition": {
+                    "name": name,
+                    "description": summary,
+                    "arguments": [{"name": pname, "required": pname in required} for pname in properties],
+                },
+            }
         self._built = True
         return self
 
     def list_tools(self) -> list[dict]:
         self.build()
-        return [e["tool"] for e in self._entries]
+        return [e["tool"] for e in self._entries] + [
+            e["tool"] for e in self._by_name.values() if "custom" in e
+        ]
+
+    def list_prompts(self) -> list[dict]:
+        self.build()
+        return [p["definition"] for p in self._prompts.values()]
+
+    async def get_prompt(self, name: str, args: dict | None) -> dict:
+        """Run a prompt; returns MCP {description, messages} (never raises)."""
+        self.build()
+        entry = self._prompts.get(name)
+        if entry is None:
+            return {"isError": True, "content": [{"type": "text", "text": f"unknown prompt '{name}'"}]}
+        given = dict(args or {})
+        required = {a["name"] for a in entry["definition"]["arguments"] if a["required"]}
+        known = {a["name"] for a in entry["definition"]["arguments"]}
+        missing = [k for k in sorted(required) if k not in given]
+        if missing:
+            return {
+                "isError": True,
+                "content": [{"type": "text", "text": f"missing argument(s): {missing}"}],
+            }
+        unknown = [k for k in sorted(given) if k not in known]
+        if unknown:
+            return {
+                "isError": True,
+                "content": [{"type": "text", "text": f"unexpected argument(s): {unknown}"}],
+            }
+        try:
+            kwargs = self._coerce_call(entry, given)
+            result = entry["fn"](**kwargs)
+            if inspect.isawaitable(result):
+                result = await result
+            messages = _normalize_messages(result, name)
+        except Exception as e:  # noqa: BLE001
+            return {"isError": True, "content": [{"type": "text", "text": f"{type(e).__name__}: {e}"}]}
+        return {"description": entry["definition"]["description"], "messages": messages}
+
+    def _coerce_call(self, entry: dict, given: dict) -> dict:
+        """Coerce flat args by annotation; Schema models validate."""
+        import inspect as _inspect
+
+        annotations_map = entry.get("annotations_map") or {}
+        kwargs: dict[str, Any] = {}
+        for pname, value in given.items():
+            ann = annotations_map.get(pname)
+            if ann is not None and ann is not _inspect._empty:
+                from .compiled import _is_schema_ann
+
+                if _is_schema_ann(ann):
+                    kwargs[pname] = ann.validate(value)
+                    continue
+                value = _coerce_arg(value, ann)
+            kwargs[pname] = value
+        return kwargs
 
     def list_resources(self) -> list[dict]:
         self.build()
@@ -189,7 +387,30 @@ class MCPServer:
         entry = self._by_name.get(name)
         if entry is None:
             return _text(f"unknown tool '{name}'", is_error=True)
+        if "custom" in entry:
+            return await self._execute_custom(entry, dict(args or {}))
         return await self._execute(entry, dict(args or {}))
+
+    async def _execute_custom(self, entry: dict, args: dict) -> dict:
+        fn = entry["custom"]
+        tool = entry["tool"]
+        required = set(tool["inputSchema"].get("required", []))
+        known = set(tool["inputSchema"].get("properties", {}))
+        missing = [k for k in sorted(required) if k not in args]
+        if missing:
+            return _text(f"missing argument(s): {missing}", is_error=True)
+        unknown = [k for k in sorted(args) if k not in known]
+        if unknown:
+            return _text(f"unexpected argument(s): {unknown}", is_error=True)
+        try:
+            kwargs = self._coerce_call(entry, args)
+            result = fn(**kwargs)
+            if inspect.isawaitable(result):
+                result = await result
+            text = result if isinstance(result, str) else json.dumps(result)
+        except Exception as e:  # noqa: BLE001
+            return _text(f"{type(e).__name__}: {e}", is_error=True)
+        return _text(text)
 
     async def _execute(self, entry: dict, args: dict) -> dict:
         from .compiled import resolve_compiled
@@ -302,9 +523,13 @@ class MCPServer:
         is_notification = "id" not in payload
         try:
             if method == "initialize":
+                self.build()
+                capabilities: dict[str, Any] = {"tools": {}, "resources": {}}
+                if getattr(self, "_prompts", None):
+                    capabilities["prompts"] = {}
                 result = {
                     "protocolVersion": "2024-11-05",
-                    "capabilities": {"tools": {}, "resources": {}},
+                    "capabilities": capabilities,
                     "serverInfo": {"name": "ikarem", "version": getattr(self.app, "_version", "0.1.0")},
                 }
             elif method in ("notifications/initialized", "notifications/cancelled"):
@@ -323,6 +548,15 @@ class MCPServer:
                 if not isinstance(params, dict) or "uri" not in params:
                     return None if is_notification else _rpc_error(mid, -32602, "missing resource 'uri'")
                 result = self.read_resource(params["uri"])
+            elif method == "prompts/list":
+                result = {"prompts": self.list_prompts()}
+            elif method == "prompts/get":
+                if not isinstance(params, dict) or "name" not in params:
+                    return None if is_notification else _rpc_error(mid, -32602, "missing prompt 'name'")
+                outcome = await self.get_prompt(params["name"], params.get("arguments") or {})
+                if outcome.get("isError"):
+                    return None if is_notification else _rpc_error(mid, -32602, outcome["content"][0]["text"])
+                result = outcome
             else:
                 return None if is_notification else _rpc_error(mid, -32601, f"Method not found: {method}")
         except Exception as e:  # noqa: BLE001
