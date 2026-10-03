@@ -142,3 +142,59 @@ class RateLimitMiddleware(Middleware):
         resp = await call_next(req)
         resp.headers.update(self._headers(count, reset_in))
         return resp
+
+
+class RedisRateLimitMiddleware(Middleware):
+    """Fixed-window rate limiting over a shared cache (multi-process).
+
+    Same 429 + ``Retry-After`` + ``X-RateLimit-*`` contract as
+    :class:`RateLimitMiddleware`, keyed per IP per 60s window with a 65s
+    TTL — every worker counts against one table instead of its own::
+
+        app.use(RedisRateLimitMiddleware(RedisCache(url=...)))
+
+    Approximation, stated plainly: increments are read-modify-write, so
+    a thundering herd can slip a few requests past the line. Exact
+    enough for abuse protection; not a billing meter. ``clock=`` keeps
+    tests deterministic.
+    """
+
+    def __init__(self, cache: Any, per_minute: int = 120, clock: Any = None):
+        if cache is None:
+            raise ValueError("RedisRateLimitMiddleware needs a cache: pass RedisCache(url=...)")
+        self.cache = cache
+        self.limit = per_minute
+        self._clock = clock or time.time
+
+    def _key(self, ip: str, window: int) -> str:
+        return f"ratelimit:{ip}:{window}"
+
+    def _headers(self, count: int, reset_in: float) -> dict[str, str]:
+        return {
+            "x-ratelimit-limit": str(self.limit),
+            "x-ratelimit-remaining": str(max(0, self.limit - count)),
+            "x-ratelimit-reset": str(max(0, int(reset_in))),
+        }
+
+    async def __call__(self, req: Any, call_next: Any) -> Any:
+        fwd = req.headers.get("x-forwarded-for", "")
+        if fwd:
+            ip = fwd.split(",")[0].strip()
+        else:
+            client = getattr(req, "scope", {}).get("client", None)
+            ip = client[0] if client else "local"
+        now = self._clock()
+        window = int(now // 60)
+        key = self._key(ip, window)
+        state = await self.cache.get(key) or {}
+        count = int(state.get("n", 0)) + 1
+        await self.cache.set(key, {"n": count, "start": window * 60}, ttl=65)
+        reset_in = 60 - (now - window * 60)
+        if count > self.limit:
+            resp = JSONResponse({"detail": "rate limit exceeded"}, status_code=429)
+            resp.headers.update(self._headers(count, reset_in))
+            resp.headers["retry-after"] = str(max(1, int(reset_in)))
+            return resp
+        resp = await call_next(req)
+        resp.headers.update(self._headers(count, reset_in))
+        return resp

@@ -7,6 +7,11 @@ All notable changes to this project are documented here. Format follows
 ## [Unreleased]
 
 ### Added
+- Industry-grade ops: `TracingMiddleware` (OTel server spans, W3C
+  propagation, `ikarem[otel]` lazy extra, injectable tracer so tests run
+  SDK-free) and `RedisRateLimitMiddleware` (shared per-IP windows across
+  processes over any `CacheBackend`, same 429 contract, thundering-herd
+  approximation stated).
 - `docs/DEFAULTS.md`: every security-relevant default stated with its
   reason and override (validation strictness, cookie flags, no response
   filtering, X-Forwarded-For trust, secret refusal, HS256 limits).

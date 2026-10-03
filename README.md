@@ -319,7 +319,7 @@ moving van.*
 | Background work | `BackgroundTasks` param (after send) + durable `Queue` (survives deploys) + cron. |
 | Realtime / files | `app.websocket(path)` + `Room` pub/sub + `WebSocket` helper; `mount_static()` + `FileResponse`. |
 | NISH | `app.nish_mode()`: whole-API negotiation, ETags + 304s, `req.nish()`, `/openapi.nish`, NISH config. |
-| Observability | JSON logging, `x-request-id` + `x-process-time-ms`, `/healthz` + `/readyz` + `/metrics`. |
+| Observability | JSON logging, `x-request-id` + `x-process-time-ms`, `/healthz` + `/readyz` + `/metrics`, OTel tracing (`ikarem[otel]`), shared Redis rate limits. |
 
 ## Verification
 
@@ -352,9 +352,10 @@ ikarem/            zero-dep stdlib core (v1.2.1) — optional integrations lazy-
   validation.py   Schema models + Field() constraints (zero-dep validation)
   auth.py         JWT + passwords + Bearer/API-key auth + roles/scopes guards
   session.py      signed-cookie sessions + CSRF
-  security.py     CORS + security headers + trusted hosts + rate limiting
+  security.py     CORS + security headers + trusted hosts + rate limiting (+ Redis)
   resilience.py   timeouts + bulkheads + idempotency
   cache.py        CacheBackend + MemoryCache + RedisCache + @cached
+  tracing.py      TracingMiddleware (OTel spans, SDK lazy via ikarem[otel])
   nish.py         NISH writer/reader + NISHResponse + negotiate (see NISH Mode)
   conditional.py  ConditionalMiddleware (ETag 304s)
   db/             DatabaseConnector ABC + sqlite/postgres/mysql/sqlserver + plugin + factory

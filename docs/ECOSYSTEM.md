@@ -69,7 +69,7 @@ app.register(Hello())
 | `ikarem-oauth` | auth Depends | Refresh tokens + OAuth2 code flow; current JWT is bare HS256 |
 | `ikarem-s3` | storage backend | Presigned uploads; local-filesystem fallback for tests |
 | `ikarem-mail` | plugin + queue task | SMTP lazy extra; welcome-mail is the reference job |
-| `ikarem-otel` | middleware | OTel spans around `_terminal_safe`; no-op without the extra |
+| `ikarem-otel` exporter pack | middleware | `TracingMiddleware` is core (spans + propagation, `ikarem[otel]`); the extension ships Collector/exporter presets |
 
 ## Third-party
 
