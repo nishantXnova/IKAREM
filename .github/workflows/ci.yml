@@ -28,6 +28,19 @@ jobs:
       - name: Static handler audit
         run: python -m ikarem.cli check ledger.app:app
 
+  coverage:
+    name: coverage floor (ikarem/ only)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install (dev extras + coverage)
+        run: pip install -e ".[dev]" coverage pytest
+      - name: Coverage (fail under 80%)
+        run: coverage run -m pytest tests/ ledger/tests cadence/tests forge/tests -q && coverage report --include="ikarem/*" --fail-under=80
+
   postgres:
     name: live Postgres strategy
     runs-on: ubuntu-latest

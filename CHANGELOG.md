@@ -7,6 +7,12 @@ All notable changes to this project are documented here. Format follows
 ## [Unreleased]
 
 ### Added
+- Coverage floor: 83% on `ikarem/` measured, CI `coverage` job fails
+  under 80%. Uncovered code is live-server drivers + the superseded
+  `di.py` fallback, not neglected paths.
+- JWT wire-format vector: fully hand-rolled HS256 token (compact JSON,
+  fixed 2100 expiry) verified end to end — any implementation can
+  cross-check the exact bytes.
 - Industry-grade ops: `TracingMiddleware` (OTel server spans, W3C
   propagation, `ikarem[otel]` lazy extra, injectable tracer so tests run
   SDK-free) and `RedisRateLimitMiddleware` (shared per-IP windows across

@@ -1,4 +1,4 @@
-"""Exhaustive JWT verification: 7 branches."""
+"""Exhaustive JWT verification: 8 branches."""
 
 import base64
 import json
@@ -74,3 +74,22 @@ def test_7_authorization_failure_wrong_secret():
     tok = create_token("u1", "other-secret")
     with pytest.raises(ValueError, match="signature"):
         verify_token(tok, SECRET)
+
+
+def test_8_wire_format_vector_independently_constructed():
+    # No ikarem helpers touch these bytes: raw stdlib HMAC over compact
+    # JSON, fixed expiry (2100-01-01). Any implementation (jwt.io, PyJWT)
+    # can cross-check this exact token against SECRET.
+    import hashlib
+    import hmac
+
+    payload = {"sub": "u1", "exp": 4102444800, "roles": ["admin"]}
+    h = _b64e(json.dumps({"alg": "HS256", "typ": "JWT"}, separators=(",", ":")).encode())
+    p = _b64e(json.dumps(payload, separators=(",", ":")).encode())
+    sig = _b64e(hmac.new(SECRET.encode(), f"{h}.{p}".encode(), hashlib.sha256).digest())
+    token = f"{h}.{p}.{sig}"
+    claims = verify_token(token, SECRET)
+    assert claims["sub"] == "u1" and claims["roles"] == ["admin"] and claims["exp"] == 4102444800
+    tampered = token[:-1] + ("a" if token[-1] != "a" else "b")
+    with pytest.raises(ValueError, match="signature"):
+        verify_token(tampered, SECRET)
