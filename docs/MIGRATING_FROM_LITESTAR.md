@@ -1,6 +1,6 @@
 # Migrating from Litestar
 
-Typical cost: a day. Litestar's layered shape (app → controller → handler)
+Estimated cost: a day (no production migrations behind this yet). Litestar's layered shape (app → controller → handler)
 maps cleanly onto app → `Blueprint` → route, and its signature modeling
 (query params as kwargs, status codes as returns) already thinks the way
 IKAREM handlers do.

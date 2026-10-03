@@ -1,6 +1,6 @@
 # Migrating from Django
 
-Typical cost: a week. Say it plainly: this is a rewrite of views, not a
+Estimated cost: a week (no production migrations behind this yet). Say it plainly: this is a rewrite of views, not a
 port. URLs, ORM models, middleware settings, and the admin have no
 mechanical equivalent — on purpose (no ORM, no admin are standing
 decisions, not gaps). What transfers: your data model thinking, your URL

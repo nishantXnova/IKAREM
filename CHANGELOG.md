@@ -7,6 +7,16 @@ All notable changes to this project are documented here. Format follows
 ## [Unreleased]
 
 ### Added
+- `docs/DEFAULTS.md`: every security-relevant default stated with its
+  reason and override (validation strictness, cookie flags, no response
+  filtering, X-Forwarded-For trust, secret refusal, HS256 limits).
+
+### Changed
+- Cookbook recipes 4–6 match the guide: hashed passwords, CSRF tokens,
+  session rotation, explicit token expiries.
+- Migration guides label timelines as estimates (no production
+  migrations behind them yet); FastAPI deltas warn about blocking ORM
+  calls; `PHASE1.md` test count corrected.
 - MCP beyond routes: `@app.tool` (plain sync/async functions as tools,
   Schema params validate, request-scoped params refused at registration),
   `@app.prompt` (`prompts/list` + `get`, str or message-list returns),

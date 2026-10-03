@@ -1,6 +1,6 @@
 # Migrating from Flask
 
-Typical cost: a day. Half the API already crossed over: `Blueprint`,
+Estimated cost: a day (no production migrations behind this yet). Half the API already crossed over: `Blueprint`,
 `MethodView`, `abort`, and `flash` exist in IKAREM with the same names
 (see "Flask's best, taken" in the README). The real work is globals →
 explicit `req`, and sync → async.

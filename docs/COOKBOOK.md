@@ -109,23 +109,43 @@ assert r.json() == {"title": "pic", "filename": "a.png", "size": 5}
 
 Signed-cookie sessions. `req.session` is a dict; mutating it re-signs the
 cookie. Secret comes from `session_secret=` (refused at startup when auth
-routes exist and the secret is still the default).
+routes exist and the secret is still the default). Passwords hash with
+pbkdf2 — never compare plaintext — unsafe routes carry a CSRF token, and
+login starts a fresh session.
 
 ```python
-from ikarem import Ikarem, SessionMiddleware, Unauthorized
+from ikarem import (
+    CSRFMiddleware,
+    Ikarem,
+    SessionMiddleware,
+    Unauthorized,
+    check_password,
+    csrf_token,
+    hash_password,
+)
 from ikarem.testing import TestClient
+
+USERS = {"amy": hash_password("s3cret")}  # seeded hash, never plaintext
 
 app = Ikarem(enable_docs=False, session_secret="cookbook-session-secret")
 app.use(SessionMiddleware())
+app.use(CSRFMiddleware())
+
+
+@app.get("/csrf")
+async def csrf(req):
+    return {"t": csrf_token(req)}
 
 
 @app.post("/login")
 async def login(req):
     form = await req.form()
-    if form.get("user") == "amy" and form.get("pw") == "s3cret":
-        req.session["uid"] = "u1"
-        return {"ok": True}
-    raise Unauthorized("bad credentials")
+    pw_hash = USERS.get(form.get("user", ""))
+    if pw_hash is None or not check_password(form.get("pw", ""), pw_hash):
+        raise Unauthorized("bad credentials")
+    req.session.clear()  # fresh session on login: fixation-safe
+    req.session["uid"] = "u1"
+    return {"ok": True}
 
 
 @app.get("/me")
@@ -142,13 +162,21 @@ async def logout(req):
     return {"ok": True}
 
 
+CT = "application/x-www-form-urlencoded"
 c = TestClient(app)
 assert c.get("/me").status_code == 401
-assert c.post(
-    "/login", body="user=amy&pw=s3cret", content_type="application/x-www-form-urlencoded"
-).json() == {"ok": True}
+
+
+def token():
+    return c.get("/csrf").json()["t"]
+
+
+bad = "user=amy&pw=wrong"
+assert c.post("/login", body=bad, content_type=CT, headers={"x-csrf-token": token()}).status_code == 401
+good = "user=amy&pw=s3cret"
+assert c.post("/login", body=good, content_type=CT, headers={"x-csrf-token": token()}).json() == {"ok": True}
 assert c.get("/me").json() == {"uid": "u1"}
-assert c.post("/logout").json() == {"ok": True}
+assert c.post("/logout", headers={"x-csrf-token": token()}).json() == {"ok": True}
 assert c.get("/me").status_code == 401
 ```
 
@@ -158,7 +186,9 @@ Stdlib HS256, no deps. `require_roles()` reads the `roles` claim from the
 app's `auth_secret`; 401 without a token, 403 with the wrong role.
 
 ```python
-from ikarem import Depends, Ikarem, create_token, require_roles
+import time
+
+from ikarem import Depends, Ikarem, create_token, require_roles, verify_token
 from ikarem.testing import TestClient
 
 SECRET = "cookbook-auth-secret"
@@ -174,7 +204,8 @@ c = TestClient(app)
 assert c.get("/admin").status_code == 401
 user = create_token("u2", SECRET, roles=["user"])
 assert c.get("/admin", headers={"authorization": f"Bearer {user}"}).status_code == 403
-root = create_token("u1", SECRET, roles=["admin"])
+root = create_token("u1", SECRET, expires_in=900, roles=["admin"])
+assert 0 < verify_token(root, SECRET)["exp"] - time.time() <= 900  # 15 minutes, not forever
 assert c.get("/admin", headers={"authorization": f"Bearer {root}"}).json() == {"sub": "u1"}
 ```
 
@@ -205,9 +236,9 @@ async def files(req, claims=Depends(require_scopes("read"))):
 c = TestClient(app)
 assert c.get("/internal").status_code == 401
 assert c.get("/internal", headers={"x-api-key": "svc-key"}).json() == {"svc": "billing"}
-tok = create_token("u1", SECRET, scope="read write")
+tok = create_token("u1", SECRET, expires_in=900, scope="read write")
 assert c.get("/files", headers={"authorization": f"Bearer {tok}"}).json() == {"n": 2}
-narrow = create_token("u2", SECRET, scope="write")
+narrow = create_token("u2", SECRET, expires_in=900, scope="write")
 assert c.get("/files", headers={"authorization": f"Bearer {narrow}"}).status_code == 403
 ```
 

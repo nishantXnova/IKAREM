@@ -1,6 +1,6 @@
 # Migrating from FastAPI
 
-Typical cost: a day. The decorator shape is already yours — the port is
+Estimated cost: a day (no production migrations behind this yet). The decorator shape is already yours — the port is
 mostly mechanical: Pydantic models become Schemas, FastAPI Depends becomes
 `Depends`, and `TestClient` keeps its name.
 
@@ -27,6 +27,10 @@ both apps can run side by side behind `app.mount_asgi()` during the move.
 - Path converters live in the route (`{uid:int}`), not just the annotation.
   FastAPI reads the type; IKAREM compiles the route once from both.
 - No `response_model` filtering — return exactly what the client should see.
+- Sync handlers run on the event loop (no hidden threadpool) - and
+  FastAPI codebases hide more blocking ORM calls than most, which is
+  where this migration hurts. Port the drivers first (asyncpg), push
+  the rest to `asyncio.to_thread` (guide ch15).
 - Advanced Pydantic types (nested unions, custom validators) map to plain
   `Schema` fields plus handler-level checks. Port the models first; they
   carry the most risk.

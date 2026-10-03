@@ -383,7 +383,8 @@ examples/basic.py    minimal CRUD + DB plugin app
 bench/            honest benches (bench_switch.py) + sustained-load proof (load.py)
 docs/             COOKBOOK.md (20 runnable recipes) · GUIDE.md (25 chapters) · NISH.md ·
                   ECOSYSTEM.md (extension registry) · MIGRATING_FROM_*.md (6 frameworks) ·
-                  DEPLOY.md · PLUGINS.md · SECURITY.md · PHASE1.md (original spec)
+                  DEFAULTS.md (every default, stated plainly) · DEPLOY.md · PLUGINS.md ·
+                  SECURITY.md · PHASE1.md (original spec)
 site/             static docs site (no build step) + llms.txt framework manual
 ```
 

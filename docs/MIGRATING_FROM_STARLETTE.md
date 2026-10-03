@@ -1,6 +1,6 @@
 # Migrating from Starlette
 
-Typical cost: hours. Starlette is the closest cousin — same ASGI boundary,
+Estimated cost: hours (no production migrations behind this yet). Starlette is the closest cousin — same ASGI boundary,
 same response names, same TestClient. You are mostly swapping the router
 spelling and gaining DI, validation, and auth you used to hand-roll.
 

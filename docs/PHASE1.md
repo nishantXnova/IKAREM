@@ -50,7 +50,7 @@ Zero required dependencies. Uvicorn/asyncpg/aiomysql/aioodbc are optional extras
   `MySQLConnector` (aiomysql), `SQLServerConnector` (aioodbc) — all lazy-import drivers.
 - `create_connector(url)` factory + `DatabasePlugin(url)` proving plugin-architecture extension.
 
-## 12. Testing — DONE (`tests/`, 13 passing)
+## 12. Testing — DONE (`tests/`, 13 passing at the time; 289 across the repo today)
 - `test_app` (lifecycle/routing/converters/405/echo), `test_middleware` (after/short-circuit),
   `test_plugins` (hooks/deps/lifecycle), `test_db` (factory/sqlite CRUD/plugin wiring).
 - `ikarem/testing.py::TestClient` — no server needed.
