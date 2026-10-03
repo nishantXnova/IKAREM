@@ -7,6 +7,12 @@ All notable changes to this project are documented here. Format follows
 ## [Unreleased]
 
 ### Added
+- Seams not rewrites: pydantic models accepted wherever a `Schema` goes
+  (handler bodies, MCP tools) via duck-typing — zero import cost, no
+  dependency. `bench/bench_validate.py` publishes the honest number
+  (8.3x on 7µs/body); `tests/test_differential.py` + CI job prove
+  verdict/value agreement with pydantic and both token directions with
+  PyJWT (test-only deps, never runtime).
 - Coverage floor: 83% on `ikarem/` measured, CI `coverage` job fails
   under 80%. Uncovered code is live-server drivers + the superseded
   `di.py` fallback, not neglected paths.

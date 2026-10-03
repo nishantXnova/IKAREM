@@ -20,6 +20,8 @@ import sys
 from typing import Any
 from urllib.parse import urlencode
 
+from .validation import is_schema_like, schema_json_schema, validate_schema
+
 
 def _slug(text: str) -> str:
     return re.sub(r"\W+", "_", text).strip("_").lower() or "tool"
@@ -59,7 +61,7 @@ def _fn_schema(fn: Any) -> tuple[dict, list, dict]:
     """
     import inspect as _inspect
 
-    from .compiled import _hints_of, _is_schema_ann, _json_type
+    from .compiled import _hints_of, _json_type
 
     try:
         sig = _inspect.signature(fn)
@@ -92,9 +94,9 @@ def _fn_schema(fn: Any) -> tuple[dict, list, dict]:
                 "as a request/background param: tools take plain values"
             )
         annotations[pname] = None if ann is _inspect._empty else ann
-        if ann is not _inspect._empty and _is_schema_ann(ann):
+        if ann is not _inspect._empty and is_schema_like(ann):
             try:
-                properties[pname] = ann.json_schema()
+                properties[pname] = schema_json_schema(ann)
             except Exception:
                 properties[pname] = {"type": "object"}
         else:
@@ -341,10 +343,8 @@ class MCPServer:
         for pname, value in given.items():
             ann = annotations_map.get(pname)
             if ann is not None and ann is not _inspect._empty:
-                from .compiled import _is_schema_ann
-
-                if _is_schema_ann(ann):
-                    kwargs[pname] = ann.validate(value)
+                if is_schema_like(ann):
+                    kwargs[pname] = validate_schema(ann, value)
                     continue
                 value = _coerce_arg(value, ann)
             kwargs[pname] = value

@@ -250,6 +250,34 @@ class Schema:
         return {"type": "object", "properties": props, "required": required}
 
 
+def is_schema_like(ann: Any) -> bool:
+    """Schema subclasses AND pydantic-style models (``model_validate`` +
+    ``model_json_schema``). Duck-typed — pydantic is never imported, so
+    the core stays stdlib-only whether or not it is installed."""
+    if isinstance(ann, type) and issubclass(ann, Schema):
+        return True
+    return (
+        isinstance(ann, type)
+        and callable(getattr(ann, "model_validate", None))
+        and callable(getattr(ann, "model_json_schema", None))
+    )
+
+
+def validate_schema(ann: Any, data: Any) -> Any:
+    """Validate against a Schema or a pydantic-style model."""
+    if isinstance(ann, type) and issubclass(ann, Schema):
+        return ann.validate(data)
+    return ann.model_validate(data)
+
+
+def schema_json_schema(ann: Any) -> dict:
+    """JSON Schema for a Schema or a pydantic-style model."""
+    if isinstance(ann, type) and issubclass(ann, Schema):
+        return ann.json_schema()
+    schema = ann.model_json_schema()
+    return schema if isinstance(schema, dict) else {"type": "object"}
+
+
 def _js_type(ann: Any, constraints: FieldInfo | None = None) -> dict:
     origin, args = get_origin(ann), get_args(ann)
     if ann is str:

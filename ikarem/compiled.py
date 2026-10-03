@@ -15,6 +15,8 @@ import re as _re
 from dataclasses import dataclass, field
 from typing import Any
 
+from .validation import is_schema_like, schema_json_schema, validate_schema
+
 _MISSING = object()
 
 
@@ -335,7 +337,7 @@ def compile_handler(handler: Any) -> HandlerPlan:
             plan.params.append(HandlerParam(pname, "background", ann, default))
             plan.has_background = True
             continue
-        if ann is not inspect._empty and _is_schema_ann(ann):
+        if ann is not inspect._empty and is_schema_like(ann):
             plan.params.append(HandlerParam(pname, "schema", ann, default))
             plan.has_body = True
             continue
@@ -499,7 +501,7 @@ async def resolve_compiled(handler: Any, request: Any) -> Any:
                     except Exception:
                         body_json = {}
             try:
-                kwargs[hp.name] = hp.annotation.validate(body_json or {})
+                kwargs[hp.name] = validate_schema(hp.annotation, body_json or {})
             except Exception as e:
                 from .errors import BadRequest
 
@@ -656,7 +658,7 @@ def describe_route(route: Any) -> RouteDescription:
             elif hp.kind == "schema" and desc.body_cls is None:
                 desc.body_cls = hp.annotation
                 try:
-                    desc.body_schema = hp.annotation.json_schema()
+                    desc.body_schema = schema_json_schema(hp.annotation)
                 except Exception:
                     desc.body_schema = {"type": "object"}
     desc.query = list(fields.values())

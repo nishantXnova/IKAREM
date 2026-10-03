@@ -313,7 +313,7 @@ moving van.*
 | Errors | `HTTPException` hierarchy + `@app.exception_handler(ExcType)` with MRO most-specific match. Tracebacks only when `debug=True`. |
 | DB Strategy (pg/mysql/sqlite/mssql) | `DatabaseConnector` async ABC (`connect/disconnect/execute/fetch_one/fetch_all/execute_many/transaction`). Lazy driver imports. SQLite runs on stdlib today. `DatabasePlugin` proves the extension model. |
 | DI (FastAPI parity) | `Depends()` with nesting, per-request cache (+ opt-out), sync/async/yield deps, finalizers guaranteed **after response send** and on the exception path, circular-dep rejection. |
-| Validation (Pydantic-lite) | `Schema` models from type hints: coercion, required/optional, nested models, `ValidationError` → 400. Zero deps. |
+| Validation (Pydantic-lite) | `Schema` models from type hints: coercion, required/optional, nested models, `ValidationError` → 400. Zero deps — and pydantic models are accepted as body params too (duck-typed seam, 8.3x on 7µs either way: `bench/bench_validate.py`). |
 | Auth | Stdlib HS256 JWT (algorithm-confusion resistant, `sub` required, expiry enforced), pbkdf2 passwords, `BearerAuth` + `APIKeyAuth`, `require_roles()` / `require_scopes()` / `require_if()`. |
 | Caching | `MemoryCache` + `RedisCache` + `@cached` over a swappable `CacheBackend` interface. |
 | Background work | `BackgroundTasks` param (after send) + durable `Queue` (survives deploys) + cron. |

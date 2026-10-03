@@ -29,6 +29,21 @@ what a network + database app saturates — framework overhead is noise next
 to I/O. The rows that decide a switch (params, bodies, validation, auth,
 sessions, docs) are IKAREM-only. Rerun anytime: `python bench/bench_switch.py`.
 
+## Single-body validation (this machine, `python bench/bench_validate.py`)
+
+Batch shootouts always favor Rust and never matter — frameworks validate
+one body per request. Same shape, same coercions:
+
+| validator | valid | invalid |
+|---|---|---|
+| ikarem `Schema.validate` | 7.41 µs/body | 6.70 µs/body |
+| pydantic `model_validate` 2.13.4 | 0.89 µs/body | 1.16 µs/body |
+
+Ratio: 8.3x on 7µs — real gap, irrelevant absolute cost next to
+millisecond-scale request I/O. And since pydantic models are accepted
+wherever a `Schema` goes (duck-typed seam, zero import cost), the Rust
+core is one `pip install pydantic` away with no code changes.
+
 ## Sustained load, real uvicorn (2026-09-30, Windows laptop, `python bench/load.py`)
 
 Ledger on stock uvicorn, 16 keep-alive client threads, 45s phases, plus a
