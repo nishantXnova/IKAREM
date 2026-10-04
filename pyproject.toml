@@ -49,7 +49,7 @@ Issues = "https://github.com/nishantXnova/IKAREM/issues"
 
 [project.optional-dependencies]
 server = ["uvicorn>=0.24"]
-redis = ["redis>=5"]
+redis = ["redis>=8.1.0"]
 otel = ["opentelemetry-sdk>=1.20"]
 sqlite = []
 postgres = ["asyncpg>=0.29"]
