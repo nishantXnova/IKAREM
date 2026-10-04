@@ -24,18 +24,23 @@ Valid reports get a fix plus a regression test, released as a patch with a
 you ask to stay anonymous. Anything touching the zero-dep core stays
 stdlib-only — even security fixes don't add required dependencies.
 
-## Name collision: the `@ikarem/telemetry` npm package
+## Name collision: malicious "@ikarem/telemetry" npm package
 
-There is a malicious npm package published as `@ikarem/telemetry` that
-shares our name. It is **not affiliated with this project in any way**.
-IKAREM is a Python framework; we publish no npm packages, and the
-malicious package has no relationship to this repository, its maintainer,
-or its users.
+A malicious npm package was published as "@ikarem/telemetry" and shares the IKAREM name. It is not affiliated with this project in any way.
 
-If you arrived here because a security scanner flagged `@ikarem/telemetry`,
-you are in the right place to learn that it is unrelated — and in the
-wrong place if you were looking for that package.
+IKAREM is a Python framework. We publish no npm packages. The "@ikarem/telemetry" package is unrelated to this repository, its maintainer, and its users.
 
-Our only distribution channels are:
-- PyPI: `pip install ikarem` (https://pypi.org/project/ikarem/)
-- GitHub: https://github.com/nishantXnova/IKAREM
+The package has been identified as malicious by OpenSSF Package Analysis and is tracked by OSV as MAL-2025-192569 / GHSA-5q62-g32j-g4hp.
+
+If a security scanner flags "@ikarem/telemetry", this does not indicate a vulnerability in the IKAREM Python project. It refers to the unrelated npm package.
+
+If you have installed or executed "@ikarem/telemetry", follow the remediation guidance in the corresponding security advisory rather than treating it as an IKAREM dependency.
+
+Official IKAREM distribution channels
+
+IKAREM is distributed only through:
+
+- PyPI: "pip install ikarem"
+- GitHub: "nishantXnova/IKAREM"
+
+We do not publish or maintain "@ikarem/*" npm packages.
