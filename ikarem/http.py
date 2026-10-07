@@ -10,6 +10,47 @@ import json
 from typing import Any, Awaitable, Callable
 from urllib.parse import parse_qsl
 
+_orjson_tried = False
+_orjson_module: Any = None
+
+
+def _json_engine() -> Any:
+    """orjson when installed, else None. Lazy so the core stays stdlib-only."""
+    global _orjson_tried, _orjson_module
+    if not _orjson_tried:
+        _orjson_tried = True
+        try:
+            import orjson as _mod  # type: ignore
+
+            _orjson_module = _mod
+        except ImportError:
+            _orjson_module = None
+    return _orjson_module
+
+
+def dumps_json_bytes(data: Any) -> bytes:
+    """Serialize to JSON bytes; orjson fast path with stdlib fallback."""
+    mod = _json_engine()
+    if mod is not None:
+        try:
+            return bytes(mod.dumps(data))
+        except Exception:
+            pass
+    return json.dumps(data).encode()
+
+
+def loads_json_bytes(raw: bytes | str) -> Any:
+    """Parse JSON from bytes/str; orjson fast path with stdlib fallback."""
+    mod = _json_engine()
+    if mod is not None:
+        try:
+            return mod.loads(raw)
+        except Exception:
+            pass
+    if isinstance(raw, bytes):
+        raw = raw.decode() or "null"
+    return json.loads(raw)
+
 
 class Request:
     def __init__(self, scope: dict, receive: Callable[[], Awaitable[dict]]):
@@ -24,20 +65,30 @@ class Request:
         self.state: dict[str, Any] = {}
         self.app: Any = None
         self._body: bytes | None = None
+        self._query: dict[str, str] | None = None
+        self._cookies: dict[str, str] | None = None
 
     @property
     def query(self) -> dict[str, str]:
-        return dict(parse_qsl(self.query_string.decode()))
+        # Parsed once per request: compiled plans + handlers + deps hit
+        # this once per param; re-parsing parse_qsl each time was pure waste.
+        cached = self._query
+        if cached is None:
+            cached = self._query = dict(parse_qsl(self.query_string.decode()))
+        return cached
 
     @property
     def cookies(self) -> dict[str, str]:
-        raw = self.headers.get("cookie", "")
-        out: dict[str, str] = {}
-        for part in raw.split(";"):
-            if "=" in part:
-                k, v = part.strip().split("=", 1)
-                out[k] = v
-        return out
+        cached = self._cookies
+        if cached is None:
+            raw = self.headers.get("cookie", "")
+            out: dict[str, str] = {}
+            for part in raw.split(";"):
+                if "=" in part:
+                    k, v = part.strip().split("=", 1)
+                    out[k] = v
+            cached = self._cookies = out
+        return cached
 
     async def body(self, max_bytes: int | None = None) -> bytes:
         if max_bytes is None:
@@ -69,7 +120,10 @@ class Request:
     async def json(self, max_bytes: int | None = 10 * 1024 * 1024) -> Any:
         if max_bytes is None:
             max_bytes = getattr(self, "max_body_bytes", None)
-        return json.loads((await self.body(max_bytes)).decode() or "null")
+        raw = await self.body(max_bytes)
+        if not raw:
+            return None
+        return loads_json_bytes(raw)
 
     async def nish(self, max_bytes: int | None = None) -> Any:
         """Parse a NISH request body (full duplex with ``NISHResponse``).
@@ -251,9 +305,10 @@ class Response:
         self.status_code = status_code
         self.headers = headers or {}
         self.media_type = media_type
+        self._content_type = media_type.encode()
 
     async def __call__(self, scope: dict, receive: Any, send: Any) -> None:
-        headers = [(b"content-type", self.media_type.encode())]
+        headers = [(b"content-type", self._content_type)]
         for k, v in self.headers.items():
             if isinstance(v, (list, tuple)):
                 for item in v:
@@ -370,7 +425,7 @@ class XMLResponse(Response):
 class JSONResponse(Response):
     def __init__(self, data: Any, status_code: int = 200, headers: dict[str, str] | None = None):
         super().__init__(
-            json.dumps(data).encode(),
+            dumps_json_bytes(data),
             status_code=status_code,
             headers=headers,
             media_type="application/json",
@@ -400,10 +455,11 @@ class StreamingResponse(Response):
         self.status_code = status_code
         self.headers: dict[str, str] = {}
         self.media_type = media_type
+        self._content_type = media_type.encode()
         self.body = b""
 
     async def __call__(self, scope: dict, receive: Any, send: Any) -> None:
-        headers = [(b"content-type", self.media_type.encode())]
+        headers = [(b"content-type", self._content_type)]
         for k, v in self.headers.items():
             if isinstance(v, (list, tuple)):
                 for item in v:

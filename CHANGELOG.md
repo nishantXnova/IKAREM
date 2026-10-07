@@ -7,6 +7,12 @@ All notable changes to this project are documented here. Format follows
 ## [Unreleased]
 
 ### Added
+- Hot-path pass, zero-dep intact: `Request.query`/`cookies` parsed once
+  and cached (compiled plans hit them per-param), middleware 0/1 fast
+  paths + snapshot dispatch (no per-level type checks, `call_next(None)`
+  safe), `orjson` fast path when installed with stdlib fallback
+  (`dumps_json_bytes`/`loads_json_bytes`), pre-encoded response
+  content-types. Covered in `tests/test_hotpath.py`.
 - Ledger serves `/mcp` (negotiated summary + transport covered live over
   real uvicorn: login, tools/list, authed tools/call).
 - MCP over Streamable HTTP: `app.mount_mcp("/mcp")` serves the same

@@ -31,16 +31,27 @@ class MiddlewareStack:
             self.stack.append(mw)  # type: ignore
 
     async def run(self, request: Request, terminal: Callable[[Request], Awaitable[Response]]) -> Response:
+        # Fast paths: most apps run 0-1 middleware; skip dispatch entirely.
+        n = len(self.stack)
+        if n == 0:
+            return await terminal(request)
+        if n == 1:
+            mw = self.stack[0]
+
+            async def _only(r: Request | None = None) -> Response:
+                return await terminal(r if r is not None else request)
+
+            return await mw(request, _only)  # type: ignore
+        snapshot = tuple(self.stack)
+
         async def dispatch(i: int, req: Request) -> Response:
-            if i >= len(self.stack):
+            if i >= n:
                 return await terminal(req)
-            mw = self.stack[i]
+            mw = snapshot[i]
 
             async def call_next(r: Request | None = None) -> Response:
-                return await dispatch(i + 1, r or req)
+                return await dispatch(i + 1, r if r is not None else req)
 
-            if isinstance(mw, Middleware):
-                return await mw(req, call_next)
             return await mw(req, call_next)  # type: ignore
 
         return await dispatch(0, request)
