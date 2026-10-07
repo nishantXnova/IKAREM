@@ -7,7 +7,9 @@ exposes plain functions (Schema params validate); ``@app.prompt``
 exposes message templates (``prompts/list`` + ``get``). GET-only safe
 reads carry ``readOnlyHint``; everything else makes no claims.
 
-Transport: newline-delimited JSON-RPC 2.0 over stdio (`ikarem mcp myapp:app`).
+Transports: newline-delimited JSON-RPC 2.0 over stdio (`ikarem mcp
+myapp:app`), or Streamable HTTP via ``app.mount_mcp("/mcp")`` (POST
+JSON-RPC, GET SSE stream, stateless — point remote clients here).
 """
 
 from __future__ import annotations
@@ -590,6 +592,60 @@ class MCPServer:
                 await self.app.shutdown()
             except Exception:
                 pass
+
+
+def _mcp_http_handlers(server: Any) -> tuple[Any, Any]:
+    """POST + GET handlers serving an MCPServer over Streamable HTTP.
+
+    POST takes one JSON-RPC message (or a batch array) with
+    ``Content-Type: application/json`` and returns the result envelope
+    as JSON — or 202 empty when the batch held notifications only.
+    Protocol errors ride HTTP 200 (they're JSON-RPC errors, not HTTP
+    ones); malformed envelopes are 400. GET opens a minimal SSE stream
+    (a clean open-and-close; server-initiated pushes are future work).
+    Stateless: no session IDs — every request stands alone, which is
+    valid per spec and keeps one-process and many-process deploys
+    identical. Deploy behind HTTPS with Bearer/API-key auth (enforced
+    inside ``call_tool`` as usual).
+    """
+    from .errors import abort
+    from .http import JSONResponse, Response, StreamingResponse
+
+    async def _post(req: Any) -> Any:
+        if "application/json" not in req.headers.get("content-type", ""):
+            abort(415, "MCP endpoint requires Content-Type: application/json")
+        try:
+            raw = await req.body()
+        except Exception as e:  # noqa: BLE001 - body caps etc. surface as 400
+            abort(400, f"unreadable MCP body: {e}")
+        try:
+            payload = json.loads(raw.decode() or "null")
+        except Exception:
+            return JSONResponse(
+                {"jsonrpc": "2.0", "id": None, "error": {"code": -32700, "message": "Parse error"}},
+                status_code=400,
+            )
+        if isinstance(payload, list):
+            out = []
+            for msg in payload:
+                result = await server.handle(msg)
+                if result is not None:
+                    out.append(result)
+            return JSONResponse(out) if out else Response(b"", 202)
+        result = await server.handle(payload)
+        if result is None:
+            return Response(b"", 202)
+        return JSONResponse(result)
+
+    async def _get(req: Any) -> Any:
+        async def _events():
+            yield b": connected\n\n"
+
+        resp = StreamingResponse(_events(), media_type="text/event-stream")
+        resp.headers["cache-control"] = "no-cache"
+        return resp
+
+    return _post, _get
 
 
 def _text(text: str, is_error: bool = False) -> dict:

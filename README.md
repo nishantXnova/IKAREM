@@ -147,6 +147,8 @@ manifest for LLM context, and `site/llms.txt` is the framework manual in one
 page. `AGENTS.md` holds the contributor laws for AI and human agents alike.
 `@app.tool` exposes plain functions and `@app.prompt` exposes message
 templates over the same protocol; safe GET reads carry `readOnlyHint`.
+`app.mount_mcp("/mcp")` serves it all over Streamable HTTP (stateless)
+for remote clients like ChatGPT plugin backends.
 
 ## Flask's best, taken
 

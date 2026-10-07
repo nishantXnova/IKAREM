@@ -7,6 +7,11 @@ All notable changes to this project are documented here. Format follows
 ## [Unreleased]
 
 ### Added
+- MCP over Streamable HTTP: `app.mount_mcp("/mcp")` serves the same
+  server (tools, prompts, resources) to remote clients — POST JSON-RPC
+  (single/batch, 202 on notifications-only), GET SSE stream, stateless
+  (no sessions), protocol errors on HTTP 200, malformed envelopes on
+  400/415. Deploy behind HTTPS for ChatGPT plugin backends.
 - WebSocket path params: `@app.websocket("/ws/{room}")` captures into
   `ws.path_params` with HTTP converters; unknown converters fail at
   registration. Regression test in `tests/test_strong.py`.

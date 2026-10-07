@@ -141,6 +141,25 @@ class Ikarem:
 
         return MCPServer(self)
 
+    def mount_mcp(self, prefix: str = "/mcp") -> None:
+        """Serve this app's MCP server over Streamable HTTP.
+
+        ``POST {prefix}`` takes JSON-RPC (single or batch) and answers
+        JSON (202 when notifications-only); ``GET {prefix}`` opens the
+        SSE stream. Stateless — no sessions, so one process and many
+        behave identically. Auth rides the normal stack plus the
+        per-tool 401/403s. Deploy behind HTTPS; point remote MCP
+        clients (e.g. ChatGPT plugin backends) at the URL.
+        """
+        from .mcp import _mcp_http_handlers
+
+        post, get = _mcp_http_handlers(self.mcp_server())
+        post._ikarem_internal = True  # type: ignore
+        get._ikarem_internal = True  # type: ignore
+        clean = (prefix or "/mcp").rstrip("/") or "/"
+        self.router.add(clean, {"POST"}, post, "mcp_http_post")
+        self.router.add(clean, {"GET"}, get, "mcp_http_get")
+
     def tool(self, name: str | None = None) -> Any:
         """Expose a plain function as an MCP tool (beyond route-tools).
 
