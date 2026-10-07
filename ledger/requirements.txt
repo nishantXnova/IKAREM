@@ -1,4 +1,4 @@
 ikarem>=0.3.0
 uvicorn>=0.24
 pytest>=8
-asyncpg>=0.29  # postgres (docker compose)
+asyncpg>=0.31.0  # postgres (docker compose)
