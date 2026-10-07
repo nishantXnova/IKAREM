@@ -1,5 +1,6 @@
 """IKAREM public API."""
 
+from .accelerate import accelerate
 from .app import Ikarem
 from .auth import (
     APIKeyAuth,
@@ -152,6 +153,7 @@ __all__ = [
     "MemoryCache",
     "RedisCache",
     "cached",
+    "accelerate",
     "ConditionalMiddleware",
     "Room",
     "WebSocket",
