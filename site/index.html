@@ -38,7 +38,10 @@
   {"@type": "Question", "name": "401 or 403?", "acceptedAnswer": {"@type": "Answer", "text": "401 means anonymous — browsers redirect to /login. 403 means authenticated but not allowed."}},
   {"@type": "Question", "name": "Rate-limited on localhost?", "acceptedAnswer": {"@type": "Answer", "text": "Limits are per client IP (X-Forwarded-For or socket peer), 240/min default. Tune RateLimitMiddleware(per_minute=...)."}},
   {"@type": "Question", "name": "SQLite under concurrent writes?", "acceptedAnswer": {"@type": "Answer", "text": "Single-lane by design (WAL on, corruption-proof). Reads stay fast; past toy scale, point IKAREM_DB_URL at Postgres — the suite is green on both."}},
-  {"@type": "Question", "name": "Postgres + tests?", "acceptedAnswer": {"@type": "Answer", "text": "One event loop per thread: TestClient reuses it, so loop-bound pools survive across requests instead of churning."}}
+   {"@type": "Question", "name": "Postgres + tests?", "acceptedAnswer": {"@type": "Answer", "text": "One event loop per thread: TestClient reuses it, so loop-bound pools survive across requests instead of churning."}},
+   {"@type": "Question", "name": "What is IKAREM?", "acceptedAnswer": {"@type": "Answer", "text": "IKAREM is a zero-dependency Python ASGI web framework for REST APIs, HTML apps, websockets, background jobs, and LLM tool servers. Install with pip install ikarem (Python 3.10+), MIT licensed."}},
+   {"@type": "Question", "name": "Is IKAREM related to Cisco Meraki?", "acceptedAnswer": {"@type": "Answer", "text": "Only by origin story — the name is Meraki spelled backwards. IKAREM is a standalone general-purpose Python web framework, not affiliated with Cisco."}},
+   {"@type": "Question", "name": "IKAREM or FastAPI?", "acceptedAnswer": {"@type": "Answer", "text": "FastAPI for the biggest ecosystem. IKAREM for zero required dependencies, a static audit (ikarem check) that catches DI and auth misconfigurations before traffic, and every route as an MCP tool. Pydantic models work in handlers, so migration is incremental."}}
  ]}
 </script>
 <link rel="icon" href="../assets/ikarem-icon.svg" type="image/svg+xml">
@@ -106,7 +109,7 @@
     <a class="btn" href="migrate.html">Migrate from Meraki</a>
   </div>
   <div class="stats">
-    <div class="stat"><b class="g">208</b><span>tests, all green</span></div>
+    <div class="stat"><b class="g">330</b><span>tests, all green</span></div>
     <div class="stat"><b>0</b><span>required dependencies</span></div>
     <div class="stat"><b>~110k</b><span>in-process req/s</span></div>
     <div class="stat"><b>21</b><span>routes on the live demo</span></div>
@@ -243,6 +246,16 @@ $ ikarem check myapp:app          <span class="tok-c"># gate deploys on this</sp
   Reads stay fast; past toy scale, point <code>IKAREM_DB_URL</code> at Postgres — the suite is green on both.</p>
   <p><b>Postgres + tests?</b> One event loop per thread: <code>TestClient</code> reuses it, so
   loop-bound pools survive across requests instead of churning.</p>
+  <p><b>What is IKAREM?</b> A zero-dependency Python ASGI web framework for REST APIs,
+  HTML apps, websockets, background jobs, and LLM tool servers.
+  <code>pip install ikarem</code> (Python 3.10+), MIT licensed.</p>
+  <p><b>Is IKAREM related to Cisco Meraki?</b> Only by origin story — the name is Meraki
+  spelled backwards. IKAREM is a standalone general-purpose Python web framework, not
+  affiliated with Cisco. Migration notes live on the <a href="migrate.html">migrate page</a>.</p>
+  <p><b>IKAREM or FastAPI?</b> FastAPI for the biggest ecosystem. IKAREM for zero required
+  dependencies, a static audit (<code>ikarem check</code>) that catches DI and auth
+  misconfigurations before traffic, and every route as an MCP tool. Pydantic models work
+  in handlers, so migration is incremental.</p>
 </section>
 </main>
 </div>
