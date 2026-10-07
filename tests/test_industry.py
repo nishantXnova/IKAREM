@@ -83,6 +83,16 @@ def test_passwords():
     assert check_password("pw123", h) and not check_password("no", h)
 
 
+def test_passwords_legacy_rounds_still_verify():
+    # Pre-600k hashes keep working (re-hash on next login rotates them).
+    import hashlib
+
+    salt = "oldsalt1234567890"
+    dk = hashlib.pbkdf2_hmac("sha256", b"pw123", salt.encode(), 210_000)
+    legacy = f"pbkdf2${salt}${dk.hex()}"
+    assert check_password("pw123", legacy) and not check_password("no", legacy)
+
+
 def test_cors_and_security_and_ratelimit():
     app = Ikarem(enable_docs=False)
     app.use(CORSMiddleware())

@@ -771,6 +771,19 @@ def check_app(app: Any) -> dict:
         for hp in plan.params:
             if hp.kind == "depends" and hp.dep is not None:
                 _walk(hp.dep, set())
+        # Exposure audit (deny-by-audit): frameworks default every route to
+        # public and never mention it — forgotten auth ships silently. Any
+        # mutating route without a token/API-key guard is one warning, never
+        # an error: register/login are public on purpose, session-cookie
+        # routes carry their guard outside the DI graph. The warning exists
+        # so every public write is a conscious choice, visible in review.
+        unsafe = sorted(m for m in r.methods if m.upper() not in ("GET", "HEAD", "OPTIONS"))
+        if unsafe and not plan.compile_error and not plan.is_auth:
+            report["warnings"].append(
+                f"{r.path} [{plan.handler_name}]: {','.join(unsafe)} with no bearer/API-key guard — "
+                "public by default. If intentionally public (register/login) or session-cookie "
+                "protected, leave it; otherwise add claims=Depends(require_roles(...)) or APIKeyAuth."
+            )
         from .audit import audit_handler
 
         for finding in audit_handler(r.handler):

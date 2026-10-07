@@ -107,6 +107,24 @@ def test_api_key_auth():
     assert c.get("/svc", headers={"x-api-key": "svc-key"}).json() == {"svc": "billing"}
 
 
+def test_api_key_multi_key_lookup():
+    # Constant-time scan across the table: every key resolves, unknowns 401.
+    from ikarem import Depends, Ikarem
+
+    app = Ikarem(enable_docs=False)
+    keys = APIKeyAuth({"aaa": {"svc": "a"}, "zzz": {"svc": "z"}})
+
+    @app.get("/svc")
+    async def svc(req, info=Depends(keys)):
+        return info
+
+    c = TestClient(app)
+    assert c.get("/svc", headers={"x-api-key": "aaa"}).json() == {"svc": "a"}
+    assert c.get("/svc", headers={"x-api-key": "zzz"}).json() == {"svc": "z"}
+    assert c.get("/svc", headers={"x-api-key": "aa"}).status_code == 401
+    assert c.get("/svc", headers={"x-api-key": ""}).status_code == 401
+
+
 def test_migrations_up_down_status(tmp_path):
     async def go():
         from ikarem.db import SQLiteConnector

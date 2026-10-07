@@ -52,16 +52,28 @@ def verify_token(token: str, secret: str, algorithms: tuple = ("HS256",)) -> dic
         raise ValueError("malformed token payload")
     if not isinstance(data, dict):
         raise ValueError("malformed token payload")
-    if data.get("exp") and data["exp"] < time.time():
+    exp = data.get("exp")
+    if exp is None:
+        raise ValueError(
+            "missing 'exp' claim (mint with expires_in=...): forever-tokens never die when stolen"
+        )
+    if exp < time.time():
         raise ValueError("token expired")
     if "sub" not in data:
         raise ValueError("missing 'sub' claim")
     return data
 
 
+# OWASP PBKDF2-HMAC-SHA256 guidance; bumped from 210k. Format carries no
+# iteration count (changing it would invalidate stored hashes), so
+# check_password honors legacy 210k hashes while minting new ones at 600k.
+_PBKDF2_ROUNDS = 600_000
+_PBKDF2_LEGACY_ROUNDS = 210_000
+
+
 def hash_password(pw: str, salt: str | None = None) -> str:
     salt = salt or secrets.token_hex(16)
-    dk = hashlib.pbkdf2_hmac("sha256", pw.encode(), salt.encode(), 210_000)
+    dk = hashlib.pbkdf2_hmac("sha256", pw.encode(), salt.encode(), _PBKDF2_ROUNDS)
     return f"pbkdf2${salt}${dk.hex()}"
 
 
@@ -70,7 +82,10 @@ def check_password(pw: str, hashed: str) -> bool:
         _, salt, hexd = hashed.split("$")
     except ValueError:
         return False
-    return hmac.compare_digest(hash_password(pw, salt), hashed)
+    if hmac.compare_digest(hash_password(pw, salt), hashed):
+        return True
+    legacy = hashlib.pbkdf2_hmac("sha256", pw.encode(), salt.encode(), _PBKDF2_LEGACY_ROUNDS).hex()
+    return hmac.compare_digest(f"pbkdf2${salt}${legacy}", hashed)
 
 
 class BearerAuth:
@@ -200,6 +215,7 @@ class APIKeyAuth:
         self._ikarem_security = {"scheme": "apiKey", "roles": (), "header": header}
 
     async def __call__(self, request: Any) -> Any | None:
+        import hmac as _hmac
         import inspect
 
         from .errors import Unauthorized
@@ -212,7 +228,13 @@ class APIKeyAuth:
                 if inspect.isawaitable(info):
                     info = await info
             else:
-                info = self.keys.get(key)
+                # Constant-time scan: dict lookup by secret leaks the match
+                # position through timing. Linear + compare_digest costs
+                # nothing at key counts any app should have.
+                for candidate, candidate_info in self.keys.items():
+                    if _hmac.compare_digest(str(candidate), key):
+                        info = candidate_info
+                        break
         if info is None and self.required:
             raise Unauthorized("invalid or missing API key")
         return info

@@ -130,6 +130,32 @@ def test_check_app_surfaces_audit_as_warnings_not_errors():
     assert not any("/good" in w for w in report["warnings"])
 
 
+def test_exposure_audit_flags_public_writes_only():
+    from ikarem import Depends, require_roles
+
+    app = Ikarem(enable_docs=False, auth_secret="devtools-secret")
+
+    @app.post("/public-write")
+    async def pub(req):
+        return {"ok": True}
+
+    @app.post("/guarded")
+    async def guarded(req, claims=Depends(require_roles("admin"))):
+        return {"ok": True}
+
+    @app.get("/reads-are-fine")
+    async def reads(req):
+        return {"ok": True}
+
+    report = check_app(app)
+    assert report["errors"] == []
+    assert any(
+        "/public-write" in w and "no bearer/API-key guard" in w and "require_roles" in w
+        for w in report["warnings"]
+    )
+    assert not any("/guarded" in w or "/reads-are-fine" in w for w in report["warnings"])
+
+
 def _run_cli(monkeypatch, capsys, *argv):
     import tests.test_devtools as selfmod
     from ikarem import cli

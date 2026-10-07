@@ -7,6 +7,21 @@ All notable changes to this project are documented here. Format follows
 ## [Unreleased]
 
 ### Fixed
+- Exposure audit (deny-by-audit, novel): `check` now warns on every
+  mutating route (POST/PUT/PATCH/DELETE) with no bearer/API-key guard —
+  frameworks default routes to public and never mention it, so forgotten
+  auth ships silently. Warnings only (register/login are public on
+  purpose; session-cookie routes carry their guard outside DI) — the gate
+  stays green, `--strict` opts into failing. Ledger dogfoods it: 9
+  warnings, all acknowledged. Tests in `tests/test_devtools.py`.
+- `verify_token` now requires `exp`: correctly-signed forever-tokens are
+  rejected (`mint with expires_in=...`), so a stolen token still dies on
+  schedule. Test in `tests/test_jwt.py`.
+- Passwords to OWASP 600k PBKDF2-HMAC-SHA256 rounds (was 210k); stored
+  210k hashes keep verifying (re-hash on next login rotates them).
+  `APIKeyAuth` static-table lookup is now a constant-time scan instead
+  of `dict.get` by secret. Tests in `tests/test_industry.py`,
+  `tests/test_ops.py`.
 - Release metadata: `Topic :: Internet :: WWW/HTTP :: ASGI` is not a real
   trove classifier — Warehouse 400'd the 1.3.0 upload while `twine check`
   stayed green. Replaced with canonical `Framework :: AsyncIO` (+ the

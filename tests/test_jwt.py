@@ -1,4 +1,4 @@
-"""Exhaustive JWT verification: 8 branches."""
+"""Exhaustive JWT verification: 9 branches."""
 
 import base64
 import json
@@ -93,3 +93,15 @@ def test_8_wire_format_vector_independently_constructed():
     tampered = token[:-1] + ("a" if token[-1] != "a" else "b")
     with pytest.raises(ValueError, match="signature"):
         verify_token(tampered, SECRET)
+
+
+def test_9_forever_tokens_rejected():
+    # Valid signature, no exp: a stolen token must still die on schedule.
+    import hashlib
+    import hmac
+
+    h = _b64e(json.dumps({"alg": "HS256", "typ": "JWT"}).encode())
+    p = _b64e(json.dumps({"sub": "u1"}).encode())
+    sig = _b64e(hmac.new(SECRET.encode(), f"{h}.{p}".encode(), hashlib.sha256).digest())
+    with pytest.raises(ValueError, match="exp"):
+        verify_token(f"{h}.{p}.{sig}", SECRET)
