@@ -63,7 +63,8 @@ def test_custom_tool_list_call_coerce():
 def test_custom_tool_error_is_error_not_crash():
     async def _go():
         out = await _app().mcp_call("boom", {})
-        assert out["isError"] is True and "kaput" in out["content"][0]["text"]
+        # Same rendering as over HTTP (generic 500 when debug is off).
+        assert out["isError"] is True and "500" in out["content"][0]["text"]
 
     asyncio.run(_go())
 

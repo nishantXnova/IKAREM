@@ -45,6 +45,7 @@ app.use(CSRFMiddleware())
 app.use(RateLimitMiddleware(per_minute=240))
 app.register(DatabasePlugin(app.config.get("db_url", "sqlite:///ledger.db")))
 app.mount_static("/static", str(BASE / "static"))
+app.mount_mcp("/mcp")  # same tools over Streamable HTTP (e.g. ChatGPT plugin backends)
 
 CATEGORIES = {
     "Salary": "#34d399",

@@ -478,16 +478,31 @@ class MCPServer:
         request.path_params = path_params
         request.app = self.app
         try:
-            try:
-                result = await resolve_compiled(route.handler, request)
-            except HTTPException as e:
-                return _text(f"HTTP {e.status_code}: {e.detail}", is_error=True)
-            except ValueError as e:
-                return _text(f"invalid arguments: {e}", is_error=True)
-            except Exception as e:  # noqa: BLE001
-                detail = str(e) if getattr(self.app, "debug", False) else "Internal Server Error"
-                return _text(f"HTTP 500: {detail}", is_error=True)
-            response = to_response(result)
+            # Full pipeline, not just the handler: sessions, CSRF,
+            # rate limits, and request IDs behave exactly as over HTTP.
+            # (Terminal-safe rendering turns handler errors into
+            # responses with those same headers.)
+            terminal = getattr(self.app, "_terminal_safe", None)
+            if terminal is None or not hasattr(self.app, "middleware"):
+                try:
+                    result = await resolve_compiled(route.handler, request)
+                except HTTPException as e:
+                    return _text(f"HTTP {e.status_code}: {e.detail}", is_error=True)
+                except ValueError as e:
+                    return _text(f"invalid arguments: {e}", is_error=True)
+                except Exception as e:  # noqa: BLE001
+                    detail = str(e) if getattr(self.app, "debug", False) else "Internal Server Error"
+                    return _text(f"HTTP 500: {detail}", is_error=True)
+                response = to_response(result)
+            else:
+                try:
+                    response = await self.app.middleware.run(request, terminal)
+                except HTTPException as e:
+                    response = await self.app._render_exception(request, e, e.status_code, e.detail)
+                except Exception:  # noqa: BLE001 - middleware above the pipeline
+                    from .http import JSONResponse
+
+                    response = JSONResponse({"detail": "Internal Server Error"}, status_code=500)
             messages: list[dict] = []
 
             async def send(msg: dict) -> None:

@@ -225,3 +225,52 @@ def test_flash_shows_once_after_login():
     dash = c.get("/", headers={"accept": "text/html"})
     assert "Account created" in dash.text
     assert "Account created" not in c.get("/", headers={"accept": "text/html"}).text
+
+
+def test_mcp_transport_serves_api_tools():
+    import json as _json
+
+    c, csrf = _client()
+
+    def rpc(payload):
+        return c.post("/mcp", body=_json.dumps(payload).encode(), content_type="application/json", **csrf())
+
+    init = rpc({"jsonrpc": "2.0", "id": 1, "method": "initialize"})
+    assert init.status_code == 200
+    assert init.json()["result"]["protocolVersion"] == "2024-11-05"
+    names = {
+        t["name"] for t in rpc({"jsonrpc": "2.0", "id": 2, "method": "tools/list"}).json()["result"]["tools"]
+    }
+    assert "api_summary" in names
+    anon = TestClient(app)
+    anon_tok = anon.get("/api/csrf").json()["csrf"]
+    denied = anon.post(
+        "/mcp",
+        body=_json.dumps(
+            {
+                "jsonrpc": "2.0",
+                "id": 3,
+                "method": "tools/call",
+                "params": {"name": "api_summary", "arguments": {}},
+            }
+        ).encode(),
+        content_type="application/json",
+        headers={"x-csrf-token": anon_tok},
+    )
+    assert denied.json()["result"]["isError"] is True  # no session: auth enforced over HTTP too
+    jar = "; ".join(f"{k}={v}" for k, v in c.cookies.items())
+    tool_headers = {"x-csrf-token": c.get("/api/csrf").json()["csrf"], "cookie": jar}
+    authed = c.post(
+        "/mcp",
+        body=_json.dumps(
+            {
+                "jsonrpc": "2.0",
+                "id": 4,
+                "method": "tools/call",
+                "params": {"name": "api_list", "arguments": {"headers": tool_headers}},
+            }
+        ).encode(),
+        content_type="application/json",
+        **csrf(),
+    )
+    assert authed.json()["result"]["isError"] is False

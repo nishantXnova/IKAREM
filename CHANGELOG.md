@@ -7,11 +7,20 @@ All notable changes to this project are documented here. Format follows
 ## [Unreleased]
 
 ### Added
+- Ledger serves `/mcp` (negotiated summary + transport covered live over
+  real uvicorn: login, tools/list, authed tools/call).
 - MCP over Streamable HTTP: `app.mount_mcp("/mcp")` serves the same
   server (tools, prompts, resources) to remote clients — POST JSON-RPC
   (single/batch, 202 on notifications-only), GET SSE stream, stateless
   (no sessions), protocol errors on HTTP 200, malformed envelopes on
   400/415. Deploy behind HTTPS for ChatGPT plugin backends.
+
+### Fixed
+- MCP tool calls ran handlers directly, bypassing the middleware stack:
+  session-authed routes 500'd (`'Request' object has no attribute
+  'session'`). Tool execution now runs the full pipeline (sessions,
+  CSRF, rate limits, request IDs) with identical rendering — tool
+  behavior matches HTTP behavior by construction.
 - WebSocket path params: `@app.websocket("/ws/{room}")` captures into
   `ws.path_params` with HTTP converters; unknown converters fail at
   registration. Regression test in `tests/test_strong.py`.
