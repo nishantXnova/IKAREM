@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
+from .routing import Route
+
 
 class WebSocketDisconnect(RuntimeError):
     """The peer went away. Catch this — not bare RuntimeError — around
@@ -16,6 +18,7 @@ class WebSocket:
         self._receive = receive
         self._send = send
         self.path: str = scope.get("path", "/")
+        self.path_params: dict = {}
         self.query: dict = {}
         self.headers: dict = {k.decode().lower(): v.decode() for k, v in scope.get("headers", [])}
 
@@ -50,17 +53,25 @@ class WebSocket:
 
 
 class WSRouter:
+    """WebSocket routes with the same compiled converters as HTTP.
+
+    ``@app.websocket("/ws/{room}")`` captures params into
+    ``ws.path_params`` — no more keying rooms off the first message.
+    Unknown converters fail at registration, like HTTP routes.
+    """
+
     def __init__(self) -> None:
-        self.routes: list[tuple[str, Callable]] = []
+        self.routes: list[Route] = []
 
     def add(self, path: str, handler: Callable) -> None:
-        self.routes.append((path, handler))
+        self.routes.append(Route(path, {"WS"}, handler))
 
-    def match(self, path: str) -> Callable | None:
-        for p, h in self.routes:
-            if p == path:
-                return h
-        return None
+    def match(self, path: str) -> tuple[Callable | None, dict[str, Any]]:
+        for r in self.routes:
+            params = r.match(path)
+            if params is not None:
+                return r.handler, params
+        return None, {}
 
 
 class Room:

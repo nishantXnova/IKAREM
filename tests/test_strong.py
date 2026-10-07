@@ -3,6 +3,8 @@ body caps, latency metrics, transactions, rooms, typed package."""
 
 import asyncio
 
+import pytest
+
 from ikarem import (
     ConcurrencyLimitMiddleware,
     IdempotencyMiddleware,
@@ -198,6 +200,34 @@ def test_transactions_commit_and_rollback():
         await db.disconnect()
 
     asyncio.run(go())
+
+
+def test_websocket_path_params():
+    # Exact-match was the old limit (rooms keyed off the first message);
+    # converters now capture into ws.path_params like HTTP routes.
+    app = Ikarem(enable_docs=False)
+
+    @app.websocket("/ws/{room}")
+    async def hall(ws):
+        await ws.accept()
+        await ws.send_text(f"room={ws.path_params['room']}")
+
+    @app.websocket("/n/{n:int}")
+    async def num(ws):
+        await ws.accept()
+        await ws.send_text(f"n={ws.path_params['n'] + 1}")
+
+    async def go():
+        c = TestClient(app)
+        hall_sent = await c.ws_connect("/ws/general", [{"type": "websocket.connect"}])
+        assert {"type": "websocket.send", "text": "room=general"} in hall_sent
+        num_sent = await c.ws_connect("/n/41", [{"type": "websocket.connect"}])
+        assert {"type": "websocket.send", "text": "n=42"} in num_sent
+        assert await c.ws_connect("/n/abc", []) == [{"type": "websocket.close", "code": 4404}]
+
+    asyncio.run(go())
+    with pytest.raises(ValueError, match="Unknown converter"):
+        app.websocket("/ws/{room:zzz}")(hall)
 
 
 def test_room_broadcast_join_leave_prune():

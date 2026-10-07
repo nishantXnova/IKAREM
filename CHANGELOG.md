@@ -7,6 +7,19 @@ All notable changes to this project are documented here. Format follows
 ## [Unreleased]
 
 ### Added
+- WebSocket path params: `@app.websocket("/ws/{room}")` captures into
+  `ws.path_params` with HTTP converters; unknown converters fail at
+  registration. Regression test in `tests/test_strong.py`.
+- `docs/CHATGPT.md`: copy-paste GPT instructions (laws, auth shapes,
+  test discipline, self-review checklist) + Actions wiring via
+  `/openapi.json`, so ChatGPT writes IKAREM code that passes `check`.
+- HERMES (`agent/`): versatile BYOK AI agent on the IKAREM core — ReAct loop
+  over files/shell/web/memory tools, dark-glass chat UI with streaming
+  (`/ws/chat`) and approval cards, 8 providers (OpenAI/Anthropic/OpenRouter/
+  Groq/Gemini/Ollama/LM Studio/custom, stdlib urllib only, keys stay in the
+  browser), workspace jail + shell allowlist, SQLite sessions/memories, and
+  MCP tools (`hermes_chat/read/list/web_fetch/recall`) + prompts. Run with
+  `ikarem run agent.app:app`; 10 tests in `agent/tests/`.
 - Seams not rewrites: pydantic models accepted wherever a `Schema` goes
   (handler bodies, MCP tools) via duck-typing — zero import cost, no
   dependency. `bench/bench_validate.py` publishes the honest number
@@ -27,6 +40,13 @@ All notable changes to this project are documented here. Format follows
 - `docs/DEFAULTS.md`: every security-relevant default stated with its
   reason and override (validation strictness, cookie flags, no response
   filtering, X-Forwarded-For trust, secret refusal, HS256 limits).
+- Framework knowledge as MCP (`ikarem/knowledge.py`): `ikarem mcp
+  ikarem.knowledge:app` teaches agents to write IKAREM code — embedded
+  quickref (no checkout needed), doc reader, repo search, live API
+  reference, runnable examples, `ikarem_audit` running the framework's
+  own check against candidate code, plus `ikarem_new_app`/`ikarem_review`
+  prompts; usage errors raise so they surface as MCP `isError`.
+  7 tests in `tests/test_knowledge.py`.
 
 ### Changed
 - Cookbook recipes 4–6 match the guide: hashed passwords, CSRF tokens,

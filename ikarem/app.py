@@ -56,6 +56,9 @@ class Ikarem:
         return self.route(path, ["DELETE"])
 
     def websocket(self, path: str):
+        """WebSocket route with HTTP-style converters: ``@app.websocket("/ws/{room}")``
+        captures into ``ws.path_params``. Unknown converters fail at registration."""
+
         def deco(fn: Callable) -> Callable:
             self.ws_router.add(path, fn)
             return fn
@@ -424,11 +427,12 @@ class Ikarem:
     async def _handle_ws(self, scope: dict, receive: Any, send: Any) -> None:
         from .websocket import WebSocket
 
-        handler = self.ws_router.match(scope.get("path", "/"))
+        handler, params = self.ws_router.match(scope.get("path", "/"))
         if handler is None:
             await send({"type": "websocket.close", "code": 4404})
             return
         ws = WebSocket(scope, receive, send)
+        ws.path_params = params
         ws.app = self  # type: ignore
         try:
             result = handler(ws)
