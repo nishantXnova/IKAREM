@@ -6,6 +6,8 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
+## [1.3.0] — 2026-10-07
+
 ### Added
 - Ecosystem, Law 6 (`AGENTS.md`): adapters consume ecosystems without
   becoming the core — one direction (outside→inside), outside `ikarem/`,
