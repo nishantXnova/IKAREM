@@ -91,6 +91,19 @@ jobs:
       - name: Build ledger image
         run: docker build ./ledger -t ledger:ci
 
+  packaging:
+    name: warehouse metadata stays uploadable
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install (build + canonical trove set)
+        run: pip install build twine trove-classifiers pytest
+      - name: Build + metadata checks (twine check misses bad troves; the test does not)
+        run: python -m build && python -m twine check dist/* && python -m pytest tests/test_packaging.py -q
+
   scaffold:
     name: starter template stays runnable
     runs-on: ubuntu-latest

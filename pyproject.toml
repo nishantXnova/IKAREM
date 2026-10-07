@@ -28,6 +28,7 @@ keywords = [
 ]
 classifiers = [
   "Development Status :: 5 - Production/Stable",
+  "Framework :: AsyncIO",
   "Intended Audience :: Developers",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.10",
@@ -35,7 +36,6 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
   "Topic :: Internet :: WWW/HTTP",
-  "Topic :: Internet :: WWW/HTTP :: ASGI",
   "Topic :: Software Development :: Libraries :: Python Modules",
   "Typing :: Typed",
 ]

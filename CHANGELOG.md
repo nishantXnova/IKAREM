@@ -6,6 +6,16 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
+### Fixed
+- Release metadata: `Topic :: Internet :: WWW/HTTP :: ASGI` is not a real
+  trove classifier — Warehouse 400'd the 1.3.0 upload while `twine check`
+  stayed green. Replaced with canonical `Framework :: AsyncIO` (+ the
+  valid `WWW/HTTP` parent). Guarded by `tests/test_packaging.py`
+  (classifiers vs the canonical set, version sync across
+  `pyproject`/`__init__`/CHANGELOG) and a CI `packaging` job that
+  builds + `twine check`s on every push, so tags only ever point at
+  uploadable commits.
+
 ## [1.3.0] — 2026-10-07
 
 ### Added
