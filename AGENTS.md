@@ -28,6 +28,15 @@ python bench/load.py                       # sustained-load proof (slow)
    count them, log them, or re-raise them.
 5. **Conventional Commits** (`feat:`, `fix:`, `docs:`, `test:`, `bench:`, `chore:`).
    Releases and CHANGELOG are cut from these.
+6. **Adapters consume ecosystems; they never become the core.** Compatibility
+   can destroy the reason IKAREM exists, so bridges obey five rules: (a) one
+   direction only — outside→inside, translated at registration, never
+   per-request, never into `ikarem/`; (b) adapters live outside the core
+   (`adapters/`), own versioning, own breakage; (c) adapted traffic runs the
+   full native pipeline (`check`, compiled plans, middleware) — no
+   second-class execution; (d) each adapter states the ONE thing it does
+   strictly better than the default, or it gets deleted; (e) every adapter
+   documents its removal path to the native equivalent.
 
 ## Architecture notes
 
@@ -50,6 +59,7 @@ python bench/load.py                       # sustained-load proof (slow)
 - `ikarem/mcp.py` — routes-as-tools + stdio server + resources
 - `ikarem/cli.py` — run/check/mcp/new/migrate/worker/inspect
 - `ikarem/scaffold.py` — `ikarem new` templates (keep runnable; CI doesn't run them)
+- `adapters/` — ecosystem bridges (outside the core per Law 6; reference: ASGI middleware)
 - `ledger/` — showcase finance app (also the load/CI target)
 - `site/` — static docs (hand-written HTML/CSS, brutal-dev style; no build step)
 - `bench/` — `bench_switch.py` (honest numbers), `load.py` (sustained proof)

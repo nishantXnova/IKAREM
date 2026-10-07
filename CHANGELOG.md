@@ -7,6 +7,17 @@ All notable changes to this project are documented here. Format follows
 ## [Unreleased]
 
 ### Added
+- Ecosystem, Law 6 (`AGENTS.md`): adapters consume ecosystems without
+  becoming the core — one direction (outside→inside), outside `ikarem/`,
+  full native pipeline, one stated better-than-default each, documented
+  removal path. Reference proof: `adapters/asgi_bridge.py`
+  (`ASGIMiddlewareAdapter`) runs any Starlette/FastAPI middleware factory
+  inside IKAREM's stack (body replay, scope-copy isolation, chunked
+  buffering, multi-header preservation, native error rendering) while
+  the route stays `check`-audited and MCP-exposed. Better-than-default:
+  adapted routes keep `check`, `describe_app`/MCP tools, and native
+  shields in front. Removal path per middleware in the module docstring.
+  Tests in `tests/test_adapters_asgi.py`.
 - `SpikeManager` (`ikarem/resilience.py`, exported): the intelligent
   bulkhead — AIMD adaptive concurrency (+1 per fast response, x0.9 per
   slow one, bounded by min/max), bounded queue with loop-safe polling
