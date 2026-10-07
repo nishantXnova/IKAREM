@@ -1,0 +1,30 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: relay
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+      POSTGRES_DB: relay
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U relay"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app:
+    build: .
+    ports:
+      - "${PORT:-8000}:8000"
+    environment:
+      IKAREM_SESSION_SECRET: ${IKAREM_SESSION_SECRET:?set me}
+      IKAREM_AUTH_SECRET: ${IKAREM_AUTH_SECRET:?set me}
+      IKAREM_DB_URL: postgresql://relay:${POSTGRES_PASSWORD:-change-me}@db:5432/relay
+      IKAREM_DEMO: "false"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:

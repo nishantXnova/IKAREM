@@ -7,6 +7,19 @@ All notable changes to this project are documented here. Format follows
 ## [Unreleased]
 
 ### Fixed
+- Relay (`relay/`): the biggest showcase — team incident + status hub, 28
+  routes plus system endpoints. Sessions + CSRF (browser, JSON clients get
+  JSON not redirects), JWT login with roles, hashed API keys (shown once),
+  SpikeManager flood lane on bulk ingest, nitro status rollups, Room live
+  feed, cron probes with auto-incidents + dedupe, durable-queue
+  notifications, MCP tools, NISH mode, and `/debug/ikarem` rendering the
+  framework's own pulse (SpikeManager snapshot, nitro stats, audit
+  counts). Hand-set brutal CSS, no framework. 19 hermetic tests; `check`
+  green with 11 acknowledged exposure warnings. Building it exposed a
+  real hermeticity trap (import-time env edits + construction-time Config
+  snapshot = cross-suite poisoning); the suite documents the pattern
+  (config object, never process env). `relay/tests` joins the full suite
+  (381 passed), AGENTS.md, and CI.
 - NITRO (`ikarem/nitro.py`, exported): `@nitro(ttl=, maxsize=)` decorates
   sync or async functions with TTL + LRU eviction + singleflight
   (concurrent identical calls compute once — the stampede killer

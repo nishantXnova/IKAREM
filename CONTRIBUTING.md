@@ -17,7 +17,7 @@ python -m pytest tests/ ledger/tests cadence/tests -q
 
 ```bash
 ruff check . && ruff format --check .
-python -m pytest tests/ ledger/tests cadence/tests forge/tests -q
+python -m pytest tests/ ledger/tests cadence/tests forge/tests relay/tests -q
 python -m ikarem.cli check ledger.app:app
 python bench/bench_switch.py   # only if you touched the hot path
 ```

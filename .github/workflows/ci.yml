@@ -24,7 +24,7 @@ jobs:
       - name: Lint
         run: ruff check . && ruff format --check .
       - name: Tests (framework + showcases)
-        run: python -m pytest tests/ ledger/tests cadence/tests forge/tests -q
+        run: python -m pytest tests/ ledger/tests cadence/tests forge/tests relay/tests -q
       - name: Static handler audit
         run: python -m ikarem.cli check ledger.app:app
 
@@ -39,7 +39,7 @@ jobs:
       - name: Install (dev extras + coverage)
         run: pip install -e ".[dev]" coverage pytest
       - name: Coverage (fail under 80%)
-        run: coverage run -m pytest tests/ ledger/tests cadence/tests forge/tests -q && coverage report --include="ikarem/*" --fail-under=80
+        run: coverage run -m pytest tests/ ledger/tests cadence/tests forge/tests relay/tests -q && coverage report --include="ikarem/*" --fail-under=80
 
   differential:
     name: differential proof (pydantic + PyJWT, test-only deps)

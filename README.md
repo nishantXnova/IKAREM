@@ -325,10 +325,10 @@ moving van.*
 
 ## Verification
 
-278 passed, 3 skipped — framework plus three showcase apps, one command:
+381 passed, 3 skipped — framework plus four showcase apps, one command:
 
 ```bash
-python -m pytest tests/ ledger/tests cadence/tests forge/tests -q
+python -m pytest tests/ ledger/tests cadence/tests forge/tests relay/tests -q
 ```
 
 CI runs the same suite on Python 3.10–3.13 × Ubuntu/macOS/Windows, plus a
@@ -380,8 +380,9 @@ ikarem/            zero-dep stdlib core (v1.3.0) — optional integrations lazy-
   testing.py      TestClient (cookie jar, all verbs, WS driving — no server needed)
   scaffold.py     `ikarem new` starter generator
   deprecation.py  deprecated() upgrade path + meraki_compat.py drop-in shim
-tests/ + ledger/tests + cadence/tests + forge/tests   278-test suite (see Verification)
+tests/ + ledger/tests + cadence/tests + forge/tests + relay/tests   381-test suite (see Verification)
 ledger/ + cadence/ + forge/   production showcase apps (finance, habits, workshop OS)
+relay/                        incident + status hub (28 routes: JWT/RBAC/API keys, SpikeManager ingest lane, nitro rollups, live feed, cron probes, MCP, debug pulse)
 examples/basic.py    minimal CRUD + DB plugin app
 bench/            honest benches (bench_switch.py) + sustained-load proof (load.py)
 docs/             COOKBOOK.md (20 runnable recipes) · GUIDE.md (25 chapters) · NISH.md ·

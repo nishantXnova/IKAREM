@@ -1,0 +1,4 @@
+ikarem>=1.3.0
+uvicorn>=0.24
+pytest>=8
+asyncpg>=0.29  # postgres (docker compose)
