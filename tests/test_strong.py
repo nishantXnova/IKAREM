@@ -12,6 +12,7 @@ from ikarem import (
     Room,
     SecurityHeadersMiddleware,
     ServiceUnavailable,
+    SpikeManager,
     TimeoutMiddleware,
     TrustedHostMiddleware,
 )
@@ -311,3 +312,144 @@ def test_service_unavailable_exported():
 
     r = TestClient(app).get("/down")
     assert r.status_code == 503 and r.json() == {"detail": "deploying"}
+
+
+def test_spike_manager_sheds_fail_fast_when_full():
+    import threading
+    import time as _t
+
+    app = Ikarem(enable_docs=False)
+    mgr = SpikeManager(initial=1, min_limit=1, max_limit=4, queue_timeout=0)
+    app.use(mgr)
+    entered, release = [], threading.Event()
+
+    @app.get("/hold")
+    async def hold(req):
+        import asyncio as _aio
+
+        entered.append(1)
+        await _aio.to_thread(release.wait, 10)
+        return {"ok": True}
+
+    holder_status = []
+    t = threading.Thread(target=lambda: holder_status.append(TestClient(app).get("/hold").status_code))
+    t.start()
+    for _ in range(200):
+        if entered:
+            break
+        _t.sleep(0.05)
+    assert entered == [1]
+    _t.sleep(0.2)
+    r = TestClient(app).get("/hold")
+    assert r.status_code == 503 and r.headers["retry-after"] == "1"
+    snap = mgr.snapshot()
+    assert snap["shed"] == 1 and snap["admitted"] == 1 and snap["in_flight"] == 1
+    release.set()
+    t.join(timeout=10)
+    assert holder_status == [200]
+    assert mgr.snapshot()["in_flight"] == 0
+
+
+def test_spike_manager_queues_then_admits_on_release():
+    import threading
+    import time as _t
+
+    app = Ikarem(enable_docs=False)
+    mgr = SpikeManager(initial=1, min_limit=1, max_limit=4, queue_timeout=5)
+    app.use(mgr)
+    release = threading.Event()
+
+    @app.get("/hold")
+    async def hold(req):
+        import asyncio as _aio
+
+        await _aio.to_thread(release.wait, 10)
+        return {"ok": True}
+
+    first = threading.Thread(target=lambda: TestClient(app).get("/hold"))
+    first.start()
+    _t.sleep(0.3)  # holder occupies the single slot
+    waiter_status = []
+    second = threading.Thread(target=lambda: waiter_status.append(TestClient(app).get("/hold").status_code))
+    second.start()
+    _t.sleep(0.3)
+    assert mgr.snapshot()["queued"] >= 1  # waiter is queued, not shed
+    release.set()
+    first.join(timeout=10)
+    second.join(timeout=10)
+    assert waiter_status == [200]  # got the freed slot instead of a 503
+    assert mgr.snapshot()["shed"] == 0
+
+
+def test_spike_manager_never_sheds_exempt_probes():
+    import threading
+    import time as _t
+
+    app = Ikarem(enable_docs=False)
+    mgr = SpikeManager(
+        initial=1, min_limit=1, max_limit=1, queue_timeout=0, exempt_paths=("/probe",), target_latency=60.0
+    )
+    app.use(mgr)
+    release = threading.Event()
+
+    @app.get("/hold")
+    async def hold(req):
+        import asyncio as _aio
+
+        await _aio.to_thread(release.wait, 10)
+        return {"ok": True}
+
+    @app.get("/probe")
+    async def probe(req):
+        return {"ok": True}
+
+    t = threading.Thread(target=lambda: TestClient(app).get("/hold"))
+    t.start()
+    _t.sleep(0.3)
+    # Gate is saturated and capped at 1 (no adaptation headroom): probe still passes.
+    assert TestClient(app).get("/probe").status_code == 200
+    assert TestClient(app).get("/hold").status_code == 503
+    release.set()
+    t.join(timeout=10)
+
+
+def test_spike_manager_adapts_limit_to_latency():
+    now = [1000.0]
+    app = Ikarem(enable_docs=False)
+    mgr = SpikeManager(initial=10, min_limit=5, max_limit=12, target_latency=0.2, clock=lambda: now[0])
+    app.use(mgr)
+
+    slow = [False]
+
+    @app.get("/fast")
+    async def fast(req):
+        now[0] += 5.0 if slow[0] else 0.01  # slow tick lands inside the request
+        return {"ok": True}
+
+    c = TestClient(app)
+    for _ in range(5):
+        assert c.get("/fast").status_code == 200
+    assert mgr.snapshot()["limit"] == 12  # +1 per fast request, capped at max
+    assert mgr.snapshot()["avg_latency"] == pytest.approx(0.01)
+
+    slow[0] = True  # one slow request: over target
+    assert c.get("/fast").status_code == 200
+    assert mgr.snapshot()["limit"] < 12  # multiplicative decrease
+    assert mgr.snapshot()["limit"] >= 5  # never below min
+
+
+def test_spike_manager_rejects_bad_config():
+    with pytest.raises(ValueError, match="min_limit>=1"):
+        SpikeManager(min_limit=0)
+    with pytest.raises(ValueError, match="max_limit>=min_limit"):
+        SpikeManager(min_limit=10, max_limit=5)
+    with pytest.raises(ValueError, match="initial"):
+        SpikeManager(initial=50, min_limit=1, max_limit=10)
+    with pytest.raises(ValueError, match="target_latency>0"):
+        SpikeManager(target_latency=0)
+    with pytest.raises(ValueError, match="queue_timeout>=0"):
+        SpikeManager(queue_timeout=-1)
+    with pytest.raises(ValueError, match="exempt_paths"):
+        SpikeManager(exempt_paths=("ok", 42))  # type: ignore
+    with pytest.raises(ValueError, match="exempt must be a callable"):
+        SpikeManager(exempt="yes-plz")  # type: ignore

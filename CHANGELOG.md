@@ -7,6 +7,15 @@ All notable changes to this project are documented here. Format follows
 ## [Unreleased]
 
 ### Added
+- `SpikeManager` (`ikarem/resilience.py`, exported): the intelligent
+  bulkhead — AIMD adaptive concurrency (+1 per fast response, x0.9 per
+  slow one, bounded by min/max), bounded queue with loop-safe polling
+  instead of instant 503s (`queue_timeout=0` keeps fail-fast),
+  `exempt_paths`/`exempt()` so probes are never shed, `snapshot()` for
+  dashboards, bad config refused with the fix in the message. A network
+  load balancer is deliberately out of scope (nginx/cloud-LB/k8s own
+  that); this is the per-process admit/queue/shed/adapt half. Tests in
+  `tests/test_strong.py`.
 - Hot-path pass, zero-dep intact: `Request.query`/`cookies` parsed once
   and cached (compiled plans hit them per-param), middleware 0/1 fast
   paths + snapshot dispatch (no per-level type checks, `call_next(None)`

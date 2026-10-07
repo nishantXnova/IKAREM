@@ -53,7 +53,7 @@ from .nish import NISHResponse, from_nish, negotiate, to_nish
 from .observability import MetricsMiddleware, RequestIDMiddleware, configure_logging
 from .plugins import BasePlugin, Plugin, PluginManager
 from .queue import Queue, QueuePlugin, run_worker, task
-from .resilience import ConcurrencyLimitMiddleware, IdempotencyMiddleware, TimeoutMiddleware
+from .resilience import ConcurrencyLimitMiddleware, IdempotencyMiddleware, SpikeManager, TimeoutMiddleware
 from .resources import resource
 from .routing import Router
 from .scheduler import Scheduler, SchedulerPlugin, parse_cron, run_scheduler
@@ -146,6 +146,7 @@ __all__ = [
     "TracingMiddleware",
     "TimeoutMiddleware",
     "ConcurrencyLimitMiddleware",
+    "SpikeManager",
     "IdempotencyMiddleware",
     "CacheBackend",
     "MemoryCache",
