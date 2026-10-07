@@ -1,6 +1,5 @@
 """IKAREM public API."""
 
-from .accelerate import accelerate
 from .app import Ikarem
 from .auth import (
     APIKeyAuth,
@@ -51,6 +50,7 @@ from .mcp import MCPServer
 from .middleware import Middleware, MiddlewareStack
 from .migrations import Migrator
 from .nish import NISHResponse, from_nish, negotiate, to_nish
+from .nitro import nitro
 from .observability import MetricsMiddleware, RequestIDMiddleware, configure_logging
 from .plugins import BasePlugin, Plugin, PluginManager
 from .queue import Queue, QueuePlugin, run_worker, task
@@ -153,7 +153,7 @@ __all__ = [
     "MemoryCache",
     "RedisCache",
     "cached",
-    "accelerate",
+    "nitro",
     "ConditionalMiddleware",
     "Room",
     "WebSocket",

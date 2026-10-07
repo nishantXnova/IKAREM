@@ -5,13 +5,13 @@ import threading
 
 import pytest
 
-from ikarem import accelerate
+from ikarem import nitro
 
 
 def test_sync_hit_miss_stats_and_clear():
     calls = []
 
-    @accelerate(ttl=60.0, maxsize=8)
+    @nitro(ttl=60.0, maxsize=8)
     def add(a, b=0):
         calls.append(1)
         return a + b
@@ -30,7 +30,7 @@ def test_sync_ttl_expiry_with_fake_clock():
     now = [100.0]
     calls = []
 
-    @accelerate(ttl=10.0, clock=lambda: now[0])
+    @nitro(ttl=10.0, clock=lambda: now[0])
     def f(x):
         calls.append(1)
         return x
@@ -45,7 +45,7 @@ def test_sync_ttl_expiry_with_fake_clock():
 def test_sync_lru_eviction():
     calls = []
 
-    @accelerate(ttl=60.0, maxsize=2)
+    @nitro(ttl=60.0, maxsize=2)
     def f(x):
         calls.append(x)
         return x
@@ -60,7 +60,7 @@ def test_sync_lru_eviction():
 def test_sync_unhashable_args_and_kwargs_order():
     calls = []
 
-    @accelerate(ttl=60.0)
+    @nitro(ttl=60.0)
     def f(items, tag="x"):
         calls.append(1)
         return (len(items), tag)
@@ -73,7 +73,7 @@ def test_sync_unhashable_args_and_kwargs_order():
 def test_sync_exceptions_never_cached():
     calls = []
 
-    @accelerate(ttl=60.0)
+    @nitro(ttl=60.0)
     def f(fail):
         calls.append(1)
         if fail:
@@ -92,7 +92,7 @@ def test_sync_singleflight_coalesces_threads():
 
     calls = []
 
-    @accelerate(ttl=60.0)
+    @nitro(ttl=60.0)
     def slow(x):
         calls.append(1)
         _t.sleep(0.2)  # wide window: every thread must arrive while computing
@@ -118,7 +118,7 @@ def test_sync_singleflight_coalesces_threads():
 def test_async_hit_and_stats():
     calls = []
 
-    @accelerate(ttl=60.0)
+    @nitro(ttl=60.0)
     async def f(x):
         calls.append(1)
         return x + 1
@@ -136,7 +136,7 @@ def test_async_hit_and_stats():
 def test_async_singleflight_coalesces_gather():
     calls = []
 
-    @accelerate(ttl=60.0)
+    @nitro(ttl=60.0)
     async def slow(x):
         calls.append(1)
         await asyncio.sleep(0.05)
@@ -152,7 +152,7 @@ def test_async_singleflight_coalesces_gather():
 def test_async_exceptions_never_cached():
     calls = []
 
-    @accelerate(ttl=60.0)
+    @nitro(ttl=60.0)
     async def f(fail=False):
         calls.append(1)
         if fail:
@@ -175,7 +175,7 @@ def test_async_stale_loop_pending_never_awaited():
     calls = []
     gate = threading.Event()
 
-    @accelerate(ttl=60.0)
+    @nitro(ttl=60.0)
     async def g(x):
         calls.append(1)
         while not gate.is_set():
@@ -196,6 +196,6 @@ def test_async_stale_loop_pending_never_awaited():
 
 def test_bad_config_rejected_with_fix():
     with pytest.raises(ValueError, match=r"ttl>0"):
-        accelerate(ttl=0)
+        nitro(ttl=0)
     with pytest.raises(ValueError, match=r"maxsize>=1"):
-        accelerate(maxsize=0)
+        nitro(maxsize=0)

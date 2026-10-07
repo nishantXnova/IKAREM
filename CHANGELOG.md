@@ -7,13 +7,13 @@ All notable changes to this project are documented here. Format follows
 ## [Unreleased]
 
 ### Fixed
-- Inbuilt accelerator (`ikarem/accelerate.py`, exported): `@accelerate(ttl=,
-  maxsize=)` decorates sync or async functions with TTL + LRU eviction +
-  singleflight (concurrent identical calls compute once — the stampede
-  killer `cached()` lacks), uncached exceptions, `cache_info()`/`cache_clear()`,
+- NITRO (`ikarem/nitro.py`, exported): `@nitro(ttl=, maxsize=)` decorates
+  sync or async functions with TTL + LRU eviction + singleflight
+  (concurrent identical calls compute once — the stampede killer
+  `cached()` lacks), uncached exceptions, `cache_info()`/`cache_clear()`,
   thread-safe and loop-aware (dead-loop futures discarded, never awaited).
   Use for in-process hot values; `cached()` stays the cross-process answer.
-  11 tests in `tests/test_accelerate.py`.
+  11 tests in `tests/test_nitro.py`.
 - Exposure audit (deny-by-audit, novel): `check` now warns on every
   mutating route (POST/PUT/PATCH/DELETE) with no bearer/API-key guard —
   frameworks default routes to public and never mention it, so forgotten

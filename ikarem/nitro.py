@@ -1,10 +1,10 @@
-"""In-process function accelerator: `@accelerate()`.
+"""NITRO: in-process function accelerator (`@nitro`).
 
 One decorator that makes a hot function fast::
 
-    from ikarem import accelerate
+    from ikarem import nitro
 
-    @accelerate(ttl=60.0, maxsize=1024)
+    @nitro(ttl=60.0, maxsize=1024)
     async def price_list(cur):
         return await db.fetch_all("SELECT ...")  # runs once per minute per cur
 
@@ -43,12 +43,12 @@ def _key(args: tuple, kwargs: dict) -> Any:
         return ("r", repr((args, sorted(kwargs.items(), key=lambda kv: kv[0]))))
 
 
-def accelerate(ttl: float = 60.0, maxsize: int = 1024, clock: Any = None) -> Any:
+def nitro(ttl: float = 60.0, maxsize: int = 1024, clock: Any = None) -> Any:
     """Decorate a sync or async function with TTL + LRU + singleflight."""
     if ttl <= 0:
-        raise ValueError(f"accelerate needs ttl>0 seconds, got {ttl} (pass e.g. ttl=60.0)")
+        raise ValueError(f"nitro needs ttl>0 seconds, got {ttl} (pass e.g. ttl=60.0)")
     if maxsize < 1:
-        raise ValueError(f"accelerate needs maxsize>=1, got {maxsize}")
+        raise ValueError(f"nitro needs maxsize>=1, got {maxsize}")
     now = clock or time.monotonic
 
     def deco(fn: Any) -> Any:
