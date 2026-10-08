@@ -7,6 +7,16 @@ All notable changes to this project are documented here. Format follows
 ## [Unreleased]
 
 ### Fixed
+- `ikarem audit` (`ikarem/security_audit.py`, exported `audit_report`):
+  the framework grades its own deployment — 11 controls (exposed
+  writes, secrets, debug leakage, cookie flags, CSRF, rate limiting,
+  headers+hosts, body caps, overload behavior, token policy, supply
+  chain) with evidence + remedy, text and `--format json` for auditors
+  and CI gates (`--strict` supported). JWT-01 doesn't claim the token
+  policy, it proves it live (exp-less forgery, alg=none, wrong secret
+  attacked at audit time); DEP-01 guards Law 1 (core required deps stay
+  zero). Ledger grades 6/5/0, Relay 7/4/0 — every finding accurate.
+  7 tests in `tests/test_security_audit.py`.
 - Relay (`relay/`): the biggest showcase — team incident + status hub, 28
   routes plus system endpoints. Sessions + CSRF (browser, JSON clients get
   JSON not redirects), JWT login with roles, hashed API keys (shown once),

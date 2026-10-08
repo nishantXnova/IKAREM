@@ -1,4 +1,4 @@
-"""`ikarem run|check|mcp|new|migrate|worker|inspect ...`."""
+"""`ikarem run|check|mcp|new|migrate|worker|inspect|audit ...`."""
 
 from __future__ import annotations
 
@@ -59,6 +59,7 @@ def main() -> None:
         "migrate",
         "worker",
         "inspect",
+        "audit",
         "-h",
         "--help",
     ):
@@ -111,6 +112,11 @@ def main() -> None:
     pi.add_argument("target", nargs="?", default="examples.basic:app", help="module:attr")
     pi.add_argument("--format", choices=["json", "summary", "openapi", "auth"], default="json")
 
+    pa = sub.add_parser("audit", help="grade the app's security posture (read-only)")
+    pa.add_argument("target", nargs="?", default="examples.basic:app", help="module:attr")
+    pa.add_argument("--strict", action="store_true", help="warnings fail the audit too")
+    pa.add_argument("--format", choices=["text", "json"], default="text", help="machine-readable report")
+
     args = p.parse_args()
     if args.cmd == "new":
         from .scaffold import create_project
@@ -137,8 +143,32 @@ def main() -> None:
         raise SystemExit(_cmd_worker(app, args))
     elif args.cmd == "inspect":
         raise SystemExit(_cmd_inspect(app, args))
+    elif args.cmd == "audit":
+        raise SystemExit(_cmd_audit(app, args))
     else:
         raise SystemExit(_cmd_check(app, args))
+
+
+def _cmd_audit(app, args) -> int:
+    import json
+
+    from .security_audit import audit_report, format_text
+
+    report = audit_report(app)
+    s = report["summary"]
+    if getattr(args, "format", "text") == "json":
+        print(json.dumps(report, indent=1, default=str))
+    else:
+        print(format_text(report))
+    if s["fail"]:
+        print(f"audit FAILED: {s['fail']} failing control(s)")
+        return 1
+    if s["warn"] and getattr(args, "strict", False):
+        print(f"audit FAILED: {s['warn']} warning(s) under --strict")
+        return 1
+    if getattr(args, "format", "text") != "json":
+        print(f"audit {s['verdict'].upper()}")
+    return 0
 
 
 def _cmd_mcp_list(app) -> int:

@@ -65,6 +65,7 @@ from .security import (
     SecurityHeadersMiddleware,
     TrustedHostMiddleware,
 )
+from .security_audit import audit_report
 from .session import CSRFMiddleware, SessionMiddleware, csrf_token
 from .static import FileResponse
 from .templating import Templates
@@ -144,6 +145,7 @@ __all__ = [
     "TrustedHostMiddleware",
     "RateLimitMiddleware",
     "RedisRateLimitMiddleware",
+    "audit_report",
     "TracingMiddleware",
     "TimeoutMiddleware",
     "ConcurrencyLimitMiddleware",
