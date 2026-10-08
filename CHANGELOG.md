@@ -15,6 +15,12 @@ All notable changes to this project are documented here. Format follows
   with evidence + remedy per finding. `ikarem audit` stays built-in
   read-only grading; pentest is the live-fire proof. Ledger grades CLEAN.
   7 hermetic tests. Removal path: uninstall keeps audit + check.
+- `ikarem-pentest` Nuclei layer (`ikarem_pentest/nuclei.py`, optional):
+  drives the open-source Nuclei binary (8000+ community templates) against
+  a live server (`--nuclei --target-url`), normalizes JSONL into `NU-*`
+  findings (critical/high fail, medium warn), ships 3 IKAREM templates
+  (openapi/docs exposure, security headers). Missing binary names the
+  exact install line; 9 hermetic tests (binary never executed).
 
 ### Fixed
 - `ikarem audit` (`ikarem/security_audit.py`, exported `audit_report`):
