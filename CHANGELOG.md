@@ -21,6 +21,10 @@ All notable changes to this project are documented here. Format follows
   findings (critical/high fail, medium warn), ships 3 IKAREM templates
   (openapi/docs exposure, security headers). Missing binary names the
   exact install line; 9 hermetic tests (binary never executed).
+- `ikarem-pentest` default `--severity` now includes `info,unknown`:
+  the old default silently filtered out the shipped IKAREM templates
+  (severity info) — the live scan reported CLEAN while nuclei matched.
+  Regression test pins the flag. Found by scanning ledger live.
 
 ### Fixed
 - `ikarem audit` (`ikarem/security_audit.py`, exported `audit_report`):
