@@ -45,6 +45,21 @@ pip install -e ".[mysql]"         # aiomysql strategy
 pip install -e ".[sqlserver]"     # aioodbc strategy
 ```
 
+## Security note: malicious npm namesake
+
+A malicious **npm** package published as `@ikarem/telemetry` shares the
+IKAREM name. **It is not affiliated with this project in any way.**
+IKAREM is a Python framework — we publish **no npm packages**.
+Flagged by OpenSSF Package Analysis, tracked as
+MAL-2025-192569 / GHSA-5q62-g32j-g4hp.
+
+- If a scanner flags `@ikarem/telemetry`, that is the unrelated npm
+  package — not a vulnerability in this Python project.
+- If you installed or ran it, follow the security advisory's remediation
+  guidance; don't treat it as an IKAREM dependency.
+- Official channels, and only these: PyPI (`pip install ikarem`) and
+  GitHub (`nishantXnova/IKAREM`). Full policy: [`SECURITY.md`](SECURITY.md).
+
 ## 30-second example
 
 ```python

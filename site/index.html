@@ -41,7 +41,8 @@
    {"@type": "Question", "name": "Postgres + tests?", "acceptedAnswer": {"@type": "Answer", "text": "One event loop per thread: TestClient reuses it, so loop-bound pools survive across requests instead of churning."}},
    {"@type": "Question", "name": "What is IKAREM?", "acceptedAnswer": {"@type": "Answer", "text": "IKAREM is a zero-dependency Python ASGI web framework for REST APIs, HTML apps, websockets, background jobs, and LLM tool servers. Install with pip install ikarem (Python 3.10+), MIT licensed."}},
    {"@type": "Question", "name": "Is IKAREM related to Cisco Meraki?", "acceptedAnswer": {"@type": "Answer", "text": "Only by origin story — the name is Meraki spelled backwards. IKAREM is a standalone general-purpose Python web framework, not affiliated with Cisco."}},
-   {"@type": "Question", "name": "IKAREM or FastAPI?", "acceptedAnswer": {"@type": "Answer", "text": "FastAPI for the biggest ecosystem. IKAREM for zero required dependencies, a static audit (ikarem check) that catches DI and auth misconfigurations before traffic, and every route as an MCP tool. Pydantic models work in handlers, so migration is incremental."}}
+   {"@type": "Question", "name": "IKAREM or FastAPI?", "acceptedAnswer": {"@type": "Answer", "text": "FastAPI for the biggest ecosystem. IKAREM for zero required dependencies, a static audit (ikarem check) that catches DI and auth misconfigurations before traffic, and every route as an MCP tool. Pydantic models work in handlers, so migration is incremental."}},
+   {"@type": "Question", "name": "Is the @ikarem/telemetry npm package yours?", "acceptedAnswer": {"@type": "Answer", "text": "No — it is malicious and unaffiliated (MAL-2025-192569 / GHSA-5q62-g32j-g4hp). IKAREM is Python-only: pip install ikarem and GitHub nishantXnova/IKAREM are the only official channels; no npm packages are published. A scanner flagging it refers to the unrelated npm package, not a vulnerability here."}}
  ]}
 </script>
 <link rel="icon" href="../assets/ikarem-icon.svg" type="image/svg+xml">
@@ -257,6 +258,13 @@ $ ikarem check myapp:app          <span class="tok-c"># gate deploys on this</sp
   dependencies, a static audit (<code>ikarem check</code>) that catches DI and auth
   misconfigurations before traffic, and every route as an MCP tool. Pydantic models work
   in handlers, so migration is incremental.</p>
+  <p><b>Is the "@ikarem/telemetry" npm package yours?</b> No — and it is
+  malicious. It shares our name but is not affiliated with this project in
+  any way (tracked as MAL-2025-192569 / GHSA-5q62-g32j-g4hp). IKAREM is
+  Python-only: <code>pip install ikarem</code> and GitHub
+  <code>nishantXnova/IKAREM</code> are the only official channels. We
+  publish no npm packages. If a scanner flags it, that is the unrelated
+  npm package — not a vulnerability here.</p>
 </section>
 </main>
 </div>
