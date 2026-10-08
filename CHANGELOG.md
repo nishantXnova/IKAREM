@@ -21,6 +21,12 @@ All notable changes to this project are documented here. Format follows
   `token_type` + `no-store`, `jti`/`scopes` in access JWTs (rotation
   preserves them), auth events on the `ikarem_oauth` logger.
   10 hermetic tests. Removal path: core JWT stays, refresh/social goes.
+- Extension SEO hub (`site/extensions.html` + `ext-pentest.html` +
+  `ext-oauth.html`): keyword titles/descriptions, canonical + OG/Twitter,
+  SoftwareApplication + FAQPage JSON-LD, nav + sitemap + vercel routes +
+  llms.txt coverage, PyPI keywords, README FAQ rich-result bait, root
+  README links. Pinned by `tests/test_site.py` (sitemap↔routes↔files,
+  heads, JSON-LD validity, internal links) so it can't rot.
 - `extensions/` freemium power-tools (outside `ikarem/`, own versioning):
   first installable extension `ikarem-pentest` (`extensions/ikarem-pentest`,
   `pip install ./extensions/ikarem-pentest`, `ikarem-pentest app:app`)

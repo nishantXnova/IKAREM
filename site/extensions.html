@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="author" content="Nishant Paudel">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IKAREM Extensions — Self-Pentest Scanner & OAuth2 Login for Python APIs</title>
+<meta name="description" content="Installable IKAREM extensions: ikarem-pentest (active vulnerability scanner for your Python API — auth bypass, XSS, SQLi, open redirects) and ikarem-oauth (refresh-token rotation + Google/GitHub social login). pip install, zero core changes.">
+<meta name="keywords" content="ikarem extensions, python vulnerability scanner, pentest own api, python oauth2 login, refresh token rotation python, social login github google python, nuclei python, owasp zap alternative">
+<meta name="theme-color" content="#0a0a0b">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="IKAREM">
+<meta property="og:url" content="https://ikarem.vercel.app/extensions">
+<meta property="og:title" content="IKAREM Extensions — Pentest Scanner & OAuth2 Login">
+<meta property="og:description" content="Power tools outside the zero-dep core: active self-pentesting and industry-grade OAuth2. One pip install each.">
+<meta property="og:image" content="https://ikarem.vercel.app/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="IKAREM Extensions — Pentest Scanner & OAuth2 Login">
+<meta name="twitter:image" content="https://ikarem.vercel.app/og.png">
+<meta name="twitter:description" content="ikarem-pentest and ikarem-oauth: installable power tools for Python APIs.">
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "WebPage",
+ "name": "IKAREM Extensions", "url": "https://ikarem.vercel.app/extensions",
+ "isPartOf": {"@type": "WebSite", "name": "IKAREM", "url": "https://ikarem.vercel.app/"},
+ "description": "Installable IKAREM extensions: active API vulnerability scanning and OAuth2 login with refresh tokens.",
+ "author": {"@type": "Person", "name": "Nishant Paudel", "homeLocation": {"@type": "Place", "name": "Nepal"}}}
+</script>
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "FAQPage",
+ "mainEntity": [
+  {"@type": "Question", "name": "What are IKAREM extensions?", "acceptedAnswer": {"@type": "Answer", "text": "Installable pip packages (ikarem-pentest, ikarem-oauth) that add security power tools without changing the zero-dependency core. Basics like ikarem audit stay built in; the heavy tools install separately."}},
+  {"@type": "Question", "name": "How do I pentest my own Python API?", "acceptedAnswer": {"@type": "Answer", "text": "pip install ikarem-pentest, then run ikarem-pentest myapp:app. It fires auth-bypass, XSS, SQL injection, open-redirect, body-cap, and traceback probes at your routes in-process — no server needed. Add --nuclei --serve for 8000+ community templates."}},
+  {"@type": "Question", "name": "How do I add Google/GitHub login to a Python API?", "acceptedAnswer": {"@type": "Answer", "text": "pip install ikarem-oauth, register OAuthPlugin with the GitHub or Google preset plus an on_user hook. You get OAuth2 code flow with PKCE, refresh-token rotation with theft detection, and RFC 6749 error codes."}},
+  {"@type": "Question", "name": "Do extensions slow down the framework?", "acceptedAnswer": {"@type": "Answer", "text": "No. Extensions live outside ikarem/, load nothing until used, and add zero required dependencies to the core. Uninstall one and the app keeps working."}}
+ ]}
+</script>
+<link rel="icon" href="../assets/ikarem-icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+<link rel="canonical" href="https://ikarem.vercel.app/extensions">
+</head>
+<body>
+<header class="topbar">
+<div class="topbar-inner">
+  <a class="brand" href="index.html"><img src="../assets/ikarem-icon.svg" alt="IKAREM"><b>IKAREM</b></a>
+  <span class="ver">v1.3.0</span>
+  <nav>
+<a href="index.html">Docs</a>
+<a href="migrate.html">Migrate</a>
+<a href="reference.html">Reference</a>
+<a href="recipes.html">Recipes</a>
+<a href="guide.html">Guide</a>
+<a href="extensions.html" class="on">Extensions</a>
+    <a href="https://github.com/nishantXnova/IKAREM" class="ext">GitHub</a>
+    <a href="https://pypi.org/project/ikarem/" class="ext">PyPI</a>
+  </nav>
+</div>
+</header>
+
+<div class="wrap">
+<aside class="side"><ol>
+  <li><a href="#top" class="on"><span class="n">00</span>Extensions</a></li>
+  <li><a href="#pentest"><span class="n">01</span>Self-pentest</a></li>
+  <li><a href="#oauth"><span class="n">02</span>OAuth2 login</a></li>
+  <li><a href="#model"><span class="n">03</span>Freemium model</a></li>
+  <li><a href="#faq"><span class="n">04</span>FAQ</a></li>
+</ol></aside>
+
+<main>
+<section id="top">
+  <p class="secnum">IKAREM EXTENSIONS</p>
+  <h1>Power tools, one pip install each.</h1>
+  <p>The core stays zero-dependency forever. Everything heavy — active
+  vulnerability scanning, OAuth2 social login — ships as an installable
+  extension that never touches <code>ikarem/</code>. Basics built in,
+  power installable.</p>
+</section>
+
+<section id="pentest">
+  <p class="secnum">01 — IKAREM-PENTEST</p>
+  <h2>Pentest your own Python API before strangers do.</h2>
+  <p><code>pip install ikarem-pentest</code> — then
+  <code>ikarem-pentest myapp:app</code> fires auth-bypass, reflected-XSS,
+  SQL-injection smoke, open-redirect, body-cap, and traceback probes at
+  every route, in-process via TestClient. No server, no network, no
+  third-party service. CI gate with <code>--strict</code>, ticket-ready
+  reports with <code>--format markdown</code>, and the 8000+ template
+  <a href="https://github.com/projectdiscovery/nuclei">Nuclei</a> engine via
+  <code>--nuclei --serve</code>. Full detail: <a href="ext-pentest.html">the pentest page</a>.</p>
+</section>
+
+<section id="oauth">
+  <p class="secnum">02 — IKAREM-OAUTH</p>
+  <h2>Google/GitHub login plus refresh tokens that survive audit.</h2>
+  <p><code>pip install ikarem-oauth</code> — OAuth2 authorization-code flow
+  with PKCE S256, single-use login state, exact redirect allowlists,
+  RFC 6749 error codes, and opaque refresh tokens with single-use rotation
+  (replay kills the whole chain) and revocation. Stdlib only.
+  Full detail: <a href="ext-oauth.html">the OAuth page</a>.</p>
+</section>
+
+<section id="model">
+  <p class="secnum">MODEL</p>
+  <h2>Freemium, stated plainly.</h2>
+  <p>Free forever in core: <code>ikarem audit</code> (read-only security
+  grading), <code>ikarem check</code> (static handler audit), JWT auth,
+  rate limiting, security headers. Installable power:
+  <code>ikarem-pentest</code> (live-fire attacks + Nuclei),
+  <code>ikarem-oauth</code> (refresh rotation + social login). Every
+  extension documents its removal path — uninstall and the app keeps
+  working on core alone.</p>
+</section>
+
+<section id="faq">
+  <p class="secnum">FAQ</p>
+  <h2>Straight answers.</h2>
+  <p><b>What are IKAREM extensions?</b> Installable pip packages that add
+  security power tools without changing the zero-dependency core.</p>
+  <p><b>How do I pentest my own Python API?</b>
+  <code>pip install ikarem-pentest &amp;&amp; ikarem-pentest myapp:app</code> —
+  six active probes in-process, Nuclei layer optional.</p>
+  <p><b>How do I add Google/GitHub login?</b>
+  <code>pip install ikarem-oauth</code>, register
+  <code>OAuthPlugin</code> with a preset and an <code>on_user</code> hook.</p>
+  <p><b>Do extensions slow down the framework?</b> No — outside
+  <code>ikarem/</code>, lazy-loaded, zero new required dependencies.</p>
+</section>
+
+<section id="next">
+  <p class="secnum">KEEP GOING</p>
+  <h2>From extensions to running code.</h2>
+  <p>New here? Start at the <a href="index.html">docs</a>, then the
+  <a href="guide.html">25-chapter guide</a>. Compare surfaces in the
+  <a href="reference.html">reference</a>, copy from
+  <a href="recipes.html">20 recipes</a>, or map your old framework in
+  <a href="migrate.html">migration guides</a>.</p>
+</section>
+</main>
+</div>
+
+<footer><div class="wrap">
+  <span>IKAREM v1.3.0 · MIT. Zero-dependency Python ASGI. Built by Nishant Paudel in Nepal.</span>
+  <span style="margin-left:auto"><a href="https://github.com/nishantXnova/IKAREM/blob/main/SECURITY.md">Security</a> · <a href="https://github.com/nishantXnova/IKAREM/blob/main/CHANGELOG.md">Changelog</a> · <a href="https://github.com/nishantXnova/IKAREM">GitHub</a> · <a href="https://pypi.org/project/ikarem/">PyPI</a> · <a href="https://ikarem.vercel.app/llms.txt">llms.txt</a></span>
+</div></footer>
+<script src="script.js" defer></script>
+</body>
+</html>

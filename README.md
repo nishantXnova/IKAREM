@@ -289,6 +289,9 @@ IKAREM engine — then migrate handler-by-handler. From anywhere else:
 - Meraki (full guide): [`docs/MIGRATING_FROM_MERAKI.md`](docs/MIGRATING_FROM_MERAKI.md)
 
 Plus honest benchmarks: [`bench/RESULTS.md`](bench/RESULTS.md) ·
+installable extensions: **self-pentest scanner** (`pip install ./extensions/ikarem-pentest` — auth bypass, XSS, SQLi probes)
+and **OAuth2 login** (`pip install ./extensions/ikarem-oauth` — Google/GitHub + refresh rotation) —
+[hub](https://ikarem.vercel.app/extensions) ·
 extension registry: [`docs/ECOSYSTEM.md`](docs/ECOSYSTEM.md) ·
 20 runnable recipes: [`docs/COOKBOOK.md`](docs/COOKBOOK.md) ·
 From Zero to Production guide: [`docs/GUIDE.md`](docs/GUIDE.md) ([PDF](https://ikarem.vercel.app/guide.pdf)) ·

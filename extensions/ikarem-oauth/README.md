@@ -1,4 +1,4 @@
-# ikarem-oauth — refresh tokens + social login for IKAREM
+# ikarem-oauth — OAuth2 social login (Google/GitHub) + refresh token rotation for Python APIs
 
 Core `ikarem` mints short-lived access JWTs and stops there. This is the
 long-lived half: opaque refresh tokens (rotation, reuse detection,
@@ -69,3 +69,15 @@ Uninstall and you keep core JWT (`create_token`/`verify_token`,
 `BearerAuth`, password hashing). You lose refresh rotation and social
 login — re-add with a `sessions` dict only if you accept forever-tokens
 (you shouldn't; that's why this exists).
+
+## FAQ
+
+- **How do I add Google/GitHub login to my Python API?**
+  Register `OAuthPlugin` with the preset and an `on_user` hook —
+  two redirects, tokens out.
+- **How should refresh tokens work in production?** Opaque, hashed at
+  rest, rotated single-use, revoked on logout/breach, reuse kills the
+  chain. This package implements exactly that.
+- **Authlib alternative?** Authlib covers the spec; this enforces the
+  opinionated 20% (PKCE, allowlists, HTTPS, RFC errors) with zero new
+  dependencies.

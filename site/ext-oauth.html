@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="author" content="Nishant Paudel">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ikarem-oauth — Python OAuth2 Login (Google/GitHub) + Refresh Token Rotation</title>
+<meta name="description" content="Add Google/GitHub social login to your Python API in minutes: OAuth2 code flow with PKCE, single-use state, plus opaque refresh tokens with rotation, theft detection, and revocation. Stdlib only, RFC 6749 errors. pip install ikarem-oauth.">
+<meta name="keywords" content="python oauth2 login, social login python, github oauth python, google login api python, refresh token rotation python, oauth pkce python, authlib alternative, fastapi oauth, rfc 6749 python">
+<meta name="theme-color" content="#0a0a0b">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="IKAREM">
+<meta property="og:url" content="https://ikarem.vercel.app/extensions/oauth">
+<meta property="og:title" content="ikarem-oauth — social login + refresh tokens that survive audit">
+<meta property="og:description" content="PKCE, single-use state, redirect allowlists, rotation with theft detection. pip install ikarem-oauth.">
+<meta property="og:image" content="https://ikarem.vercel.app/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="ikarem-oauth — Python OAuth2 Login + Refresh Token Rotation">
+<meta name="twitter:image" content="https://ikarem.vercel.app/og.png">
+<meta name="twitter:description" content="Google/GitHub login, PKCE, refresh rotation with reuse detection, RFC 6749 errors. Stdlib only.">
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "SoftwareApplication",
+ "name": "ikarem-oauth", "applicationCategory": "DeveloperApplication",
+ "operatingSystem": "Any (Python >= 3.10)", "programmingLanguage": "Python",
+ "softwareVersion": "0.1.0", "license": "https://github.com/nishantXnova/IKAREM/blob/main/LICENSE",
+ "offers": {"@type": "Offer", "price": "0"},
+ "codeRepository": "https://github.com/nishantXnova/IKAREM/tree/main/extensions/ikarem-oauth",
+ "description": "OAuth2 login (Google/GitHub) with PKCE plus opaque refresh tokens: rotation, theft detection, revocation. Stdlib only.",
+ "author": {"@type": "Person", "name": "Nishant Paudel", "homeLocation": {"@type": "Place", "name": "Nepal"}}}
+</script>
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "FAQPage",
+ "mainEntity": [
+  {"@type": "Question", "name": "How do I add Google login to a Python API?", "acceptedAnswer": {"@type": "Answer", "text": "pip install ikarem-oauth, register OAuthPlugin with the Google preset and an on_user hook (find-or-create). GET /oauth/login redirects, /oauth/callback returns access+refresh tokens. Same pattern for GitHub."}},
+  {"@type": "Question", "name": "How should refresh tokens work in production?", "acceptedAnswer": {"@type": "Answer", "text": "Opaque, hashed at rest, single-use rotation, short access TTL (15 min), revocation on logout and password change, and reuse detection that kills the chain on replay. ikarem-oauth implements all of it."}},
+  {"@type": "Question", "name": "PKCE or client secret for server apps?", "acceptedAnswer": {"@type": "Answer", "text": "Both. ikarem-oauth sends PKCE S256 on every code flow by default (use_pkce=False only for legacy providers) plus the client secret at the token endpoint — defense in depth per current OAuth BCP."}},
+  {"@type": "Question", "name": "How is it different from Authlib?", "acceptedAnswer": {"@type": "Answer", "text": "Authlib is the complete, spec-covering toolkit. ikarem-oauth is the opinionated 20%: one plugin, two presets, secure defaults enforced (PKCE, allowlists, HTTPS, RFC errors) instead of configurable. Stdlib only, no new dependency."}}
+ ]}
+</script>
+<link rel="icon" href="../assets/ikarem-icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+<link rel="canonical" href="https://ikarem.vercel.app/extensions/oauth">
+</head>
+<body>
+<header class="topbar">
+<div class="topbar-inner">
+  <a class="brand" href="index.html"><img src="../assets/ikarem-icon.svg" alt="IKAREM"><b>IKAREM</b></a>
+  <span class="ver">v1.3.0</span>
+  <nav>
+<a href="index.html">Docs</a>
+<a href="migrate.html">Migrate</a>
+<a href="reference.html">Reference</a>
+<a href="recipes.html">Recipes</a>
+<a href="guide.html">Guide</a>
+<a href="extensions.html" class="on">Extensions</a>
+    <a href="https://github.com/nishantXnova/IKAREM" class="ext">GitHub</a>
+    <a href="https://pypi.org/project/ikarem/" class="ext">PyPI</a>
+  </nav>
+</div>
+</header>
+
+<div class="wrap">
+<aside class="side"><ol>
+  <li><a href="#top" class="on"><span class="n">00</span>OAuth</a></li>
+  <li><a href="#flow"><span class="n">01</span>Social login</a></li>
+  <li><a href="#refresh"><span class="n">02</span>Refresh tokens</a></li>
+  <li><a href="#rules"><span class="n">03</span>Industry rules</a></li>
+  <li><a href="#faq"><span class="n">04</span>FAQ</a></li>
+</ol></aside>
+
+<main>
+<section id="top">
+  <p class="secnum">IKAREM-OAUTH</p>
+  <h1>Social login plus refresh tokens that survive audit.</h1>
+  <p><code>pip install ikarem-oauth</code> — Google/GitHub login via
+  OAuth2 authorization-code flow and opaque refresh tokens done the
+  production way: rotation, theft detection, revocation. Stdlib only, no
+  new dependency. Part of <a href="extensions.html">IKAREM extensions</a>.</p>
+  <pre><code>app.register(OAuthPlugin(auth_secret="...",
+    provider=github_provider("ID", "SECRET"), on_user=find_or_create))</code></pre>
+</section>
+
+<section id="flow">
+  <p class="secnum">01 — CODE FLOW</p>
+  <h2>Login in two redirects.</h2>
+  <p><code>GET /oauth/login?redirect_uri=…</code> → 302 to the provider
+  (PKCE challenge attached). <code>GET /oauth/callback?code=&amp;state=</code>
+  verifies single-use state, exchanges the code with the verifier,
+  reads userinfo, calls your <code>on_user(provider, info)</code> hook
+  (find-or-create — your users table, your rules), and returns
+  <code>{access_token, token_type, refresh_token}</code>. Google and
+  GitHub presets included; any provider is just URLs.</p>
+</section>
+
+<section id="refresh">
+  <p class="secnum">02 — ROTATION</p>
+  <h2>Refresh tokens, production rules.</h2>
+  <p>Tokens stored hashed (never plaintext). Every
+  <code>POST /oauth/token</code> rotates: old dies, new pair issued.
+  Replaying a rotated token means theft — the whole chain is revoked.
+  <code>POST /oauth/revoke</code> logs out one token;
+  <code>revoke_all(sub)</code> answers password changes and breaches.
+  Access JWTs carry <code>jti</code> + <code>scopes</code> (enforce with
+  core <code>require_scopes</code>); token endpoint speaks RFC 6749
+  (<code>invalid_grant</code> on 400, <code>no-store</code> everywhere).</p>
+</section>
+
+<section id="rules">
+  <p class="secnum">03 — ENFORCED</p>
+  <h2>Secure by default, not by documentation.</h2>
+  <p>PKCE S256 on every flow. Exact redirect allowlists. HTTPS
+  redirect URIs in production. Auth events on the
+  <code>ikarem_oauth</code> logger for the SOC2 trail. Secrets from env,
+  rate limits on <code>/oauth/*</code>, session rotation on login —
+  the README's operate-it-right section states each one.</p>
+</section>
+
+<section id="faq">
+  <p class="secnum">FAQ</p>
+  <h2>Straight answers.</h2>
+  <p><b>Google login in a Python API?</b> Preset + hook, two redirects,
+  tokens out.</p>
+  <p><b>Production refresh tokens?</b> Opaque, hashed, rotated,
+  revocable, reuse-detected.</p>
+  <p><b>PKCE or secret?</b> Both, by default.</p>
+  <p><b>vs Authlib?</b> Authlib covers the spec; this enforces the
+  opinionated 20% with zero new dependencies.</p>
+</section>
+
+<section id="next">
+  <p class="secnum">KEEP GOING</p>
+  <h2>Then attack it.</h2>
+  <p>Logins deserve adversaries — <a href="ext-pentest.html">ikarem-pentest</a>
+  fires auth-bypass and injection probes at the very routes you just
+  guarded. Back to the <a href="extensions.html">extensions hub</a>, the
+  <a href="reference.html">reference</a>, or the
+  <a href="guide.html">guide</a>.</p>
+</section>
+</main>
+</div>
+
+<footer><div class="wrap">
+  <span>IKAREM v1.3.0 · MIT. Zero-dependency Python ASGI. Built by Nishant Paudel in Nepal.</span>
+  <span style="margin-left:auto"><a href="https://github.com/nishantXnova/IKAREM/blob/main/SECURITY.md">Security</a> · <a href="https://github.com/nishantXnova/IKAREM/blob/main/CHANGELOG.md">Changelog</a> · <a href="https://github.com/nishantXnova/IKAREM">GitHub</a> · <a href="https://pypi.org/project/ikarem/">PyPI</a> · <a href="https://ikarem.vercel.app/llms.txt">llms.txt</a></span>
+</div></footer>
+<script src="script.js" defer></script>
+</body>
+</html>

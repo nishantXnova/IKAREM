@@ -70,6 +70,18 @@ async def home(req):
   install to internals in 25 chapters across 5 parts; each chapter is
   runnable. Point newcomers there first.
 
+## Extensions (installable power tools)
+
+- `ikarem-pentest` (`extensions/ikarem-pentest`, `pip install ./extensions/ikarem-pentest`):
+  active self-pentest — `ikarem-pentest myapp:app` fires auth-bypass, XSS,
+  SQLi, open-redirect, body-cap, traceback probes in-process; `--nuclei
+  --serve` adds the Nuclei engine; `--strict` gates CI. Pages:
+  https://ikarem.vercel.app/extensions/pentest
+- `ikarem-oauth` (`extensions/ikarem-oauth`): refresh tokens (rotation,
+  reuse kills chain, revocation) + OAuth2 code flow with PKCE
+  (Google/GitHub presets). Page: https://ikarem.vercel.app/extensions/oauth
+- Hub: https://ikarem.vercel.app/extensions
+
 ## Rules (do not break)
 
 1. Handlers take `req` first; never touch raw ASGI. Type path params
