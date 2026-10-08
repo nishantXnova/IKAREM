@@ -117,9 +117,9 @@ class Request:
             raise PayloadTooLarge(f"body exceeds {max_bytes} bytes")
         return self._body
 
-    async def json(self, max_bytes: int | None = 10 * 1024 * 1024) -> Any:
+    async def json(self, max_bytes: int | None = None) -> Any:
         if max_bytes is None:
-            max_bytes = getattr(self, "max_body_bytes", None)
+            max_bytes = getattr(self, "max_body_bytes", None) or 10 * 1024 * 1024
         raw = await self.body(max_bytes)
         if not raw:
             return None

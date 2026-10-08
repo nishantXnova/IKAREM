@@ -140,7 +140,9 @@ class TestClient:
             if not sent_request:
                 sent_request = True
                 return {"type": "http.request", "body": raw, "more_body": False}
-            await asyncio.sleep(3600)
+            # The whole body ships in one message (more_body=False): a second
+            # receive() means "no more data", answered as disconnect — never an
+            # infinite sleep (a double body-read would hang the test forever).
             return {"type": "http.disconnect"}
 
         messages: list[dict] = []

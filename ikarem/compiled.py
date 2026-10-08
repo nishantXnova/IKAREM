@@ -489,8 +489,15 @@ async def resolve_compiled(handler: Any, request: Any) -> Any:
             continue
         if hp.kind == "schema":
             if body_json is _MISSING:
+                from .errors import HTTPException as _HTTPException
+
                 try:
                     body_json = await request.json()
+                except _HTTPException:
+                    # A 413/400 signal is a verdict, not a parse miss: re-raise
+                    # instead of morphing oversized bodies into form parsing
+                    # (form() would re-read an already-consumed body).
+                    raise
                 except Exception:
                     # HTML forms validate too: first values as the object.
                     try:

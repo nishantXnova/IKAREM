@@ -28,12 +28,33 @@ All notable changes to this project are documented here. Format follows
   caught with token), `--format markdown` ticket-ready reports,
   `--serve` one-command uvicorn spawn+scan+kill, `--all-routes` nuclei
   target list from every GET route. 12 hermetic tests.
+- `ikarem-pentest` detection benchmark (`tests/test_detection.py` vuln gym):
+  one planted vuln per class (open write, reflected XSS, quote-500,
+  open redirect, uncapped body, debug traceback, guarded XSS) — recall
+  7/7 with token, 6/7 blind (guarded XSS needs creds by design), clean app
+  zero false positives. Fixed two misses it exposed: PT-TRACE only
+  checked 404s (never leak) while debug 500s leaked — now induces 500s
+  with malformed JSON; PT-BODYCAP flooded only the first route — now all.
 - `ikarem-pentest` default `--severity` now includes `info,unknown`:
   the old default silently filtered out the shipped IKAREM templates
   (severity info) — the live scan reported CLEAN while nuclei matched.
   Regression test pins the flag. Found by scanning ledger live.
 
 ### Fixed
+- App-wide body cap now reaches JSON handlers (`ikarem/http.py`):
+  `req.json()` hard-defaulted to 10MB, so `Ikarem(max_body_bytes=)` never
+  fired on JSON/Schema routes and the audit's BODY-01 pass overstated the
+  protection. Default is now app-cap-first (explicit per-call `max_bytes`
+  still wins). Found by the pentest gym (capped clean app still warned).
+  Regression test in `tests/test_strong.py`.
+- Oversized Schema bodies no longer morph into form parsing
+  (`ikarem/compiled.py`): the plan's bare `except Exception` around
+  `request.json()` swallowed the 413 and called `request.form()`, which
+  re-read the consumed body. `HTTPException` now propagates (413 stands);
+  only genuine parse failures fall back to forms.
+- `TestClient` second `receive()` answers disconnect instead of sleeping
+  an hour (`ikarem/testing.py`): any double body-read hung tests forever
+  instead of failing fast. Whole body still ships in one message.
 - `ikarem audit` (`ikarem/security_audit.py`, exported `audit_report`):
   the framework grades its own deployment — 11 controls (exposed
   writes, secrets, debug leakage, cookie flags, CSRF, rate limiting,

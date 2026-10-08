@@ -156,6 +156,37 @@ def test_app_body_cap_and_per_call_override():
     assert c.post("/big-ok", body="x" * 100).status_code == 200
 
 
+def test_app_body_cap_reaches_json_handlers():
+    """`req.json()` used to hard-default 10MB, silently bypassing an app-wide
+    cap for every JSON/Schema handler. Now the cap applies; explicit
+    per-call max_bytes still wins."""
+    from ikarem import Schema
+
+    app = Ikarem(enable_docs=False, max_body_bytes=100)
+
+    class Small(Schema):
+        name: str
+
+    @app.post("/raw")
+    async def raw(req):
+        return {"ok": (await req.json()) is not None}
+
+    @app.post("/schema")
+    async def schema(req, body: Small):
+        return {"ok": True}
+
+    @app.post("/wide")
+    async def wide(req):
+        return {"ok": (await req.json(max_bytes=10_000_000)) is not None}
+
+    c = TestClient(app)
+    big = {"name": "x" * 200}
+    assert c.post("/raw", body=big).status_code == 413
+    assert c.post("/schema", body=big).status_code == 413
+    assert c.post("/wide", body=big).status_code == 200
+    assert c.post("/raw", body={"name": "tiny"}).status_code == 200
+
+
 def test_metrics_latency_fields():
     from ikarem.observability import _METRICS, MetricsMiddleware
 
