@@ -21,6 +21,13 @@ All notable changes to this project are documented here. Format follows
   findings (critical/high fail, medium warn), ships 3 IKAREM templates
   (openapi/docs exposure, security headers). Missing binary names the
   exact install line; 9 hermetic tests (binary never executed).
+- `ikarem-pentest` company workflow: `--strict` CI gate (warns fail),
+  `--ignore ID,...` accepted-risk allowlist (counted, never silent),
+  `--token`/`IKAREM_PENTEST_TOKEN` auth deepening (every probe but
+  PT-AUTHN scans guarded handlers; proven: guarded XSS invisible blind,
+  caught with token), `--format markdown` ticket-ready reports,
+  `--serve` one-command uvicorn spawn+scan+kill, `--all-routes` nuclei
+  target list from every GET route. 12 hermetic tests.
 - `ikarem-pentest` default `--severity` now includes `info,unknown`:
   the old default silently filtered out the shipped IKAREM templates
   (severity info) — the live scan reported CLEAN while nuclei matched.
