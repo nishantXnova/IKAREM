@@ -61,3 +61,39 @@ SQLite is single-lane by design, so concurrent-write latency is the honest
 cost of the embedded DB, not the framework; point `IKAREM_DB_URL` at
 Postgres past toy scale. No rival was installed on this machine, so no new
 duel rows — the 2026-09-27 table above stands.
+
+## Supply-chain footprint (this machine, 2026-10-08, `python bench/footprint.py`)
+
+One isolated venv per framework, `pip install` from PyPI (ikarem from this
+repo), best-of-5 cold `import` in fresh processes:
+
+| framework | version | packages pulled | installed | cold import |
+|---|---|---|---|---|
+| ikarem | 1.3.0 | 1 (ikarem) | 905 kB | 146 ms |
+| fastapi | 0.143.0 | 11 (annotated-doc, annotated-types, anyio, fastapi, idna, opentelemetry-api, pydantic, pydantic-core, …) | 14,410 kB | 328 ms |
+| flask | 3.1.3 | 7 (blinker, click, Flask, itsdangerous, Jinja2, MarkupSafe, Werkzeug) | 4,840 kB | 228 ms |
+| django | 5.2.18 | 4 (asgiref, Django, sqlparse, tzdata) | 31,435 kB | 52 ms |
+
+## Reading it honestly
+
+The axis that matters here is not milliseconds — it is **what you ship**:
+1 package vs 4–11, 0.9 MB vs 5–31 MB. Every pulled package is code you
+didn't write running in your process: CVEs, breakage, and install time
+you inherit sight unseen. (FastAPI's own tree recently grew
+opentelemetry-api — fine software, but it arrived in every FastAPI
+install unannounced.)
+
+Two concessions, stated plainly. First, cold import is *not* IKAREM's
+win: `import django` costs 52 ms because Django lazily defers the world
+to `django.setup()`; IKAREM eagerly initializes ~40 stdlib-only modules
+(~87 ms of the 146, the rest is interpreter spawn, same for every row).
+Import milliseconds are noise next to first-request work on every
+framework — don't over-read the column. Second, rival dependencies buy
+real ecosystems: pydantic validation, Jinja, an ORM. The argument was
+never "dependencies are bad"; it is "don't pay for what you don't
+use." IKAREM's middle path is lazy extras — `ikarem[postgres]` installs
+asyncpg if and only if you ask.
+
+Reproducible end to end: `python bench/footprint.py` builds the venvs,
+pins nothing (rival versions are whatever PyPI serves that day, printed
+in the table), and takes a few minutes.

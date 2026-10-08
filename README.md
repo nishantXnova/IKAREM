@@ -304,7 +304,7 @@ moving van.*
 
 | Rival feature | IKAREM answer |
 |---|---|
-| pip package, minimal deps | **Zero required deps.** `uvicorn`/`asyncpg`/etc are optional extras. Core is pure stdlib + ASGI. |
+| pip package, minimal deps | **Zero required deps.** `uvicorn`/`asyncpg`/etc are optional extras. Core is pure stdlib + ASGI. Measured: 1 package / 905 kB vs 11 / 14 MB (FastAPI), 4 / 31 MB (Django) — [`bench/RESULTS.md`](bench/RESULTS.md). |
 | ASGI + Uvicorn boundary | Strict server boundary: `Ikarem` exposes `__call__(scope, receive, send)`. Any ASGI server works (uvicorn, hypercorn, daphne). HTTP + WebSocket + lifespan. |
 | Central app + lifecycle | `Ikarem()` + `on_startup` / `on_shutdown` + lifespan. Plugins hook in with priority + topological dependency order. |
 | Request/Response | Lazy `Request` (query, headers, cookies, `await body()/json()`), `Response` helpers (`JSON`, `text`, `html`, `stream`, `redirect`, `File`). Handlers never touch raw ASGI. |
