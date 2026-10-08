@@ -16,6 +16,7 @@ python -m pytest tests/ ledger/tests cadence/tests -q
 ## What to run before every PR
 
 ```bash
+pip install "ruff==0.16.10"   # pinned: CI uses this exact version (0.16.10 also formats md snippets)
 ruff check . && ruff format --check .
 python -m pytest tests/ ledger/tests cadence/tests forge/tests relay/tests -q
 python -m ikarem.cli check ledger.app:app

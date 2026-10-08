@@ -319,8 +319,7 @@ from ikarem.db import DatabasePlugin
 from ikarem_oauth import OAuthPlugin, github_provider
 
 app.register(DatabasePlugin("sqlite:///app.db"))
-app.register(OAuthPlugin(auth_secret="...",
-    provider=github_provider("ID", "SECRET"), on_user=find_or_create))
+app.register(OAuthPlugin(auth_secret="...", provider=github_provider("ID", "SECRET"), on_user=find_or_create))
 ```
 
 **ikarem-oauth** adds Google/GitHub login (OAuth2 code flow, PKCE S256,

@@ -20,7 +20,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install (dev extras)
-        run: pip install -e ".[dev]" ruff
+        run: pip install -e ".[dev]" "ruff==0.16.10"
       - name: Lint
         run: ruff check . && ruff format --check .
       - name: Tests (framework + showcases)
@@ -113,7 +113,7 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install (dev extras)
-        run: pip install -e ".[dev]" ruff
+        run: pip install -e ".[dev]" "ruff==0.16.10"
       - name: Scaffold + run template tests
         run: |
           python -m ikarem.cli new /tmp/ikarem-starter
