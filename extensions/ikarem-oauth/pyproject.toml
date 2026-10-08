@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ikarem-oauth"
+version = "0.1.0"
+description = "Refresh tokens plus OAuth2 login (Google/GitHub) for IKAREM apps. Core JWT stays bare; this is the missing half."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+dependencies = ["ikarem>=1.3.0"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["ikarem_oauth*"]

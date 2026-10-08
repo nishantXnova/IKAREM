@@ -7,6 +7,15 @@ All notable changes to this project are documented here. Format follows
 ## [Unreleased]
 
 ### Added
+- `ikarem-oauth` (`extensions/ikarem-oauth`,
+  `pip install ./extensions/ikarem-oauth`): refresh tokens + OAuth2 login.
+  Opaque refresh tokens (sha256-stored, single-use rotation, replay kills
+  the chain, revocation/list-revoke) over any `DatabaseConnector`
+  (`requires = ["database"]`, portable DDL); generic `OAuthProvider`
+  (signed state CSRF, code exchange, userinfo, injectable transport —
+  tests run network-free) with Google/GitHub presets; routes
+  `/oauth/login|callback|token|revoke` with remedy-naming errors.
+  8 hermetic tests. Removal path: core JWT stays, refresh/social goes.
 - `extensions/` freemium power-tools (outside `ikarem/`, own versioning):
   first installable extension `ikarem-pentest` (`extensions/ikarem-pentest`,
   `pip install ./extensions/ikarem-pentest`, `ikarem-pentest app:app`)
