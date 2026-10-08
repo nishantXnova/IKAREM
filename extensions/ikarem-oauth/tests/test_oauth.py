@@ -92,7 +92,8 @@ def test_token_routes():
     app = _app(OAuthPlugin(auth_secret=SECRET))
     c = TestClient(app)
     r = c.post("/oauth/token", body={"grant_type": "refresh_token", "refresh_token": "x"})
-    assert r.status_code == 401 and "log in again" in r.text  # unknown token, honest shape
+    assert r.status_code == 400  # RFC 6749 invalid_grant rides on 400
+    assert r.json()["error"] == "invalid_grant" and "log in again" in r.json()["error_description"]
     bad = c.post("/oauth/token", body={"grant_type": "password"})
     assert bad.status_code == 400 and "refresh_token" in bad.json()["detail"]
     assert c.post("/oauth/revoke", body={}).status_code == 400
@@ -111,16 +112,19 @@ def test_state_roundtrip_and_forgery():
 
 
 def _fake_provider():
+    seen: dict = {}
+
     def _post(url, data):
         assert "token" in url
         assert data["code"] == "good-code"
+        seen["verifier"] = data.get("code_verifier")
         return {"access_token": "prov-access"}
 
     def _get(url, token):
         assert token == "prov-access"
         return {"id": 42, "login": "octo"}
 
-    return OAuthProvider(
+    prov = OAuthProvider(
         "fake",
         "https://prov/authorize",
         "https://prov/token",
@@ -130,6 +134,19 @@ def _fake_provider():
         http_post=_post,
         http_get=_get,
     )
+    return prov, seen
+
+
+CB = "http://localhost:8000/oauth/callback"
+
+
+def _login_state(c):
+    login = c.get("/oauth/login", query=f"redirect_uri={CB}")
+    assert login.status_code == 302, login.text[:200]
+    loc = login.headers.get("location", "")
+    assert "prov/authorize" in loc and "state=" in loc and "client_id=cid" in loc
+    assert "code_challenge=" in loc  # PKCE S256 ships by default
+    return loc.split("state=")[1].split("&")[0]
 
 
 def test_full_code_flow_with_fake_provider():
@@ -138,24 +155,65 @@ def test_full_code_flow_with_fake_provider():
     async def on_user(provider, info):
         return f"{provider}:{info['id']}"
 
-    app = _app(OAuthPlugin(auth_secret=SECRET, provider=_fake_provider(), on_user=on_user))
+    prov, seen = _fake_provider()
+    app = _app(OAuthPlugin(auth_secret=SECRET, provider=prov, on_user=on_user))
     c = TestClient(app)
-    login = c.get("/oauth/login", query="redirect_uri=http://app/oauth/callback")
-    assert login.status_code == 302
-    loc = login.headers.get("location", "")
-    assert "prov/authorize" in loc and "state=" in loc and "client_id=cid" in loc
     assert c.get("/oauth/login").status_code == 400  # missing redirect_uri names the fix
-    state = sign_state(SECRET)
-    done = c.get(
-        "/oauth/callback", query=f"code=good-code&state={state}&redirect_uri=http://app/oauth/callback"
-    )
+    state = _login_state(c)
+    done = c.get("/oauth/callback", query=f"code=good-code&state={state}&redirect_uri={CB}")
     assert done.status_code == 200, done.text[:200]
     pair = done.json()
-    assert pair["access_token"] and pair["refresh_token"]
-    bad = c.get("/oauth/callback", query="code=good-code&state=forged&redirect_uri=http://app/oauth/callback")
+    assert pair["access_token"] and pair["refresh_token"] and pair["token_type"] == "Bearer"
+    assert seen["verifier"]  # server-side verifier reached the exchange
+    assert done.headers.get("cache-control") == "no-store"
+    replay = c.get("/oauth/callback", query=f"code=good-code&state={state}&redirect_uri={CB}")
+    assert replay.status_code == 400 and "already used" in replay.text  # single-use state
+    bad = c.get("/oauth/callback", query=f"code=good-code&state=forged&redirect_uri={CB}")
     assert bad.status_code == 400
     denied = c.get("/oauth/callback", query="error=access_denied&state=x")
     assert denied.status_code == 400 and "access_denied" in denied.text
+
+
+def test_redirect_uri_rules():
+    from ikarem.testing import TestClient
+
+    async def on_user(provider, info):
+        return "u"
+
+    prov, _ = _fake_provider()
+    app = _app(
+        OAuthPlugin(
+            auth_secret=SECRET,
+            provider=prov,
+            on_user=on_user,
+            allowed_redirect_uris=["https://app.example/oauth/callback"],
+        )
+    )
+    c = TestClient(app)
+    assert c.get("/oauth/login", query="redirect_uri=https://evil.example/cb").status_code == 400
+    assert c.get("/oauth/login", query="redirect_uri=http://app.example/oauth/callback").status_code == 400
+    ok = c.get("/oauth/login", query="redirect_uri=https://app.example/oauth/callback")
+    assert ok.status_code == 302
+
+
+def test_scopes_and_jti_in_access_token():
+    import asyncio
+
+    from ikarem import verify_token
+    from ikarem.db import create_connector
+
+    async def go():
+        db = create_connector("sqlite:///:memory:")
+        await db.connect()
+        store = RefreshStore(db)
+        await store.ensure()
+        pair = await store.issue("u1", SECRET, scopes=["read", "admin"])
+        claims = verify_token(pair["access_token"], SECRET)
+        assert claims["scopes"] == ["admin", "read"] and claims["jti"]
+        pair2 = await store.rotate(pair["refresh_token"], SECRET)
+        assert verify_token(pair2["access_token"], SECRET)["scopes"] == ["admin", "read"]
+
+    asyncio.new_event_loop().run_until_complete(go())
 
 
 def test_presets_point_at_real_providers():

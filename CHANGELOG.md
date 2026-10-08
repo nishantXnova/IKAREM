@@ -15,7 +15,12 @@ All notable changes to this project are documented here. Format follows
   (signed state CSRF, code exchange, userinfo, injectable transport —
   tests run network-free) with Google/GitHub presets; routes
   `/oauth/login|callback|token|revoke` with remedy-naming errors.
-  8 hermetic tests. Removal path: core JWT stays, refresh/social goes.
+  Industry proof: PKCE S256 default, single-use state (replay fails),
+  callback URI bound to the login one, exact redirect allowlist,
+  HTTPS-only redirects (localhost exempt), RFC 6749 error codes +
+  `token_type` + `no-store`, `jti`/`scopes` in access JWTs (rotation
+  preserves them), auth events on the `ikarem_oauth` logger.
+  10 hermetic tests. Removal path: core JWT stays, refresh/social goes.
 - `extensions/` freemium power-tools (outside `ikarem/`, own versioning):
   first installable extension `ikarem-pentest` (`extensions/ikarem-pentest`,
   `pip install ./extensions/ikarem-pentest`, `ikarem-pentest app:app`)

@@ -38,6 +38,16 @@ def sign_state(auth_secret: str, ttl: int = 600) -> str:
     return f"{payload}.{sig}"
 
 
+def pkce_pair() -> tuple[str, str]:
+    """S256 PKCE (RFC 7636): (verifier, challenge). Verifier stays
+    server-side; only the challenge travels in the authorize URL."""
+    import hashlib as _hl
+
+    verifier = secrets.token_urlsafe(48)
+    challenge = _b64e(_hl.sha256(verifier.encode()).digest())
+    return verifier, challenge
+
+
 def verify_state(state: str, auth_secret: str) -> None:
     """Raise with the fix when state is forged, tampered, or stale."""
     try:
@@ -108,7 +118,7 @@ class OAuthProvider:
         self.http_post = http_post or _urllib_post
         self.http_get = http_get or _urllib_get
 
-    def login_url(self, redirect_uri: str, state: str) -> str:
+    def login_url(self, redirect_uri: str, state: str, code_challenge: str | None = None) -> str:
         q = {
             "client_id": self.client_id,
             "redirect_uri": redirect_uri,
@@ -116,19 +126,22 @@ class OAuthProvider:
             "scope": " ".join(self.scopes),
             "state": state,
         }
+        if code_challenge is not None:
+            q["code_challenge"] = code_challenge
+            q["code_challenge_method"] = "S256"
         return f"{self.authorize_url}?{urllib.parse.urlencode(q)}"
 
-    def exchange(self, code: str, redirect_uri: str) -> dict:
-        data = self.http_post(
-            self.token_url,
-            {
-                "grant_type": "authorization_code",
-                "code": code,
-                "redirect_uri": redirect_uri,
-                "client_id": self.client_id,
-                "client_secret": self.client_secret,
-            },
-        )
+    def exchange(self, code: str, redirect_uri: str, code_verifier: str | None = None) -> dict:
+        params = {
+            "grant_type": "authorization_code",
+            "code": code,
+            "redirect_uri": redirect_uri,
+            "client_id": self.client_id,
+            "client_secret": self.client_secret,
+        }
+        if code_verifier is not None:
+            params["code_verifier"] = code_verifier
+        data = self.http_post(self.token_url, params)
         if not isinstance(data, dict) or "access_token" not in data:
             raise RuntimeError(
                 f"provider {self.name} refused the code exchange "

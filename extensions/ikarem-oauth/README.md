@@ -40,6 +40,29 @@ Security properties: refresh tokens stored hashed (sha256, like API
 keys); login `state` HMAC-signed + 10-min TTL (CSRF); provider transport
 injectable (`http_post=`/`http_get=`) so tests run network-free.
 
+## Industry rules (enforced, not suggested)
+
+- PKCE S256 on every code flow (`use_pkce=False` only for legacy
+  providers without support). Intercepts of `?code=` are useless without
+  the server-side verifier.
+- Single-use login state: callback consumes the row — replay (or a
+  forged state that was never issued) fails. Callback `redirect_uri`
+  must equal the login one.
+- `allowed_redirect_uris=[...]` exact allowlist; without it the
+  provider's own registration is the only gate (documented, loud).
+- HTTPS `redirect_uri` required in production (`localhost` exempt);
+  `http` elsewhere is refused with the fix.
+- Token endpoint speaks RFC 6749 (`invalid_grant`/`invalid_request` on
+  HTTP 400, `token_type: Bearer`); all token responses carry
+  `Cache-Control: no-store`.
+- Access JWTs carry `jti` + `scopes` (enforce with core
+  `require_scopes(...)`); scopes survive rotation.
+- Auth events log on `ikarem_oauth` (`issue`/`rotate`/`revoke`/`reuse`)
+  — wire to your aggregator for the SOC2 trail.
+- Operate it right: secrets from env (never code), `RateLimitMiddleware`
+  in front of `/oauth/*`, rotate the session on login, call
+  `revoke_all(sub)` on password change.
+
 ## Removal path
 
 Uninstall and you keep core JWT (`create_token`/`verify_token`,
