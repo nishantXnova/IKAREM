@@ -50,6 +50,14 @@ app.register(Hello())
 
 ## Shipped (in-core proofs of each interface)
 
+First installable extension (lives in `extensions/`, not `ikarem/`):
+
+| Extension | Interface | Install |
+|---|---|---|
+| `ikarem-pentest` | active probes over `TestClient` (auth-bypass, XSS, SQLi, redirects, body caps, tracebacks) | `pip install ./extensions/ikarem-pentest` |
+
+In-core proofs (stay built in forever):
+
 | Extension | Interface | Lives in |
 |---|---|---|
 | DatabasePlugin (sqlite/postgres/mysql/sqlserver) | `DatabaseConnector` + plugin lifecycle | `ikarem/db/` |

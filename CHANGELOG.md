@@ -6,6 +6,16 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
+### Added
+- `extensions/` freemium power-tools (outside `ikarem/`, own versioning):
+  first installable extension `ikarem-pentest` (`extensions/ikarem-pentest`,
+  `pip install ./extensions/ikarem-pentest`, `ikarem-pentest app:app`)
+  fires 6 active probes in-process via `TestClient` (auth-bypass 2xx,
+  XSS reflection, SQLi 500s, open redirects, body caps, traceback leaks)
+  with evidence + remedy per finding. `ikarem audit` stays built-in
+  read-only grading; pentest is the live-fire proof. Ledger grades CLEAN.
+  7 hermetic tests. Removal path: uninstall keeps audit + check.
+
 ### Fixed
 - `ikarem audit` (`ikarem/security_audit.py`, exported `audit_report`):
   the framework grades its own deployment — 11 controls (exposed
