@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ikarem"
-version = "1.3.0"
+version = "1.4.0"
 description = "Zero-dependency Python ASGI framework: DI, validation, JWT auth, OpenAPI, MCP tools, queues, NISH."
 readme = "README.md"
 authors = [{ name = "Nishant Paudel" }]

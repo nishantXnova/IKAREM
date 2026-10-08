@@ -6,6 +6,8 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
+## [1.4.0] — 2026-10-08
+
 ### Added
 - `ikarem-oauth` (`extensions/ikarem-oauth`,
   `pip install ./extensions/ikarem-oauth`): refresh tokens + OAuth2 login.
