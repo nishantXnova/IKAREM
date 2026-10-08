@@ -21,12 +21,21 @@ and LLM tool servers — one package from prototype to production.
   [Production web apps](#production-web-apps) ·
   [Flask's best, taken](#flasks-best-taken) ·
   [Ops batch](#ops-batch-migrations-queues-cron-api-keys) · [NISH Mode](#nish-mode-one-switch) ·
+  [Extensions](#extensions-self-pentest--oauth2) ·
   [Stronger](#stronger-timeouts-bulkheads-idempotency-rooms) ·
   [Switching](#switching-bring-your-routes) ·
   [Why IKAREM](#why-ikarem) · [Verification](#verification) ·
   [Layout](#layout) · [Project basics](#project-basics)
 
 ## Install
+
+```bash
+pip install ikarem                    # v1.4.0 from PyPI, zero dependencies
+pip install "ikarem[server,test]"     # uvicorn + pytest + httpx for dev
+pip install "ikarem[postgres]"        # asyncpg strategy (also: mysql, sqlserver, redis, otel, jinja)
+```
+
+From source instead:
 
 ```bash
 pip install -e .                  # core only, zero dependencies
@@ -216,8 +225,9 @@ ikarem worker myapp:app                        # drain the queue until Ctrl+C
 Plus the small ones the checklist demanded: `Schema(extra="forbid")` sanitization,
 `XMLResponse`/`dict_to_xml`, `escape_html`, `APIKeyAuth` (static keys or async `lookup=`),
 `require_scopes()` for JWT scopes, `require_if()` predicate (ABAC-lite).
-Out of scope on purpose: full ORM (strategy + validated schemas is the answer) and
-OAuth2 dance (JWT bearer covers service auth).
+Out of scope on purpose: full ORM (strategy + validated schemas is the answer).
+OAuth2/social login lives one install away: [`ikarem-oauth`](#extensions-self-pentest--oauth2)
+(refresh rotation + Google/GitHub code flow) — core JWT bearer covers service auth.
 
 ## Stronger: timeouts, bulkheads, idempotency, rooms
 
@@ -268,6 +278,41 @@ uploads, CSV export, JSON API); [`cadence/`](cadence/) — a habit tracker
 (streaks, heatmaps); [`forge/`](forge/) — a workshop OS (jobs, kanban,
 crew chat, ledger, habits, NISH-first API). All running on stock IKAREM
 + uvicorn.
+
+## Extensions: self-pentest + OAuth2
+
+Basics are built in (`ikarem audit` grades your deployment, core JWT
+covers service auth). The heavy tools install separately — outside
+`ikarem/`, zero new core dependencies, each with a documented removal
+path:
+
+```bash
+pip install ikarem-pentest   # after first PyPI publish; today: pip install ./extensions/ikarem-pentest
+ikarem-pentest myapp:app --strict --serve --all-routes
+```
+
+**ikarem-pentest** fires real attacks at your own routes — auth bypass,
+reflected XSS, SQL-injection smoke, open redirects, body-cap floods,
+traceback leaks — in-process in seconds, plus the Nuclei engine
+(8000+ templates) for live servers. Measured 7/7 recall on a planted
+vuln gym, zero false positives. CI gates (`--strict`), allowlists
+(`--ignore`), token auth, Markdown reports.
+[Pentest page →](https://ikarem.vercel.app/extensions/pentest)
+
+```python
+from ikarem.db import DatabasePlugin
+from ikarem_oauth import OAuthPlugin, github_provider
+
+app.register(DatabasePlugin("sqlite:///app.db"))
+app.register(OAuthPlugin(auth_secret="...",
+    provider=github_provider("ID", "SECRET"), on_user=find_or_create))
+```
+
+**ikarem-oauth** adds Google/GitHub login (OAuth2 code flow, PKCE S256,
+single-use state) and opaque refresh tokens done right: single-use
+rotation, replay kills the chain, revocation, RFC 6749 errors, `jti` +
+`scopes` in access JWTs. Stdlib only.
+[OAuth page →](https://ikarem.vercel.app/extensions/oauth)
 
 ## Switching? Bring your routes
 
@@ -328,10 +373,11 @@ moving van.*
 
 ## Verification
 
-381 passed, 3 skipped — framework plus four showcase apps, one command:
+439 passed, 3 skipped — framework plus showcases plus extensions, one command:
 
 ```bash
-python -m pytest tests/ ledger/tests cadence/tests forge/tests relay/tests -q
+python -m pytest tests/ ledger/tests cadence/tests forge/tests relay/tests \
+  extensions/ikarem-pentest/tests extensions/ikarem-oauth/tests -q
 ```
 
 CI runs the same suite on Python 3.10–3.13 × Ubuntu/macOS/Windows, plus a
@@ -383,15 +429,16 @@ ikarem/            zero-dep stdlib core (v1.4.0) — optional integrations lazy-
   testing.py      TestClient (cookie jar, all verbs, WS driving — no server needed)
   scaffold.py     `ikarem new` starter generator
   deprecation.py  deprecated() upgrade path + meraki_compat.py drop-in shim
-tests/ + ledger/tests + cadence/tests + forge/tests + relay/tests   381-test suite (see Verification)
+tests/ + ledger/tests + cadence/tests + forge/tests + relay/tests + extensions/*/tests   439-test suite (see Verification)
 ledger/ + cadence/ + forge/   production showcase apps (finance, habits, workshop OS)
 relay/                        incident + status hub (28 routes: JWT/RBAC/API keys, SpikeManager ingest lane, nitro rollups, live feed, cron probes, MCP, debug pulse)
+extensions/ikarem-pentest (active self-pentest: 6 probes + Nuclei layer + vuln gym) + ikarem-oauth (refresh rotation + PKCE code flow)
 examples/basic.py    minimal CRUD + DB plugin app
 bench/            honest benches (bench_switch.py) + sustained-load proof (load.py)
 docs/             COOKBOOK.md (20 runnable recipes) · GUIDE.md (25 chapters) · NISH.md ·
                   ECOSYSTEM.md (extension registry) · MIGRATING_FROM_*.md (6 frameworks) ·
                   DEFAULTS.md (every default, stated plainly) · CHATGPT.md (GPT pack) ·
-                  DEPLOY.md · PLUGINS.md · SECURITY.md · PHASE1.md (original spec)
+                  DEPLOY.md · PUBLISHING.md (token-free PyPI releases) · PLUGINS.md · SECURITY.md · PHASE1.md (original spec)
 site/             static docs site (no build step) + llms.txt framework manual
 ```
 
