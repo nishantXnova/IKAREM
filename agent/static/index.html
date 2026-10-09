@@ -1,0 +1,87 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HERMES - BYOK AI Agent on IKAREM</title>
+<link rel="stylesheet" href="/static/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><text y=%27.9em%27 font-size=%2790%27>H</text></svg>">
+</head>
+<body>
+<div id="app">
+  <aside id="sidebar">
+    <div class="brand"><span class="logo">H</span><span><b>HERMES</b><small>agent on IKAREM - MCP inside</small></span></div>
+    <button id="newChat" class="btn primary">+ New chat</button>
+    <div class="side-label">Chats</div>
+    <div id="sessions"></div>
+    <div class="side-foot">
+      <button id="byokBtn" class="btn ghost">Keys (BYOK)</button>
+      <button id="filesBtn" class="btn ghost">Workspace files</button>
+      <div class="foot-note">MCP: <code>ikarem mcp agent.app:app</code></div>
+    </div>
+  </aside>
+
+  <main>
+    <header class="topbar">
+      <button id="menuBtn" class="icon-btn" title="Toggle sidebar">&#9776;</button>
+      <span id="statusDot" title="server status"></span>
+      <button id="modelBadge" class="pill" title="Change provider / key">...</button>
+      <span class="spacer"></span>
+      <button id="stopBtn" class="btn danger">Stop</button>
+    </header>
+
+    <div id="chat"></div>
+
+    <div id="hero">
+      <h2>What should HERMES do?</h2>
+      <p>Bring your own key once - then command it: read code, edit files, run shell, fetch the web.</p>
+      <div class="chips">
+        <button data-q="List the workspace, then summarize what is in it.">Summarize the workspace</button>
+        <button data-q="Read README.md in the workspace and suggest 3 concrete improvements.">Review the README</button>
+        <button data-q="Create a hello.py script in the workspace that prints a greeting.">Scaffold hello.py</button>
+      </div>
+    </div>
+
+    <div id="composer">
+      <textarea id="input" rows="1" placeholder="Ask or command HERMES...  (Enter to send, Shift+Enter for newline)"></textarea>
+      <button id="send" title="Send">Send</button>
+    </div>
+  </main>
+
+  <div id="drawer">
+    <div class="drawer-head">
+      <div class="tabs"><button id="tabFiles" class="on">Files</button><button id="tabMem">Memory</button></div>
+      <button id="drawerClose" class="icon-btn" title="Close">&times;</button>
+    </div>
+    <div id="crumbs"></div>
+    <div id="fileList"></div>
+    <div id="fileView"><button id="fileBack" class="btn ghost">&larr; Back</button><pre id="fileContent"></pre></div>
+    <div id="memPane">
+      <div id="memList"></div>
+      <form id="memForm"><input id="memKey" placeholder="key"><input id="memVal" placeholder="value to remember"><button class="btn primary">Remember</button></form>
+    </div>
+  </div>
+</div>
+
+<div id="byokModal"><div class="card">
+  <h2>Bring your own key</h2>
+  <p class="sub">Pick a provider - endpoint and model fill in automatically. <b>Only the key is yours to paste.</b> Keys stay in this browser; the server never stores them.</p>
+  <label>Provider</label>
+  <div id="provGrid"></div>
+  <div id="autoLine">Endpoint <code id="roBase"></code> &nbsp; Model <code id="roModel"></code>
+    <button id="advToggle" class="link">customize</button></div>
+  <div id="advBox">
+    <label>Model override (optional)</label><input id="pModel" list="modelList" placeholder="auto">
+    <datalist id="modelList"></datalist>
+    <label>Base URL override (optional)</label><input id="pBase" placeholder="auto">
+  </div>
+  <label>API key <span id="keyReq" class="req">required</span></label>
+  <div class="keyrow"><input id="pKey" type="password" placeholder="paste key here"><button id="keyShow" class="btn ghost" title="Show/hide">show</button></div>
+  <div class="row"><button id="byokForget" class="btn ghost">Forget key</button><button id="byokSave" class="btn primary">Save</button></div>
+  <div class="hint">No key? Run <code>ollama serve</code> locally and pick Ollama - no key needed.</div>
+</div></div>
+
+<div id="toasts"></div>
+<script src="/static/app.js"></script>
+</body>
+</html>
