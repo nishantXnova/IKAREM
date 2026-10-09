@@ -111,8 +111,11 @@ def test_tokens_verify_both_directions():
     theirs = jwt.encode({"sub": "u2", "exp": int(_time.time()) + 900}, secret, algorithm="HS256")
     back = verify_token(theirs, secret)
     assert back["sub"] == "u2"
-    # tampered in transit fails on both sides
-    bad = mine[:-1] + ("a" if mine[-1] != "a" else "b")
+    # tampered in transit fails on both sides (flip the FIRST signature char:
+    # fully significant bits — flipping the last char is a proven flake,
+    # its low bits are base64 padding and can decode to identical bytes)
+    _h, _p, _s = mine.split(".")
+    bad = ".".join([_h, _p, ("A" if not _s.startswith("A") else "B") + _s[1:]])
     with pytest.raises(Exception):
         jwt.decode(bad, secret, algorithms=["HS256"])
     import ikarem.auth as _auth
