@@ -21,6 +21,8 @@
     { "src": "/extensions/pentest.html", "dest": "/site/ext-pentest.html" },
     { "src": "/extensions/oauth", "dest": "/site/ext-oauth.html" },
     { "src": "/extensions/oauth.html", "dest": "/site/ext-oauth.html" },
+    { "src": "/extensions/backup", "dest": "/site/ext-backup.html" },
+    { "src": "/extensions/backup.html", "dest": "/site/ext-backup.html" },
     { "src": "/guide.pdf", "dest": "/site/guide.pdf" },
     { "src": "/style.css", "dest": "/site/style.css" },
     { "src": "/script.js", "dest": "/site/script.js" },

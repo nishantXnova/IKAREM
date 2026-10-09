@@ -348,8 +348,9 @@ IKAREM engine — then migrate handler-by-handler. From anywhere else:
 - Meraki (full guide): [`docs/MIGRATING_FROM_MERAKI.md`](docs/MIGRATING_FROM_MERAKI.md)
 
 Plus honest benchmarks: [`bench/RESULTS.md`](bench/RESULTS.md) ·
-installable extensions: **self-pentest scanner** (`pip install ./extensions/ikarem-pentest` — auth bypass, XSS, SQLi probes)
-and **OAuth2 login** (`pip install ./extensions/ikarem-oauth` — Google/GitHub + refresh rotation) —
+installable extensions: **self-pentest scanner** (`pip install ./extensions/ikarem-pentest` — auth bypass, XSS, SQLi probes),
+**OAuth2 login** (`pip install ./extensions/ikarem-oauth` — Google/GitHub + refresh rotation) and
+**verified backups** (`pip install ./extensions/ikarem-backup` — online dumps, restore drills) —
 [hub](https://ikarem.vercel.app/extensions) ·
 extension registry: [`docs/ECOSYSTEM.md`](docs/ECOSYSTEM.md) ·
 20 runnable recipes: [`docs/COOKBOOK.md`](docs/COOKBOOK.md) ·
@@ -387,11 +388,11 @@ moving van.*
 
 ## Verification
 
-463 passed, 3 skipped — framework plus showcases plus extensions, one command:
+472 passed, 3 skipped — framework plus showcases plus extensions, one command:
 
 ```bash
 python -m pytest tests/ ledger/tests cadence/tests forge/tests relay/tests market/tests agent/tests \
-  extensions/ikarem-pentest/tests extensions/ikarem-oauth/tests -q
+  extensions/ikarem-pentest/tests extensions/ikarem-oauth/tests extensions/ikarem-backup/tests -q
 ```
 
 CI runs the same suite on Python 3.10–3.13 × Ubuntu/macOS/Windows, plus a

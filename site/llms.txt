@@ -80,6 +80,9 @@ async def home(req):
 - `ikarem-oauth` (`extensions/ikarem-oauth`): refresh tokens (rotation,
   reuse kills chain, revocation) + OAuth2 code flow with PKCE
   (Google/GitHub presets). Page: https://ikarem.vercel.app/extensions/oauth
+- `ikarem-backup` (`extensions/ikarem-backup`): online SQLite dumps,
+  restore drills, retention, pluggable upload.
+  Page: https://ikarem.vercel.app/extensions/backup
 - Hub: https://ikarem.vercel.app/extensions
 
 ## Rules (do not break)

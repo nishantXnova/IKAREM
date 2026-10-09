@@ -18,6 +18,11 @@ All notable changes to this project are documented here. Format follows
   local-first by documented posture. 10 tests.
 - `ikarem/knowledge.py` + `tests/test_knowledge.py`: framework knowledge
   as MCP (quickref, doc reader, live API reference, audit tool). 7 tests.
+- `ikarem-backup` (`extensions/ikarem-backup`,
+  `pip install ./extensions/ikarem-backup`): online SQLite dumps, restore
+  drills, retention, pluggable upload. 8 hermetic tests (caught two
+  Windows file-lock bugs: sqlite context managers don't close).
+  Removal path: uninstall keeps the DB untouched.
 
 ## [1.4.0] — 2026-10-08
 

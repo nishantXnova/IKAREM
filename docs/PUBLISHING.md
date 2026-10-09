@@ -10,7 +10,7 @@ thread #1) can be revoked once this is green; nothing uses it.
 `ikarem-oauth` (first release only):
 
 1. https://pypi.org/manage/account/publishing/ → **Add a new pending publisher**
-2. PyPI Project Name: `ikarem-pentest` (then repeat for `ikarem-oauth`)
+2. PyPI Project Name: `ikarem-pentest` (then repeat for `ikarem-oauth`, `ikarem-backup`)
 3. Owner: `nishantXnova`, Repository: `IKAREM`
 4. Workflow name: `publish.yml`, Environment name: `pypi`
 5. The first tag push creates the project; later pushes reuse it.
@@ -23,6 +23,7 @@ git tag v1.4.0 && git push origin v1.4.0
 # extensions (independent versions, own tags):
 git tag pentest-v0.1.0 && git push origin pentest-v0.1.0
 git tag oauth-v0.1.0 && git push origin oauth-v0.1.0
+git tag backup-v0.1.0 && git push origin backup-v0.1.0
 ```
 
 Version rules (enforced by `tests/test_packaging.py` for core):

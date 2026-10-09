@@ -61,8 +61,9 @@
   <li><a href="#top" class="on"><span class="n">00</span>Extensions</a></li>
   <li><a href="#pentest"><span class="n">01</span>Self-pentest</a></li>
   <li><a href="#oauth"><span class="n">02</span>OAuth2 login</a></li>
-  <li><a href="#model"><span class="n">03</span>Freemium model</a></li>
-  <li><a href="#faq"><span class="n">04</span>FAQ</a></li>
+  <li><a href="#backup"><span class="n">03</span>Backups</a></li>
+  <li><a href="#model"><span class="n">04</span>Freemium model</a></li>
+  <li><a href="#faq"><span class="n">05</span>FAQ</a></li>
 </ol></aside>
 
 <main>
@@ -70,7 +71,7 @@
   <p class="secnum">IKAREM EXTENSIONS</p>
   <h1>Power tools, one pip install each.</h1>
   <p>The core stays zero-dependency forever. Everything heavy — active
-  vulnerability scanning, OAuth2 social login — ships as an installable
+  vulnerability scanning, OAuth2 social login, verified backups — ships as an installable
   extension that never touches <code>ikarem/</code>. Basics built in,
   power installable.</p>
 </section>
@@ -96,6 +97,15 @@
   RFC 6749 error codes, and opaque refresh tokens with single-use rotation
   (replay kills the whole chain) and revocation. Stdlib only.
   Full detail: <a href="ext-oauth.html">the OAuth page</a>.</p>
+</section>
+
+<section id="backup">
+  <p class="secnum">03 — IKAREM-BACKUP</p>
+  <h2>Backups that prove they restore.</h2>
+  <p><code>pip install ikarem-backup</code> — online dumps of live SQLite
+  files, a restore drill (<code>integrity_check</code> + table census) on
+  every run, retention pruning, and an upload hook for S3. Stdlib only.
+  Full detail: <a href="ext-backup.html">the backup page</a>.</p>
 </section>
 
 <section id="model">

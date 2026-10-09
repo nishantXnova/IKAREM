@@ -42,12 +42,18 @@ def test_sitemap_urls_have_routes_and_files():
 
 def test_extension_pages_indexed_and_routed():
     locs = _sitemap_paths()
-    for url in (f"{BASE}/extensions", f"{BASE}/extensions/pentest", f"{BASE}/extensions/oauth"):
+    for url in (
+        f"{BASE}/extensions",
+        f"{BASE}/extensions/pentest",
+        f"{BASE}/extensions/oauth",
+        f"{BASE}/extensions/backup",
+    ):
         assert url in locs, f"{url} missing from sitemap"
     routes = {r["src"]: r["dest"] for r in _vercel_routes()}
     assert routes["/extensions"] == "/site/extensions.html"
     assert routes["/extensions/pentest"] == "/site/ext-pentest.html"
     assert routes["/extensions/oauth"] == "/site/ext-oauth.html"
+    assert routes["/extensions/backup"] == "/site/ext-backup.html"
 
 
 def _pages():
@@ -92,4 +98,4 @@ def test_json_ld_parses():
 
 def test_llms_covers_extensions():
     text = (SITE / "llms.txt").read_text(encoding="utf-8")
-    assert "ikarem-pentest" in text and "ikarem-oauth" in text
+    assert "ikarem-pentest" in text and "ikarem-oauth" in text and "ikarem-backup" in text

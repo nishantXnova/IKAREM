@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="author" content="Nishant Paudel">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ikarem-backup — SQLite Backups for Python APIs (Restore Drills, Retention)</title>
+<meta name="description" content="ikarem-backup dumps live SQLite databases safely (online backup API, not file copy), proves every backup restores, prunes retention, and uploads anywhere via a hook. Stdlib only. pip install ikarem-backup.">
+<meta name="keywords" content="sqlite backup python, database backup automation, restore drill, backup retention python, sqlite online backup, disaster recovery python api">
+<meta name="theme-color" content="#0a0a0b">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="IKAREM">
+<meta property="og:url" content="https://ikarem.vercel.app/extensions/backup">
+<meta property="og:title" content="ikarem-backup — backups that prove they restore">
+<meta property="og:description" content="Online SQLite dumps, integrity drills, retention, pluggable upload. Stdlib only.">
+<meta property="og:image" content="https://ikarem.vercel.app/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="ikarem-backup — SQLite Backups for Python APIs">
+<meta name="twitter:image" content="https://ikarem.vercel.app/og.png">
+<meta name="twitter:description" content="Dumps, drills, retention, upload hooks. A backup nobody tested is a rumor.">
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "SoftwareApplication",
+ "name": "ikarem-backup", "applicationCategory": "DeveloperApplication",
+ "operatingSystem": "Any (Python >= 3.10)", "programmingLanguage": "Python",
+ "softwareVersion": "0.1.0", "license": "https://github.com/nishantXnova/IKAREM/blob/main/LICENSE",
+ "offers": {"@type": "Offer", "price": "0"},
+ "codeRepository": "https://github.com/nishantXnova/IKAREM/tree/main/extensions/ikarem-backup",
+ "description": "SQLite backups for Python APIs: online dumps, restore drills, retention pruning, pluggable upload. Stdlib only.",
+ "author": {"@type": "Person", "name": "Nishant Paudel", "homeLocation": {"@type": "Place", "name": "Nepal"}}}
+</script>
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "FAQPage",
+ "mainEntity": [
+  {"@type": "Question", "name": "How do I back up a live SQLite database in Python?", "acceptedAnswer": {"@type": "Answer", "text": "Use the sqlite3 online-backup API, never file copy (copies of live files corrupt). ikarem-backup wraps it: BackupManager(url, dir).run() dumps, drills, prunes, and optionally uploads in one call."}},
+  {"@type": "Question", "name": "How do I know my backups restore?", "acceptedAnswer": {"@type": "Answer", "text": "Every ikarem-backup run opens the fresh backup read-only in a temp dir and runs integrity_check plus a table census. A backup that fails the drill raises instead of sitting silently corrupt."}},
+  {"@type": "Question", "name": "Can it upload to S3?", "acceptedAnswer": {"@type": "Answer", "text": "Yes via a callable hook: run(uploader=lambda p: s3.upload_file(...)). boto3 stays your dependency — the package itself is stdlib only."}}
+ ]}
+</script>
+<link rel="icon" href="../assets/ikarem-icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+<link rel="canonical" href="https://ikarem.vercel.app/extensions/backup">
+</head>
+<body>
+<header class="topbar">
+<div class="topbar-inner">
+  <a class="brand" href="index.html"><img src="../assets/ikarem-icon.svg" alt="IKAREM"><b>IKAREM</b></a>
+  <span class="ver">v1.4.0</span>
+  <nav>
+<a href="index.html">Docs</a>
+<a href="migrate.html">Migrate</a>
+<a href="reference.html">Reference</a>
+<a href="recipes.html">Recipes</a>
+<a href="guide.html">Guide</a>
+<a href="extensions.html" class="on">Extensions</a>
+    <a href="https://github.com/nishantXnova/IKAREM" class="ext">GitHub</a>
+    <a href="https://pypi.org/project/ikarem/" class="ext">PyPI</a>
+  </nav>
+</div>
+</header>
+
+<div class="wrap">
+<aside class="side"><ol>
+  <li><a href="#top" class="on"><span class="n">00</span>Backup</a></li>
+  <li><a href="#drill"><span class="n">01</span>Restore drill</a></li>
+  <li><a href="#auto"><span class="n">02</span>Automation</a></li>
+  <li><a href="#faq"><span class="n">03</span>FAQ</a></li>
+</ol></aside>
+
+<main>
+<section id="top">
+  <p class="secnum">IKAREM-BACKUP</p>
+  <h1>Backups that prove they restore.</h1>
+  <p><code>pip install ikarem-backup</code> — online dumps of live SQLite
+  files, a restore drill on every run, retention pruning, and an upload
+  hook for S3 or anywhere. Stdlib only. Part of
+  <a href="extensions.html">IKAREM extensions</a>.</p>
+  <pre><code>BackupManager("sqlite:///app.db", "backups/", keep=7).run()
+# {"backup": "backups/app-....db.gz", "tables": [...], "pruned": [...]}</code></pre>
+</section>
+
+<section id="drill">
+  <p class="secnum">01 — DRILL</p>
+  <h2>An untested backup is a rumor.</h2>
+  <p>Every run opens the fresh backup read-only in a temp directory and
+  runs <code>integrity_check</code> plus a table census — without touching
+  production. Corrupt output raises with the fix instead of sitting on
+  disk pretending to protect you. Non-SQLite engines get the native-dump
+  remedy (<code>pg_dump</code>, <code>mysqldump</code>), not a traceback.</p>
+</section>
+
+<section id="auto">
+  <p class="secnum">02 — NIGHTLY</p>
+  <h2>One route, one cron line.</h2>
+  <p><code>BackupPlugin</code> exposes <code>POST /admin/backup</code>
+  (guard it like any mutating route); a cron
+  <code>@app.every(86400)</code> calling <code>manager.run()</code> makes
+  it nightly. Upload stays a callable so boto3 never becomes our
+  dependency.</p>
+</section>
+
+<section id="faq">
+  <p class="secnum">FAQ</p>
+  <h2>Straight answers.</h2>
+  <p><b>Live SQLite backup?</b> Online-backup API via one call — never
+  file-copy a live database.</p>
+  <p><b>Prove it restores?</b> Drill runs every cycle, temp dir, read-only.</p>
+  <p><b>S3?</b> Uploader hook; boto3 stays yours.</p>
+</section>
+
+<section id="next">
+  <p class="secnum">KEEP GOING</p>
+  <h2>Backed up? Now attack it.</h2>
+  <p><a href="ext-pentest.html">ikarem-pentest</a> probes the app the
+  backups protect; <a href="ext-oauth.html">ikarem-oauth</a> guards its
+  logins. Back to the <a href="extensions.html">extensions hub</a>.</p>
+</section>
+</main>
+</div>
+
+<footer><div class="wrap">
+  <span>IKAREM v1.4.0 · MIT. Zero-dependency Python ASGI. Built by Nishant Paudel in Nepal.</span>
+  <span style="margin-left:auto"><a href="https://github.com/nishantXnova/IKAREM/blob/main/SECURITY.md">Security</a> · <a href="https://github.com/nishantXnova/IKAREM/blob/main/CHANGELOG.md">Changelog</a> · <a href="https://github.com/nishantXnova/IKAREM">GitHub</a> · <a href="https://pypi.org/project/ikarem/">PyPI</a> · <a href="https://ikarem.vercel.app/llms.txt">llms.txt</a></span>
+</div></footer>
+<script src="script.js" defer></script>
+</body>
+</html>

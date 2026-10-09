@@ -2,7 +2,7 @@ name: Publish
 
 on:
   push:
-    tags: ["v*", "pentest-v*", "oauth-v*"]
+    tags: ["v*", "pentest-v*", "oauth-v*", "backup-v*"]
 
 permissions:
   contents: read
@@ -61,3 +61,22 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: extensions/ikarem-oauth/dist/
+
+  publish-backup:
+    if: startsWith(github.ref, 'refs/tags/backup-v')
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Build
+        run: pip install build && python -m build
+        working-directory: extensions/ikarem-backup
+      - name: Publish via Trusted Publisher (no long-lived API token)
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: extensions/ikarem-backup/dist/

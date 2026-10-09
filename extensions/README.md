@@ -22,6 +22,7 @@ forever. Everything here **actively attacks your own app** in-process via
 |---|---|---|
 | `ikarem-pentest` | Active self-pentest: fires auth-bypass, XSS, SQLi, open-redirect, body-cap, traceback probes at your routes over `TestClient` | `pip install ./extensions/ikarem-pentest` |
 | `ikarem-oauth` | Refresh tokens (rotation, reuse kills chain, revocation) + OAuth2 code-flow login (Google/GitHub presets) | `pip install ./extensions/ikarem-oauth` |
+| `ikarem-backup` | SQLite online dumps, restore drills, retention, pluggable upload | `pip install ./extensions/ikarem-backup` |
 
 ## Roadmap (claim one)
 
