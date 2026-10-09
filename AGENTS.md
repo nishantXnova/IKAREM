@@ -7,7 +7,7 @@ lives in `ikarem/`, the showcase app in `ledger/`, the docs site in `site/`.
 
 ```bash
 pip install -e ".[dev]"                    # dev environment
-python -m pytest tests/ ledger/tests cadence/tests forge/tests relay/tests -q    # full suite — must stay green
+python -m pytest tests/ ledger/tests cadence/tests forge/tests relay/tests market/tests agent/tests extensions/ikarem-pentest/tests extensions/ikarem-oauth/tests -q    # full suite — must stay green
 ruff check . && ruff format --check .      # lint gate (CI enforces both)
 python -m ikarem.cli check ledger.app:app  # static handler audit
 python bench/bench_switch.py               # only when touching the hot path

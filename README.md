@@ -387,10 +387,10 @@ moving van.*
 
 ## Verification
 
-439 passed, 3 skipped — framework plus showcases plus extensions, one command:
+463 passed, 3 skipped — framework plus showcases plus extensions, one command:
 
 ```bash
-python -m pytest tests/ ledger/tests cadence/tests forge/tests relay/tests \
+python -m pytest tests/ ledger/tests cadence/tests forge/tests relay/tests market/tests agent/tests \
   extensions/ikarem-pentest/tests extensions/ikarem-oauth/tests -q
 ```
 

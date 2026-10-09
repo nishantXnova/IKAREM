@@ -6,6 +6,19 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
+### Added
+- `market/` town-square showcase (BAZAAR): shops/catalog/cart, atomic
+  idempotent checkout, order pipeline, reviews/coupons/wallet, seller
+  desk, admin moderation, live WS ticker, JSON+NISH API. 14 hermetic
+  tests; `check` green with 25 acknowledged exposure warnings.
+- `agent/` HERMES: BYOK AI command agent on the core (ReAct loop over
+  jailed files/shell/web/memory tools, WS streaming with approval
+  cards, SQLite sessions, MCP tools + prompts, stdlib-only). Tests use
+  isolated temp DBs; dev session secret warns at startup; API is
+  local-first by documented posture. 10 tests.
+- `ikarem/knowledge.py` + `tests/test_knowledge.py`: framework knowledge
+  as MCP (quickref, doc reader, live API reference, audit tool). 7 tests.
+
 ## [1.4.0] — 2026-10-08
 
 ### Added
