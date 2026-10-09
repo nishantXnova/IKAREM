@@ -27,7 +27,7 @@ jobs:
   publish-pentest:
     if: startsWith(github.ref, 'refs/tags/pentest-v')
     runs-on: ubuntu-latest
-    environment: pypi
+    environment: pypi-pentest
     permissions:
       id-token: write
     steps:
@@ -46,7 +46,7 @@ jobs:
   publish-oauth:
     if: startsWith(github.ref, 'refs/tags/oauth-v')
     runs-on: ubuntu-latest
-    environment: pypi
+    environment: pypi-oauth
     permissions:
       id-token: write
     steps:
@@ -65,7 +65,7 @@ jobs:
   publish-backup:
     if: startsWith(github.ref, 'refs/tags/backup-v')
     runs-on: ubuntu-latest
-    environment: pypi
+    environment: pypi-backup
     permissions:
       id-token: write
     steps:
