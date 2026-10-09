@@ -37,6 +37,29 @@ def test_string_annotations_resolve_like_future_import():
     assert TestClient(app).post("/x", body={"name": "amy"}).json() == {"name": "amy"}
 
 
+def test_optional_schema_default_still_validates_on_all_pythons():
+    """`body: Item = None` must validate on every version. Python ≤3.10's
+    get_type_hints wraps it as Optional[Item] (3.11+ does not) — without
+    unwrapping, 3.10 silently skipped validation (200 on garbage)."""
+    from typing import Optional
+
+    from ikarem.compiled import get_plan
+
+    class _Box(Schema):
+        amount: float
+
+    async def h(req, body: Optional[_Box] = None):
+        return {"ok": True}
+
+    kinds = {p.name: p.kind for p in get_plan(h).params}
+    assert kinds["body"] == "schema", kinds
+    app = Ikarem(enable_docs=False)
+    app.router.add("/box", {"POST"}, h)
+    c = TestClient(app)
+    assert c.post("/box", body={"amount": 1}).status_code == 200
+    assert c.post("/box", body={"nope": 1}).status_code == 400
+
+
 def test_startup_refuses_default_secret_with_auth_routes():
     app = Ikarem(enable_docs=False)
 

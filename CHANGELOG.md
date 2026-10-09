@@ -6,6 +6,15 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
+### Fixed
+- `body: Schema = None` validates identically on all Pythons
+  (`ikarem/compiled.py`): Python ≤3.10's `get_type_hints` wraps
+  `None`-defaulted params in `Optional[]` (3.11+ does not), so plans
+  classified them `dynamic` and 3.10 silently skipped body validation
+  (200 on garbage). Plans now unwrap `Optional[X]` for schema
+  classification. Found dogfooding ikarem-pentest on 3.10; regression
+  test in `tests/test_trust.py` passes on 3.10 and 3.11.
+
 ### Added
 - `market/` town-square showcase (BAZAAR): shops/catalog/cart, atomic
   idempotent checkout, order pipeline, reviews/coupons/wallet, seller

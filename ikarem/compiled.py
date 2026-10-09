@@ -34,6 +34,24 @@ def _is_background_ann(ann: Any) -> bool:
     return inspect.isclass(ann) and getattr(ann, "__name__", "") == "BackgroundTasks"
 
 
+def _unwrap_optional_ann(ann: Any) -> Any:
+    """Strip `Optional[X]`/`X | None` to `X`. Python ≤3.10's get_type_hints
+    implicitly wraps `= None` defaults in Optional while 3.11+ does not —
+    without this, `body: Schema = None` validated on 3.11 but silently
+    skipped validation on 3.10 (200 on garbage). One normalization point
+    so plans are identical on every supported version."""
+    try:
+        import typing
+
+        if typing.get_origin(ann) is typing.Union:
+            args = [a for a in typing.get_args(ann) if a is not type(None)]
+            if len(args) == 1:
+                return args[0]
+    except Exception:
+        pass
+    return ann
+
+
 def _is_schema_ann(ann: Any) -> bool:
     try:
         from .validation import Schema
@@ -337,8 +355,8 @@ def compile_handler(handler: Any) -> HandlerPlan:
             plan.params.append(HandlerParam(pname, "background", ann, default))
             plan.has_background = True
             continue
-        if ann is not inspect._empty and is_schema_like(ann):
-            plan.params.append(HandlerParam(pname, "schema", ann, default))
+        if ann is not inspect._empty and is_schema_like(_unwrap_optional_ann(ann)):
+            plan.params.append(HandlerParam(pname, "schema", _unwrap_optional_ann(ann), default))
             plan.has_body = True
             continue
         # path/query/default/fallback decided at runtime (request varies),
