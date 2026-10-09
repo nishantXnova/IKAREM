@@ -10,6 +10,7 @@ git clone https://github.com/nishantXnova/IKAREM
 cd IKAREM
 python -m venv .venv && .venv/Scripts/activate   # Windows; source .venv/bin/activate elsewhere
 pip install -e ".[dev]"
+pip install -e ./extensions/ikarem-pentest -e ./extensions/ikarem-oauth -e ./extensions/ikarem-backup
 python -m pytest tests/ ledger/tests cadence/tests -q
 ```
 

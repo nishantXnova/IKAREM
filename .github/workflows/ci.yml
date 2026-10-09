@@ -19,8 +19,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install (dev extras)
-        run: pip install -e ".[dev]" "ruff==0.16.10"
+      - name: Install (dev extras + extensions)
+        run: pip install -e ".[dev]" "ruff==0.16.10" -e ./extensions/ikarem-pentest -e ./extensions/ikarem-oauth -e ./extensions/ikarem-backup
       - name: Lint
         run: ruff check . && ruff format --check .
       - name: Tests (framework + showcases + extensions)
@@ -36,8 +36,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Install (dev extras + coverage)
-        run: pip install -e ".[dev]" coverage pytest
+      - name: Install (dev extras + coverage + extensions)
+        run: pip install -e ".[dev]" coverage pytest -e ./extensions/ikarem-pentest -e ./extensions/ikarem-oauth -e ./extensions/ikarem-backup
       - name: Coverage (fail under 80%)
         run: coverage run -m pytest tests/ ledger/tests cadence/tests forge/tests relay/tests market/tests agent/tests -q && coverage report --include="ikarem/*" --fail-under=80
 
