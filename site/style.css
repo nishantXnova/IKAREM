@@ -178,6 +178,31 @@ p code, li code, td code { background: var(--bg2); border: 1px solid var(--line)
 }
 .copy:hover { color: #fff; border-color: #636366; }
 
+/* ---- terminal card: mac dots, one dark window ---- */
+.term { border: 1px solid #2c2c2e; border-radius: 12px; background: #161617; margin: 0 0 24px; overflow: hidden; max-width: 100%; }
+.termbar { display: flex; align-items: center; gap: 7px; padding: 12px 16px; border-bottom: 1px solid #2c2c2e; }
+.termbar i { width: 11px; height: 11px; border-radius: 50%; display: block; }
+.termbar i:nth-child(1) { background: #ff5f57; }
+.termbar i:nth-child(2) { background: #febc2e; }
+.termbar i:nth-child(3) { background: #28c840; }
+.termbar span { margin-left: 8px; font-family: var(--mono); font-size: 12px; color: #8b8b93; }
+.term pre { border: 0; border-radius: 0; margin: 0; background: transparent; }
+.term pre + pre { border-top: 1px solid #2c2c2e; }
+
+/* ---- pipeline diagram ---- */
+.pipe { border: 1px solid var(--line); border-radius: 12px; background: var(--bg2); margin: 0 0 26px; overflow: hidden; }
+.pipe svg { display: block; width: 100%; height: auto; }
+
+/* ---- cards: bordered grid, stroke icons, no fill art ---- */
+.cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 0 0 26px; max-width: none; }
+.card { display: block; border: 1px solid var(--line); border-radius: 12px; padding: 22px; color: var(--ink); background: var(--bg); }
+.card:hover { border-color: var(--blue); text-decoration: none; }
+.card svg { display: block; width: 28px; height: 28px; margin-bottom: 14px; }
+.card b { display: block; font-size: 15px; letter-spacing: -0.01em; margin-bottom: 6px; }
+.card span { display: block; font-size: 13.5px; line-height: 1.6; color: var(--mut); }
+.card em { display: block; margin-top: 12px; font-style: normal; font-size: 13px; font-weight: 600; color: var(--blue); }
+@media (max-width: 900px) { .cards { grid-template-columns: 1fr; } }
+
 /* ---- tables: header row, calm dividers, aligned columns ---- */
 table { width: 100%; max-width: 100%; border-collapse: collapse; margin: 0 0 26px; font-size: 14px; }
 thead th, th {
