@@ -487,6 +487,128 @@ class StreamingResponse(Response):
         await send({"type": "http.response.body", "body": b"", "more_body": False})
 
 
+def sse_format(data: Any, event: str | None = None, id: str | None = None, retry: int | None = None) -> bytes:
+    """One SSE frame (`text/event-stream`): `event:`/`id:`/`data:` lines + blank line.
+
+    `data` str may be multiline (split per line, `\\r` stripped); dict/list
+    becomes one compact JSON line. `retry` is milliseconds (client
+    reconnection delay). Returns bytes ready to send.
+    """
+    lines = []
+    if event is not None:
+        lines.append(f"event: {event}")
+    if id is not None:
+        lines.append(f"id: {id}")
+    if retry is not None:
+        lines.append(f"retry: {int(retry)}")
+    if isinstance(data, (dict, list)):
+        data = dumps_json_bytes(data).decode()
+    for line in str(data).split("\n"):
+        lines.append(f"data: {line.rstrip(chr(13))}")
+    return ("\n".join(lines) + "\n\n").encode()
+
+
+class SSEResponse(Response):
+    """Server-Sent Events sugar over plain streaming: `text/event-stream`
+    content type, `Cache-Control: no-cache` + `X-Accel-Buffering: no` (nginx
+    must not buffer), optional `retry:` first frame, and `heartbeat:`
+    comment frames while an async generator is slow.
+
+    Yield `str` (one data frame), `dict` (JSON data frame), or
+    `{"event": ..., "data": ..., "id": ...}` for named events — the shape
+    LLM token streams want. `event=` sets a default name for plain yields.
+
+    Tradeoffs, stated: heartbeat only interleaves *async* iterators (a
+    blocking sync iterable can't be timed); client disconnect surfaces as
+    a `send` failure, which closes the generator and ends the response —
+    no receive-racing (it would break in-process `TestClient` streams and
+    churn a task per chunk).
+    """
+
+    def __init__(
+        self,
+        iterator: Any,
+        event: str | None = None,
+        retry: int | None = None,
+        heartbeat: float | None = None,
+        headers: dict[str, str] | None = None,
+        status_code: int = 200,
+    ):
+        self.iterator = iterator
+        self.event = event
+        self.retry = retry
+        self.heartbeat = heartbeat
+        self.status_code = status_code
+        self.headers: dict[str, str] = {
+            "cache-control": "no-cache",
+            "x-accel-buffering": "no",
+        }
+        if headers:
+            self.headers.update(headers)
+        self.media_type = "text/event-stream"
+        self._content_type = b"text/event-stream"
+        self.body = b""
+
+    def _frame(self, item: Any) -> bytes:
+        if isinstance(item, dict) and ("data" in item or "event" in item):
+            return sse_format(item.get("data", ""), event=item.get("event", self.event), id=item.get("id"))
+        return sse_format(item, event=self.event)
+
+    async def __call__(self, scope: dict, receive: Any, send: Any) -> None:
+        headers = [(b"content-type", self._content_type)]
+        for k, v in self.headers.items():
+            headers.append((k.lower().encode(), str(v).encode()))
+        await send({"type": "http.response.start", "status": self.status_code, "headers": headers})
+        try:
+            if self.retry is not None:
+                await send(
+                    {
+                        "type": "http.response.body",
+                        "body": sse_format("", retry=self.retry),
+                        "more_body": True,
+                    }
+                )
+            if hasattr(self.iterator, "__aiter__"):
+                import asyncio as _aio
+
+                it = self.iterator.__aiter__()
+                task = _aio.ensure_future(it.__anext__())
+                while True:
+                    if self.heartbeat is not None:
+                        # wait() with a timeout never cancels: the pending
+                        # next-item keeps cooking while heartbeats go out.
+                        # (asyncio.wait_for would cancel __anext__ and kill
+                        # the generator — the classic heartbeat footgun.)
+                        done, _ = await _aio.wait({task}, timeout=self.heartbeat)
+                        if not done:
+                            await send(
+                                {
+                                    "type": "http.response.body",
+                                    "body": b": heartbeat\n\n",
+                                    "more_body": True,
+                                }
+                            )
+                            continue
+                    try:
+                        item = await task
+                    except StopAsyncIteration:
+                        break
+                    await send({"type": "http.response.body", "body": self._frame(item), "more_body": True})
+                    task = _aio.ensure_future(it.__anext__())
+            else:
+                for item in self.iterator:
+                    await send({"type": "http.response.body", "body": self._frame(item), "more_body": True})
+        except Exception:
+            try:
+                aclose = getattr(self.iterator, "aclose", None)
+                if aclose:
+                    await aclose()
+            except Exception:
+                pass
+            return
+        await send({"type": "http.response.body", "body": b"", "more_body": False})
+
+
 def to_response(value: Any) -> Response:
     if value is None:
         return Response(b"", 204)

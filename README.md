@@ -382,7 +382,7 @@ moving van.*
 | Auth | Stdlib HS256 JWT (algorithm-confusion resistant, `sub` required, expiry enforced), pbkdf2 passwords, `BearerAuth` + `APIKeyAuth`, `require_roles()` / `require_scopes()` / `require_if()`. |
 | Caching | `MemoryCache` + `RedisCache` + `@cached` over a swappable `CacheBackend` interface. |
 | Background work | `BackgroundTasks` param (after send) + durable `Queue` (survives deploys) + cron. |
-| Realtime / files | `app.websocket(path)` + `Room` pub/sub + `WebSocket` helper; `mount_static()` + `FileResponse`. |
+| Realtime / files | `app.websocket(path)` + `Room` pub/sub + `WebSocket` helper; `mount_static()` + `FileResponse`; `SSEResponse` event streams with retry + heartbeat. |
 | NISH | `app.nish_mode()`: whole-API negotiation, ETags + 304s, `req.nish()`, `/openapi.nish`, NISH config. |
 | Observability | JSON logging, `x-request-id` + `x-process-time-ms`, `/healthz` + `/readyz` + `/metrics`, OTel tracing (`ikarem[otel]`), shared Redis rate limits. |
 

@@ -39,12 +39,14 @@ from .http import (
     RedirectResponse,
     Request,
     Response,
+    SSEResponse,
     StreamingResponse,
     TextResponse,
     UploadFile,
     XMLResponse,
     dict_to_xml,
     escape_html,
+    sse_format,
 )
 from .mcp import MCPServer
 from .middleware import Middleware, MiddlewareStack
@@ -83,6 +85,8 @@ __all__ = [
     "HTMLResponse",
     "RedirectResponse",
     "StreamingResponse",
+    "SSEResponse",
+    "sse_format",
     "FileResponse",
     "Router",
     "Middleware",

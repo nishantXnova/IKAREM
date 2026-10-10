@@ -6,6 +6,15 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
+### Added
+- `SSEResponse` + `sse_format` (`ikarem/http.py`, exported):
+  Server-Sent Events sugar — framed `data:`/`event:`/`id:`/`retry:`
+  output, `text/event-stream` + no-cache + no-buffer headers, `retry:`
+  first frame, and `: heartbeat` comments while async generators are
+  slow (via timeout-wait that never cancels `__anext__` — `wait_for`
+  would kill the generator). Named-event dicts for token streams.
+  4 tests in `tests/test_sse.py`.
+
 ### Fixed
 - `body: Schema = None` validates identically on all Pythons
   (`ikarem/compiled.py`): Python ≤3.10's `get_type_hints` wraps
