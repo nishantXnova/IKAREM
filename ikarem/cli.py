@@ -92,6 +92,7 @@ def main() -> None:
         "worker",
         "inspect",
         "audit",
+        "terminal",
         "-h",
         "--help",
     ):
@@ -151,6 +152,10 @@ def main() -> None:
     pa.add_argument("--format", choices=["text", "json"], default="text", help="machine-readable report")
     _add_pretty(pa)
 
+    pt = sub.add_parser("terminal", help="fullscreen live dashboard (needs a TTY)")
+    pt.add_argument("target", nargs="?", default="examples.basic:app", help="module:attr")
+    pt.add_argument("--width", type=int, default=100, help="render width in columns")
+
     args = p.parse_args()
     if args.cmd == "new":
         from .scaffold import create_project
@@ -179,6 +184,15 @@ def main() -> None:
         raise SystemExit(_cmd_inspect(app, args))
     elif args.cmd == "audit":
         raise SystemExit(_cmd_audit(app, args))
+    elif args.cmd == "terminal":
+        from .terminal import run as run_terminal
+
+        try:
+            run_terminal(app, width=args.width)
+        except RuntimeError as e:
+            print(f"error: {e}")
+            raise SystemExit(2)
+        raise SystemExit(0)
     else:
         raise SystemExit(_cmd_check(app, args))
 

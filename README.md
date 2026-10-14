@@ -388,7 +388,7 @@ moving van.*
 
 ## Verification
 
-483 passed, 3 skipped — framework plus showcases plus extensions, one command:
+491 passed, 3 skipped — framework plus showcases plus extensions, one command:
 
 ```bash
 python -m pytest tests/ ledger/tests cadence/tests forge/tests relay/tests market/tests agent/tests \
@@ -440,7 +440,8 @@ ikarem/            zero-dep stdlib core (v1.4.0) — optional integrations lazy-
   static.py       FileResponse + escape-proof static mounts
   templating.py   Jinja2 via ikarem[jinja] + flashing.py one-shot messages
   observability.py  logging + request-ID + metrics + /healthz + /readyz + /metrics
-  cli.py          `ikarem run|check|mcp|new|migrate|worker|inspect` (+ audit.py source checks)
+  cli.py          `ikarem run|check|mcp|new|migrate|worker|inspect|terminal` (+ audit.py source checks)
+  terminal.py     fullscreen live dashboard (routes/check/audit/metrics/queue/logs, stdlib ANSI)
   testing.py      TestClient (cookie jar, all verbs, WS driving — no server needed)
   scaffold.py     `ikarem new` starter generator
   deprecation.py  deprecated() upgrade path + meraki_compat.py drop-in shim

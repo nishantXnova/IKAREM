@@ -7,6 +7,12 @@ All notable changes to this project are documented here. Format follows
 ## [Unreleased]
 
 ### Added
+- `ikarem terminal` fullscreen dashboard (`ikarem/terminal.py`, stdlib
+  only): live routes, check findings, audit grades, metrics, queue
+  depth, log tail — tab/arrows/jk navigation, r/c/a/p actions, 2s
+  refresh, `?` help, cp1252-safe glyphs, pipes refused with the
+  headless remedy. Snapshot/render/loop split keeps it TTY-free
+  testable. 8 tests in `tests/test_terminal.py`.
 - Rich CLI output (`ikarem/rich_out.py`, lazy `ikarem[rich]` extra):
   `check`/`audit` render tables with color-coded findings, spinner
   helper, `--pretty`/`--no-pretty` flags. No Rich, no TTY, `NO_COLOR`,
