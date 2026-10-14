@@ -388,7 +388,7 @@ moving van.*
 
 ## Verification
 
-494 passed, 3 skipped — framework plus showcases plus extensions, one command:
+496 passed, 3 skipped — framework plus showcases plus extensions, one command:
 
 ```bash
 python -m pytest tests/ ledger/tests cadence/tests forge/tests relay/tests market/tests agent/tests \

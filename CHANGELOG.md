@@ -7,6 +7,14 @@ All notable changes to this project are documented here. Format follows
 ## [Unreleased]
 
 ### Added
+- Hot-path pass, measured (`bench/RESULTS.md` refreshed same-machine
+  A/B): Schema field plans freeze at class definition (MRO walks +
+  FieldInfo scans ran per request) — validation 7.41µs → 3.53µs/body
+  (2.1x, pydantic gap 8.3x → 4.0x); `_terminal` calls the compiled plan
+  directly (two lazy imports + delegating frame per request, gone).
+  cProfile: −12% wall, −22% calls on a mixed workload. Pinned in
+  `tests/test_hotpath.py`. Rejected along the way: `to_response`
+  branch reorder (sub-1% win, non-disjoint edge — SemVer promise wins).
 - `docs/PROOF.md`: every capability claim mapped to its evidence with
   honestly stated gaps (9-row matrix, no adjectives).
 - Queue failure recovery (`tests/test_recovery.py`): dead-worker lease

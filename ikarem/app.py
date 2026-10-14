@@ -6,6 +6,7 @@ import inspect
 import traceback
 from typing import Any, Callable
 
+from .compiled import resolve_compiled
 from .config import Config
 from .errors import ExceptionHandlers, HTTPException
 from .http import JSONResponse, Request, Response, to_response
@@ -331,12 +332,12 @@ class Ikarem:
 
     # ---- request handling ----
     async def _terminal(self, request: Request) -> Response:
-        from .di import resolve_handler
-
         handler, params = self.router.match(request.method, request.path)
         request.path_params = params
         request.app = self
-        result = await resolve_handler(handler, request)
+        # Direct to the compiled plan: di.resolve_handler is one lazy import
+        # plus one delegating frame per request with zero added behavior.
+        result = await resolve_compiled(handler, request)
         response = to_response(result)
         # BackgroundTasks param support: stash on response, run after send
         bg = getattr(request, "_bg", None)

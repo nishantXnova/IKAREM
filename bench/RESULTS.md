@@ -1,19 +1,24 @@
-# Meraki vs IKAREM — benchmark (2026-09-27, this machine, `python bench/bench_switch.py`)
+# Meraki vs IKAREM — benchmark (IKAREM rows refreshed 2026-10-14, this machine, `python bench/bench_switch.py`)
 
 In-process ASGI, N=3000 sequential requests, same harness, same process.
 No network, no DB — pure framework overhead.
 
 | route | app | status | req/s |
 |---|---|---|---|
-| GET /hello (static) | meraki | 200 | ~314,000 |
-| GET /hello (static) | ikarem | 200 | ~110,000 (0.35x) |
-| GET /hello (static) | ikarem-compat | 200 | ~62,000 (0.20x) |
-| GET /missing (404) | meraki | 404 | ~347,000 |
-| GET /missing (404) | ikarem | 404 | ~97,000 (0.28x) |
-| POST /hello (405) | meraki | 405 | ~328,000 |
-| POST /hello (405) | ikarem | 405 | ~88,000 (0.27x) |
-| GET /users/{id} (params) | ikarem | 200 | ~85,000 — meraki: no path params (404) |
-| POST /echo 1KB JSON | ikarem | 200 | ~71,000 — meraki: Request has no body API |
+| GET /hello (static) | meraki | 200 | ~314,000 (2026-09-27; rival not installed today) |
+| GET /hello (static) | ikarem | 200 | ~131,000 (was ~110,000 on 2026-09-27) |
+| GET /hello (static) | ikarem-compat | 200 | ~72,000 |
+| GET /missing (404) | meraki | 404 | ~347,000 (2026-09-27) |
+| GET /missing (404) | ikarem | 404 | ~52,000 |
+| POST /hello (405) | meraki | 405 | ~328,000 (2026-09-27) |
+| POST /hello (405) | ikarem | 405 | ~91,000 |
+| GET /users/{id} (params) | ikarem | 200 | ~90,000 (was ~85,000) — meraki: no path params (404) |
+| POST /echo 1KB JSON | ikarem | 200 | ~67,000 (same noise band as ~71,000) — meraki: Request has no body API |
+
+Same-machine A/B for the 2026-10-14 hot-path pass (stashed before/after,
+minutes apart): static +12–24%, params +12–16%, echo +12–15%, 404/405
+flat. Meraki rows are 2026-09-27 (rival not installed on this machine
+today); IKAREM deltas are same-day comparisons, never cross-era.
 
 ## Reading it honestly
 
@@ -29,18 +34,22 @@ what a network + database app saturates — framework overhead is noise next
 to I/O. The rows that decide a switch (params, bodies, validation, auth,
 sessions, docs) are IKAREM-only. Rerun anytime: `python bench/bench_switch.py`.
 
-## Single-body validation (this machine, `python bench/bench_validate.py`)
+## Single-body validation (this machine, `python bench/bench_validate.py`, refreshed 2026-10-14)
 
 Batch shootouts always favor Rust and never matter — frameworks validate
 one body per request. Same shape, same coercions:
 
 | validator | valid | invalid |
 |---|---|---|
-| ikarem `Schema.validate` | 7.41 µs/body | 6.70 µs/body |
+| ikarem `Schema.validate` | 3.53 µs/body (was 7.41) | 3.33 µs/body (was 6.70) |
 | pydantic `model_validate` 2.13.4 | 0.89 µs/body | 1.16 µs/body |
 
-Ratio: 8.3x on 7µs — real gap, irrelevant absolute cost next to
-millisecond-scale request I/O. And since pydantic models are accepted
+Ratio: 8.3x → **4.0x** — the hot-path pass caches per-class field plans
+(MRO walks and FieldInfo scans ran per request; now once per class) and
+calls the compiled plan directly (two lazy imports + a delegating frame
+per request, gone). cProfile: −12% wall on a mixed static/param/JSON
+workload, −22% function calls. Same honesty as before: real gap,
+irrelevant absolute cost next to millisecond-scale request I/O. And since pydantic models are accepted
 wherever a `Schema` goes (duck-typed seam, zero import cost), the Rust
 core is one `pip install pydantic` away with no code changes.
 

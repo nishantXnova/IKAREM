@@ -174,39 +174,63 @@ class Schema:
         if extra not in ("ignore", "forbid"):
             raise TypeError("Schema extra must be 'ignore' or 'forbid'")
         cls._extra = extra
+        cls._plan()  # freeze the field plan at definition: first request pays nothing
 
     def __init__(self, *args: Any, **kwargs: Any):
-        hints = self.__class__.__hints__()
-        constraints = self.__class__.__constraints__()
+        plan = self.__class__._plan()
         data = dict(kwargs)
         if args and len(args) == 1 and isinstance(args[0], dict):
             data = {**args[0], **kwargs}
         errors: list[dict] = []
-        for name, ann in hints.items():
-            raw_default = getattr(self.__class__, name, _MISSING)
-            field_info = raw_default if isinstance(raw_default, FieldInfo) else None
-            default = field_info.default if field_info else raw_default
-            has_default = default is not _MISSING and default is not _REQUIRED
+        for name, ann, opt_none, default, has_default, constraints in plan:
             if name not in data:
                 if has_default:
                     setattr(self, name, default)
                     continue
-                # Optional without default -> None allowed?
-                origin, oargs = get_origin(ann), get_args(ann)
-                if origin is Union and type(None) in oargs:
+                if opt_none:
                     setattr(self, name, None)
                     continue
                 errors.append({"field": name, "error": "required", "value": None})
                 continue
-            v = _coerce(data[name], ann, name, errors, constraints.get(name))
+            v = _coerce(data[name], ann, name, errors, constraints)
             if v is not _MISSING:
                 setattr(self, name, v)
         if self.__class__._extra == "forbid":
+            hint_names = {name for name, _, _, _, _, _ in plan}
             for key in data:
-                if key not in hints:
+                if key not in hint_names:
                     errors.append({"field": key, "error": "unexpected", "value": data[key]})
         if errors:
             raise ValidationError(errors)
+
+    @classmethod
+    def _plan(cls) -> list:
+        """Per-class field plan, computed once (Law 3 extends to validation:
+        MRO walks and FieldInfo scans never repeat per request). Cached on
+        the class itself, so subclasses get their own. Idempotent compute —
+        a benign race only recomputes identical tuples."""
+        cached = cls.__dict__.get("_plan_cache")
+        if cached is not None:
+            return cached
+        hints: dict = {}
+        for klass in reversed(cls.__mro__):
+            hints.update(getattr(klass, "__annotations__", {}))
+        constraints: dict = {}
+        for klass in reversed(cls.__mro__):
+            for name, val in getattr(klass, "__dict__", {}).items():
+                if isinstance(val, FieldInfo):
+                    constraints[name] = val
+        plan = []
+        for name, ann in hints.items():
+            raw_default = getattr(cls, name, _MISSING)
+            field_info = raw_default if isinstance(raw_default, FieldInfo) else None
+            default = field_info.default if field_info else raw_default
+            has_default = default is not _MISSING and default is not _REQUIRED
+            origin, oargs = get_origin(ann), get_args(ann)
+            opt_none = origin is Union and type(None) in oargs
+            plan.append((name, ann, opt_none, default, has_default, constraints.get(name)))
+        cls._plan_cache = plan
+        return plan
 
     @classmethod
     def __hints__(cls) -> dict:

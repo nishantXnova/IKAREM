@@ -178,3 +178,47 @@ def test_response_preencoded_content_type():
     names = [k for k, _ in start["headers"]]
     assert b"content-type" in names
     assert b"content-length" in names
+
+
+def test_schema_field_plan_computed_once_per_class(monkeypatch):
+    """Validation metadata (MRO walks, FieldInfo scans) must not repeat
+    per request: the plan freezes at class definition."""
+    from ikarem import Schema
+
+    class Box(Schema):
+        name: str
+        qty: int = 1
+
+    assert Box._plan() is Box._plan()  # cached, not rebuilt
+
+    class Sub(Box):
+        pass
+
+    assert Sub._plan() is not Box._plan()  # subclasses get their own
+
+    def _boom(cls):
+        raise AssertionError("per-request metadata rebuild")
+
+    monkeypatch.setattr(Schema, "__hints__", classmethod(_boom))
+    monkeypatch.setattr(Schema, "__constraints__", classmethod(_boom))
+    assert Box(**{"name": "x"}).qty == 1  # instantiation never touches them
+
+
+def test_terminal_calls_compiled_plan_directly(monkeypatch):
+    """_terminal must not pay the di.resolve_handler delegation (lazy
+    import + frame) per request."""
+    import ikarem.di as di_mod
+    from ikarem import Ikarem
+    from ikarem.testing import TestClient
+
+    def _boom(handler, request):
+        raise AssertionError("delegation frame hit")
+
+    monkeypatch.setattr(di_mod, "resolve_handler", _boom)
+    app = Ikarem(enable_docs=False)
+
+    @app.get("/")
+    async def h(req):
+        return {"ok": True}
+
+    assert TestClient(app).get("/").json() == {"ok": True}
