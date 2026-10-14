@@ -7,6 +7,11 @@ All notable changes to this project are documented here. Format follows
 ## [Unreleased]
 
 ### Added
+- Rich CLI output (`ikarem/rich_out.py`, lazy `ikarem[rich]` extra):
+  `check`/`audit` render tables with color-coded findings, spinner
+  helper, `--pretty`/`--no-pretty` flags. No Rich, no TTY, `NO_COLOR`,
+  or pipes → byte-identical plain output; cp1252 consoles get ASCII
+  tables instead of a crash. 6 tests in `tests/test_rich_out.py`.
 - `SSEResponse` + `sse_format` (`ikarem/http.py`, exported):
   Server-Sent Events sugar — framed `data:`/`event:`/`id:`/`retry:`
   output, `text/event-stream` + no-cache + no-buffer headers, `retry:`

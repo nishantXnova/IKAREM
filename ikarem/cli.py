@@ -17,6 +17,21 @@ def _cmd_run(app, host: str, port: int, reload: bool) -> None:
     app.run(host=host, port=port, reload=reload)
 
 
+def _pretty_mode(args) -> str | None:
+    if getattr(args, "no_pretty", False):
+        return "never"
+    if getattr(args, "pretty", False):
+        return "always"
+    return None
+
+
+def _add_pretty(p) -> None:
+    p.add_argument(
+        "--pretty", action="store_true", help="force Rich tables/colors (needs pip install ikarem[rich])"
+    )
+    p.add_argument("--no-pretty", action="store_true", help="force plain output (stable for pipes/CI)")
+
+
 def _cmd_check(app, args) -> int:
     report = (
         app.check()
@@ -31,13 +46,30 @@ def _cmd_check(app, args) -> int:
 
         print(json.dumps(report, indent=1, default=str))
     else:
-        print(f"checked {len(routes)} route(s)")
-        for r in routes:
-            print(f"  {'/'.join(sorted(r['methods']))} {r['path']} -> {r['handler']}")
-        for w in warnings:
-            print(f"WARN: {w}")
-        for e in errors:
-            print(f"ERROR: {e}")
+        from .rich_out import render_table, say, styled, wants_pretty
+
+        pretty = wants_pretty(_pretty_mode(args))
+        if pretty:
+            print(
+                render_table(
+                    f"checked {len(routes)} route(s)",
+                    ["methods", "path", "handler"],
+                    [["/".join(sorted(r["methods"])), r["path"], r["handler"]] for r in routes],
+                    pretty=True,
+                )
+            )
+            for w in warnings:
+                say(styled("warn", f"WARN: {w}", pretty=True), pretty=True)
+            for e in errors:
+                say(styled("fail", f"ERROR: {e}", pretty=True), pretty=True)
+        else:
+            print(f"checked {len(routes)} route(s)")
+            for r in routes:
+                print(f"  {'/'.join(sorted(r['methods']))} {r['path']} -> {r['handler']}")
+            for w in warnings:
+                print(f"WARN: {w}")
+            for e in errors:
+                print(f"ERROR: {e}")
     if errors:
         print(f"check FAILED: {len(errors)} error(s)")
         return 1
@@ -85,6 +117,7 @@ def main() -> None:
     pc.add_argument("target", nargs="?", default="examples.basic:app", help="module:attr, e.g. myapp:app")
     pc.add_argument("--strict", action="store_true", help="warnings fail the audit too")
     pc.add_argument("--format", choices=["text", "json"], default="text", help="machine-readable report")
+    _add_pretty(pc)
 
     pm = sub.add_parser("mcp", help="serve routes as MCP tools over stdio")
     pm.add_argument("target", nargs="?", default="examples.basic:app", help="module:attr, e.g. myapp:app")
@@ -116,6 +149,7 @@ def main() -> None:
     pa.add_argument("target", nargs="?", default="examples.basic:app", help="module:attr")
     pa.add_argument("--strict", action="store_true", help="warnings fail the audit too")
     pa.add_argument("--format", choices=["text", "json"], default="text", help="machine-readable report")
+    _add_pretty(pa)
 
     args = p.parse_args()
     if args.cmd == "new":
@@ -159,7 +193,23 @@ def _cmd_audit(app, args) -> int:
     if getattr(args, "format", "text") == "json":
         print(json.dumps(report, indent=1, default=str))
     else:
-        print(format_text(report))
+        from .rich_out import render_table, say, styled, wants_pretty
+
+        pretty = wants_pretty(_pretty_mode(args))
+        if pretty:
+            print(
+                render_table(
+                    f"audit: {s['total']} controls",
+                    ["status", "id", "control", "detail"],
+                    [[c["status"].upper(), c["id"], c["name"], c["detail"]] for c in report["controls"]],
+                    pretty=True,
+                )
+            )
+            for c in report["controls"]:
+                if c["status"] != "pass" and c["remedy"]:
+                    say(styled(c["status"], f"  fix ({c['id']}): {c['remedy']}", pretty=True), pretty=True)
+        else:
+            print(format_text(report))
     if s["fail"]:
         print(f"audit FAILED: {s['fail']} failing control(s)")
         return 1
