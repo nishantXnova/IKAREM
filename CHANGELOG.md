@@ -7,6 +7,12 @@ All notable changes to this project are documented here. Format follows
 ## [Unreleased]
 
 ### Added
+- `docs/PROOF.md`: every capability claim mapped to its evidence with
+  honestly stated gaps (9-row matrix, no adjectives).
+- Queue failure recovery (`tests/test_recovery.py`): dead-worker lease
+  expiry reaps the job, two workers split work with zero duplicates.
+- SSE midstream errors end cleanly and release the generator
+  (`tests/test_sse.py`).
 - `ikarem terminal` fullscreen dashboard (`ikarem/terminal.py`, stdlib
   only): live routes, check findings, audit grades, metrics, queue
   depth, log tail — tab/arrows/jk navigation, r/c/a/p actions, 2s

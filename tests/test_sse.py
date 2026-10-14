@@ -57,3 +57,24 @@ def test_sse_heartbeat_while_slow():
     r = TestClient(app).get("/slow")
     assert r.body.count(b": heartbeat\n\n") >= 1
     assert r.body.endswith(b"data: late\n\n")
+
+
+def test_sse_midstream_error_ends_cleanly_and_closes():
+    app = Ikarem(enable_docs=False)
+    closed = []
+
+    async def flaky():
+        try:
+            yield "first"
+            raise RuntimeError("downstream blew up")
+        finally:
+            closed.append(True)
+
+    @app.get("/flaky")
+    async def view(req):
+        return SSEResponse(flaky())
+
+    r = TestClient(app).get("/flaky")
+    assert r.status_code == 200
+    assert r.body == b"data: first\n\n"  # partial prefix delivered, stream ends
+    assert closed == [True]  # generator released, not leaked
