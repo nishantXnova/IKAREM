@@ -134,6 +134,15 @@ main li { margin-bottom: 8px; }
 .small { font-size: 13.5px; }
 
 /* ---- hero: eyebrow, headline, lede, art, actions, proof ---- */
+/* ---- hero mascot: side figure, stacks on mobile ---- */
+.herorow { display: flex; gap: 40px; align-items: center; }
+.herotext { flex: 1; min-width: 0; }
+.heromascot { flex: none; width: 210px; margin: 0; }
+.heromascot svg { display: block; width: 100%; height: auto; }
+@media (max-width: 900px) {
+  .herorow { flex-direction: column-reverse; align-items: flex-start; gap: 8px; }
+  .heromascot { width: 128px; }
+}
 .hero { border-bottom: 1px solid var(--line); padding-bottom: 64px; }
 .hero .kicker {
   display: flex; align-items: center; gap: 12px;
