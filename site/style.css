@@ -43,6 +43,14 @@ a:hover { text-decoration: underline; text-underline-offset: 3px; }
 main p a, main li a, td a, footer a { color: var(--blue); }
 :focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; border-radius: 4px; }
 
+/* ---- motion: quiet transitions, scroll reveals, progress hairline ---- */
+.btn, .card, .topbar nav a, .side a { transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease; }
+main section.rv { opacity: 0; transform: translateY(14px); transition: opacity 0.5s ease, transform 0.5s ease; }
+main section.rv.in { opacity: 1; transform: none; }
+.progress {
+  position: absolute; left: 0; bottom: -1px; height: 2px; width: 100%;
+  background: var(--blue); transform: scaleX(0); transform-origin: 0 50%;
+}
 /* ---- topbar: same grid as the page ---- */
 .topbar {
   position: sticky; top: 0; z-index: 50;
