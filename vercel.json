@@ -32,7 +32,10 @@
     { "src": "/og.png", "dest": "/site/og.png" },
     { "src": "/googlea9cfe027d0f563c5.html", "dest": "/site/googlea9cfe027d0f563c5.html" },
     { "src": "/favicon.ico", "dest": "/assets/ikarem-icon.svg" },
-    { "src": "/assets/(.*)", "dest": "/assets/$1" }
+    { "src": "/404", "dest": "/site/404.html" },
+    { "src": "/404.html", "dest": "/site/404.html" },
+    { "src": "/assets/(.*)", "dest": "/assets/$1" },
+    { "src": "/(.*)", "dest": "/site/404.html", "status": 404 }
   ],
   "headers": [
     {

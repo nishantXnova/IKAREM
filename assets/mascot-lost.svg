@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 440">
+  <!-- K-REM lost: shrugged arms, tilted head, sideways glance -->
+  <!-- legs -->
+  <line x1="170" y1="340" x2="170" y2="384" stroke="#1d1d1f" stroke-width="22" stroke-linecap="round"/>
+  <line x1="230" y1="340" x2="230" y2="384" stroke="#1d1d1f" stroke-width="22" stroke-linecap="round"/>
+  <!-- body -->
+  <rect x="130" y="238" width="140" height="112" rx="34" fill="#0071e3"/>
+  <!-- shrugged arms: both out-down -->
+  <path d="M132 264 C102 272 90 296 94 322" fill="none" stroke="#1d1d1f" stroke-width="20" stroke-linecap="round"/>
+  <path d="M268 264 C298 272 310 296 306 322" fill="none" stroke="#1d1d1f" stroke-width="20" stroke-linecap="round"/>
+  <!-- antenna -->
+  <line x1="200" y1="40" x2="200" y2="12" stroke="#1d1d1f" stroke-width="10" stroke-linecap="round"/>
+  <circle cx="200" cy="10" r="11" fill="#FF2B2B"/>
+  <!-- head: tilted -->
+  <g transform="rotate(-7 200 140)">
+    <rect x="100" y="40" width="200" height="200" rx="56" fill="#1d1d1f"/>
+    <circle cx="162" cy="130" r="21" fill="#ffffff"/>
+    <circle cx="238" cy="130" r="21" fill="#ffffff"/>
+    <circle cx="154" cy="134" r="8" fill="#1d1d1f"/>
+    <circle cx="230" cy="134" r="8" fill="#1d1d1f"/>
+    <line x1="188" y1="184" x2="212" y2="184" stroke="#ffffff" stroke-width="10" stroke-linecap="round"/>
+  </g>
+</svg>
