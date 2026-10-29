@@ -168,7 +168,11 @@ async def add(req, note: Note):  # validates JSON *and* HTML form bodies
 serves every route as an LLM tool (plus `ikarem://openapi.json` and
 `ikarem://manifest` MCP resources), `ikarem inspect` prints a compact route
 manifest for LLM context, and `site/llms.txt` is the framework manual in one
-page. `AGENTS.md` holds the contributor laws for AI and human agents alike.
+page. `ikarem diagram myapp:app -o app.svg` draws the architecture instead of
+listing it: routes by blueprint, the middleware onion, shared and nested
+dependencies, auth boundaries, body schemas and the HTTP/WebSocket split — as
+Mermaid, SVG, self-contained HTML, DOT, ASCII or JSON, all deterministic.
+`AGENTS.md` holds the contributor laws for AI and human agents alike.
 `@app.tool` exposes plain functions and `@app.prompt` exposes message
 templates over the same protocol; safe GET reads carry `readOnlyHint`.
 `app.mount_mcp("/mcp")` serves it all over Streamable HTTP (stateless)
@@ -440,7 +444,8 @@ ikarem/            zero-dep stdlib core (v1.4.0) — optional integrations lazy-
   static.py       FileResponse + escape-proof static mounts
   templating.py   Jinja2 via ikarem[jinja] + flashing.py one-shot messages
   observability.py  logging + request-ID + metrics + /healthz + /readyz + /metrics
-  cli.py          `ikarem run|check|mcp|new|migrate|worker|inspect|terminal` (+ audit.py source checks)
+  cli.py          `ikarem run|check|mcp|new|migrate|worker|inspect|audit|terminal|diagram`
+  diagram.py      architecture maps: route groups, deps, middleware (mermaid/svg/html/dot/ascii/json)
   terminal.py     fullscreen live dashboard (routes/check/audit/metrics/queue/logs, stdlib ANSI)
   testing.py      TestClient (cookie jar, all verbs, WS driving — no server needed)
   scaffold.py     `ikarem new` starter generator

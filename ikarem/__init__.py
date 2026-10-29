@@ -19,6 +19,7 @@ from .conditional import ConditionalMiddleware
 from .config import Config
 from .deprecation import deprecated
 from .di import Depends
+from .diagram import Diagram, build_diagram, render_diagram
 from .errors import (
     BadRequest,
     Forbidden,
@@ -126,6 +127,9 @@ __all__ = [
     "Field",
     "FieldInfo",
     "Depends",
+    "Diagram",
+    "build_diagram",
+    "render_diagram",
     "BackgroundTasks",
     "create_token",
     "verify_token",

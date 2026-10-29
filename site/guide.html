@@ -933,7 +933,7 @@ assert app.check()[&quot;errors&quot;] == []
   <p class="secnum">CHAPTER 22</p>
   <h2>Docs and tools for free</h2>
   <p>OpenAPI, the route manifest, and MCP tools all derive from the same compiled plans — query shapes, bodies, and auth boundaries cannot drift between your docs, your agents, and your runtime.</p>
-  <p>Notes: <code>ikarem inspect</code> prints the manifest for LLM context; <code>site/llms.txt</code> is the one-page framework manual. Serve routes as tools with <code>ikarem mcp myapp:app</code>.</p>
+  <p>Notes: <code>ikarem inspect</code> prints the manifest for LLM context; <code>site/llms.txt</code> is the one-page framework manual. Serve routes as tools with <code>ikarem mcp myapp:app</code>. <code>ikarem diagram myapp:app -o app.svg</code> draws the architecture - groups, middleware, shared/nested dependencies, auth boundaries, body schemas, and the HTTP/WebSocket split.</p>
   <p class="mut small">Runnable — copy into a file and run with <code>python</code>. Executed in CI by <code>tests/test_guide.py</code>.</p>
 <pre><code>import asyncio
 import os

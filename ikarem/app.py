@@ -80,7 +80,9 @@ class Ikarem:
         for path, methods, handler, _name in blueprint._routes:
             full = (prefix + path) or "/"
             name = f"{blueprint.name}.{getattr(handler, '__name__', full)}"
-            self.router.add(full, methods, blueprint._wrap(handler), name)
+            wrapped = blueprint._wrap(handler)
+            wrapped._ikarem_blueprint = blueprint.name  # type: ignore[attr-defined]
+            self.router.add(full, methods, wrapped, name)
 
     def resource(self, prefix: str, schema: Any, table: str, **kw: Any) -> Any:
         """Validated, paginated CRUD collection in one call (see resources)."""
@@ -123,6 +125,21 @@ class Ikarem:
         self._ensure_system_routes()
         self.compile_all()
         return check_app(self)
+
+    def diagram(self, fmt: str = "mermaid", **options: Any) -> str:
+        """Render this app's routes, dependencies and middleware as a diagram.
+
+        ``fmt``: ``mermaid`` (default, GitHub-native), ``svg``, ``html``,
+        ``dot``, ``ascii`` or ``json``. Stdlib only, deterministic, and built
+        from the same compiled plans that serve traffic. ``include_deps=False``
+        gives a route-only map; ``title=`` renames the diagram::
+
+            from pathlib import Path
+            Path("app.svg").write_text(app.diagram("svg"), encoding="utf-8")
+        """
+        from .diagram import render_diagram
+
+        return render_diagram(self, fmt, **options)
 
     def mcp_tools(self) -> list[dict]:
         """Every route as an MCP tool definition (name/description/inputSchema)."""

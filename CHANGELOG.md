@@ -7,6 +7,18 @@ All notable changes to this project are documented here. Format follows
 ## [Unreleased]
 
 ### Added
+- `ikarem diagram` + `app.diagram()` (`ikarem/diagram.py`, stdlib only):
+  architecture map from the same compiled plans that serve traffic —
+  routes grouped by blueprint/prefix, the middleware onion, dependency
+  edges (shared deps deduped with use counts, nested deps dashed), the
+  real auth boundary, body schemas, and WebSocket routes shown bypassing
+  the HTTP onion. Six deterministic renderers: `mermaid` (default,
+  GitHub-native), standalone `svg`, self-contained `html` (filter + zoom,
+  no network), Graphviz `dot`, cp1252-safe `ascii`, and `json`.
+  `ikarem diagram myapp:app -o app.svg` infers the format from the
+  extension; blueprints are tagged at registration so grouping survives
+  `functools.wraps`. Zero dependencies, zero request-path cost. 24 tests
+  in `tests/test_diagram.py`.
 - Hot-path pass, measured (`bench/RESULTS.md` refreshed same-machine
   A/B): Schema field plans freeze at class definition (MRO walks +
   FieldInfo scans ran per request) — validation 7.41µs → 3.53µs/body

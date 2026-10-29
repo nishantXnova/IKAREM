@@ -150,7 +150,16 @@ GET /openapi.json  GET /docs   <span class="tok-c"># OpenAPI 3.1 + Swagger</span
 <pre><code>$ ikarem run myapp:app [--host --port --reload]
 $ ikarem check myapp:app     <span class="tok-c"># gate deploys on this</span>
 $ ikarem mcp myapp:app       <span class="tok-c"># routes as MCP tools over stdio</span>
-$ ikarem new mydir           <span class="tok-c"># production starter</span></code></pre>
+$ ikarem new mydir           <span class="tok-c"># production starter</span>
+$ ikarem diagram myapp:app -o app.svg  <span class="tok-c"># architecture map</span></code></pre>
+  <p><code>diagram</code> renders what the route list cannot: groups by
+  blueprint/prefix, the middleware onion, shared dependencies with use counts,
+  nested dependencies (dashed), the real auth boundary, body schemas, and
+  WebSocket routes bypassing the HTTP pipeline. Formats: <code>mermaid</code>
+  (default), <code>svg</code>, <code>html</code> (filter + zoom, no network),
+  <code>dot</code>, <code>ascii</code>, <code>json</code>; the format follows
+  <code>-o</code>'s extension. Deterministic, so commit and diff it. The same
+  graph is one call away: <code>app.diagram("svg")</code>.</p>
   <p>Config precedence: defaults &lt; <code>Ikarem(**kwargs)</code> &lt; <code>load_dict</code> &lt;
   <code>IKAREM_*</code> env. Typed reads: <code>config.get(key, default, cast=...)</code>.
   NISH files load with <code>config.load_nish(path)</code>.</p>

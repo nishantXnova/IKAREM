@@ -93,6 +93,7 @@ def main() -> None:
         "inspect",
         "audit",
         "terminal",
+        "diagram",
         "-h",
         "--help",
     ):
@@ -156,6 +157,28 @@ def main() -> None:
     pt.add_argument("target", nargs="?", default="examples.basic:app", help="module:attr")
     pt.add_argument("--width", type=int, default=100, help="render width in columns")
 
+    pd = sub.add_parser(
+        "diagram",
+        help="visualize routes, dependencies and middleware (mermaid/svg/html/dot/ascii/json)",
+        description=(
+            "Render the app's architecture from its compiled plans: routes grouped by "
+            "blueprint/prefix, the middleware onion, dependency edges (nested deps dashed), "
+            "auth boundaries, body schemas, and WebSocket routes. Deterministic and "
+            "dependency-free. Format follows -o's extension; otherwise mermaid."
+        ),
+    )
+    pd.add_argument("target", nargs="?", default="examples.basic:app", help="module:attr")
+    pd.add_argument(
+        "-f",
+        "--format",
+        choices=["mermaid", "svg", "html", "dot", "ascii", "json"],
+        default=None,
+        help="output format (default: infer from -o, else mermaid)",
+    )
+    pd.add_argument("-o", "--output", default=None, help="write to this file instead of stdout")
+    pd.add_argument("--title", default=None, help="diagram title")
+    pd.add_argument("--no-deps", action="store_true", help="omit dependency nodes and edges")
+
     args = p.parse_args()
     if args.cmd == "new":
         from .scaffold import create_project
@@ -193,8 +216,36 @@ def main() -> None:
             print(f"error: {e}")
             raise SystemExit(2)
         raise SystemExit(0)
+    elif args.cmd == "diagram":
+        raise SystemExit(_cmd_diagram(app, args))
     else:
         raise SystemExit(_cmd_check(app, args))
+
+
+def _cmd_diagram(app, args) -> int:
+    from .diagram import FORMATS, format_for_path, render_diagram
+
+    fmt = args.format or (format_for_path(args.output) if args.output else "mermaid")
+    if fmt not in FORMATS:
+        print(f"error: unknown format '{fmt}'; choose one of: {', '.join(FORMATS)}")
+        return 2
+    text = render_diagram(app, fmt, title=args.title, include_deps=not args.no_deps)
+    if not args.output:
+        if fmt in ("svg", "html"):
+            print(f"error: {fmt} output needs a file: ikarem diagram {args.target} -o app.{fmt}")
+            return 2
+        sys.stdout.write(text)
+        if not text.endswith("\n"):
+            sys.stdout.write("\n")
+        return 0
+    from pathlib import Path
+
+    path = Path(args.output)
+    if path.parent != Path(""):
+        path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8", newline="\n")
+    print(f"wrote {path} ({fmt})")
+    return 0
 
 
 def _cmd_audit(app, args) -> int:
