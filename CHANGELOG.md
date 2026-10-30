@@ -17,8 +17,10 @@ All notable changes to this project are documented here. Format follows
   no network), Graphviz `dot`, cp1252-safe `ascii`, and `json`.
   `ikarem diagram myapp:app -o app.svg` infers the format from the
   extension; blueprints are tagged at registration so grouping survives
-  `functools.wraps`. Zero dependencies, zero request-path cost. 24 tests
-  in `tests/test_diagram.py`.
+  `functools.wraps`. `svg`/`html` render a two-column card map — pipeline
+  band, per-group route cards with inline dependency/body pills, and
+  contract cards — so no edge ever crosses a card. Zero dependencies, zero
+  request-path cost. 25 tests in `tests/test_diagram.py`.
 - Hot-path pass, measured (`bench/RESULTS.md` refreshed same-machine
   A/B): Schema field plans freeze at class definition (MRO walks +
   FieldInfo scans ran per request) — validation 7.41µs → 3.53µs/body

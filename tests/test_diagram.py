@@ -226,6 +226,37 @@ def test_svg_is_well_formed_and_self_contained():
     assert " at 0x" not in out  # no memory addresses leaking into committed SVGs
 
 
+def test_svg_pipeline_stays_connected_when_it_wraps():
+    """A long middleware onion wraps; every later stage still has an inbound edge."""
+    app = Ikarem(enable_docs=False, auth_secret="diagram-secret")
+
+    @app.get("/")
+    async def index(req):
+        return {}
+
+    for _ in range(16):
+        app.use(Stamp())
+    out = render_svg(build_diagram(app))
+    root = ET.fromstring(out.split("?>", 1)[1])
+
+    names = ["client"]
+    for g in root.iter():
+        cls = (g.get("class") or "").split()
+        if "node" in cls and (g.get("id") or "").startswith("m"):
+            names.append(g.get("id"))
+    names.append("hub")
+    reached = {e.get("data-dst") for e in root.iter() if (e.get("class") or "") == "edge"}
+    assert names[1:]  # middleware + router are drawn
+    assert set(names[1:]) <= reached
+    # The onion wrapped: chips occupy more than one row.
+    ys = {
+        g.find("{http://www.w3.org/2000/svg}rect").get("y")
+        for g in root.iter()
+        if "node" in (g.get("class") or "").split() and (g.get("id") or "").startswith("m")
+    }
+    assert len(ys) > 1
+
+
 def test_html_page_has_filter_and_inline_svg():
     out = render(build_diagram(_app()), "html")
     assert out.startswith("<!doctype html>")

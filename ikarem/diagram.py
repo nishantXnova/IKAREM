@@ -453,8 +453,12 @@ def _route_tooltip(route: Any, plan: Any, handler_name: str, body_cls: Any, view
 
 
 def _middleware_label(mw: Any) -> str:
-    name = getattr(mw, "__name__", "")
-    return _clip(name or type(mw).__name__, 32)
+    name = getattr(mw, "__name__", "") or type(mw).__name__
+    for suffix in ("Middleware", "Manager"):
+        if name.endswith(suffix) and len(name) > len(suffix):
+            name = name[: -len(suffix)]
+            break
+    return _clip(name, 32)
 
 
 def _clip(text: str, limit: int) -> str:
@@ -729,14 +733,15 @@ def _clip_width(text: str, width: int) -> str:
 # ---- svg ----
 
 
-_PAD = 30
-_TITLE_H = 74
-_LEGEND_H = 42
-_ROUTE_H = 48
-_ROUTE_GAP = 10
-_GROUP_HEAD = 26
-_GROUP_GAP = 20
-_SMALL_H = 42
+_PAD = 40
+_LEGEND_H = 78
+_CANVAS_W = 1320
+_COL_GAP = 24
+_CARD_GAP = 20
+_ROW_H = 60
+_ROW_GAP = 8
+_CHIP_H = 32
+_CHIP_GAP = 26
 
 
 def _tw(text: str, size: float = 12) -> float:
@@ -749,7 +754,7 @@ def _esc(text: Any) -> str:
 
 
 def render_svg(graph: Diagram) -> str:
-    """Standalone SVG: layered layout, hand-routed cubic edges."""
+    """Standalone SVG: two-column card map, pipeline band, dependency cards."""
     body, width, height = _svg_markup(graph)
     return (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
@@ -759,313 +764,442 @@ def render_svg(graph: Diagram) -> str:
     )
 
 
-def _svg_markup(graph: Diagram) -> tuple[str, int, int]:
-    groups: dict[str, list[Node]] = {g: [] for g in graph.groups}
+def _svg_markup(graph: Diagram, chrome: bool = True) -> tuple[str, int, int]:
+    """Two-column card map: pipeline band, grouped route cards, contract cards.
+
+    No long edges: each route row carries pills for the dependencies and body
+    it uses, while dependency/body cards keep the sharing counts and auth
+    boundaries. Cards flow into the shorter column (deterministic tie -> left),
+    so the page uses both axes instead of one dense 2,500px column.
+    """
+    mw = [n for n in graph.nodes if n.kind == "middleware"]
+    deps = graph.deps()
+    schemas = graph.schemas()
+    groups = {g: [] for g in graph.groups}
     for n in graph.nodes:
         if n.kind in ("route", "ws") and n.group in groups:
             groups[n.group].append(n)
 
-    path_text = {n.id: _clip(n.path, 44) for n in graph.nodes}
-    handler_text = {n.id: _clip(n.handler, 34) for n in graph.nodes}
-
-    def route_width(n: Node) -> float:
-        method_w = _tw(n.method, 10.5) + 10
-        base = 20 + method_w + _tw(path_text[n.id], 12) + 22
-        base = max(base, 20 + _tw(handler_text[n.id], 11) + 22)
-        if n.auth:
-            base += _tw("auth:" + n.auth_detail, 10) + 18
-        if n.error:
-            base += 46
-        return min(max(base, 200), 430)
-
-    group_width: dict[str, float] = {}
-    for group, nodes in groups.items():
-        group_width[group] = max((route_width(n) for n in nodes), default=200) + 24
-
-    route_w = max(group_width.values(), default=240)
-    dep_list = [n for n in graph.nodes if n.kind == "dep"]
-    schema_list = [n for n in graph.nodes if n.kind == "schema"]
-    side_w = max(
-        [_tw(_clip(n.label, 30), 12) + 32 for n in dep_list]
-        + [_tw(_clip(n.label, 26), 12) + 32 for n in schema_list]
-        + [_tw(_clip(n.sub, 30), 9.5) + 32 for n in (*dep_list, *schema_list)]
-        + [170]
-    )
-    side_w = min(side_w, 300)
-
-    mw_list = [n for n in graph.nodes if n.kind == "middleware"]
-    pipeline_w = max([_tw(n.label, 11) + 36 for n in mw_list] + [_tw("client", 12) + 44, 150])
-
-    x_client = _PAD
-    x_routes = x_client + pipeline_w + 110
-    x_side = x_routes + route_w + 120
-    legend_w = 40 + 5 * 70 + 260
-    width = int(max(820, x_side + side_w + _PAD, legend_w + _PAD))
-
-    top = _TITLE_H
-    y = top
-    route_y: dict[str, float] = {}
-    group_boxes: list[tuple[str, float, float, float]] = []
-    for group in graph.groups:
-        nodes = groups.get(group, [])
-        if not nodes:
-            continue
-        box_top = y
-        y += _GROUP_HEAD
-        for n in nodes:
-            route_y[n.id] = y
-            y += _ROUTE_H + _ROUTE_GAP
-        y -= _ROUTE_GAP
-        group_boxes.append((group, box_top, group_width[group], y - box_top + 12))
-        y += _GROUP_GAP
-    routes_bottom = y
-    content_bottom = max(routes_bottom, top + 190)
-
-    # Side column: dependencies, then body schemas; anchor on first use.
-    first_use: dict[str, float] = {}
+    direct: dict[str, list[Node]] = {}
+    body_of: dict[str, Node] = {}
+    children: dict[str, list[str]] = {}
     for e in graph.edges:
-        if e.dst not in route_y:
-            continue
-        first_use[e.dst] = min(first_use.get(e.dst, 1e9), route_y[e.dst])
-    side_pos: dict[str, float] = {}
-    cursor = top
-    for n in dep_list:
-        anchor = first_use.get(n.id, cursor)
-        node_y = max(anchor, cursor)
-        side_pos[n.id] = node_y
-        cursor = node_y + _SMALL_H + 12
-    if dep_list and schema_list:
-        cursor += 8
-    for n in schema_list:
-        anchor = first_use.get(n.id, cursor)
-        node_y = max(anchor, cursor)
-        side_pos[n.id] = node_y
-        cursor = node_y + _SMALL_H + 12
-    content_bottom = max(content_bottom, cursor)
+        if e.kind == "call":
+            node = graph.node(e.dst)
+            if node is not None:
+                direct.setdefault(e.src, []).append(node)
+        elif e.kind == "body":
+            node = graph.node(e.dst)
+            if node is not None:
+                body_of[e.src] = node
+        elif e.kind == "nested":
+            child = graph.node(e.dst)
+            if child is not None:
+                children.setdefault(e.src, []).append(child.label)
 
-    # Pipeline column: client -> middleware -> router -> (optional) ws router.
-    pipe_pos: dict[str, float] = {"client": top}
-    py = top + 58
-    for n in mw_list:
-        pipe_pos[n.id] = py
-        py += 56
-    pipe_pos["hub"] = py
-    py += 58
-    if any(n.kind == "ws" for n in graph.nodes):
-        pipe_pos["wshub"] = py
-        py += 58
-    content_bottom = max(content_bottom, py)
-    height = int(content_bottom + _LEGEND_H + _PAD)
+    left = _PAD
+    width = _CANVAS_W
+    col_w = (width - 2 * _PAD - _COL_GAP) // 2
 
     out: list[str] = [
         f"<title>{_esc(graph.title)}</title>",
         "<defs>",
+        '<marker id="arrow-flow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" '
+        'markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" '
+        'fill="#94a3b8"/></marker>',
+        "</defs>",
+        "<style>",
+        "  text{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}",
+        "  .title{font-size:23px;font-weight:700;fill:#0f172a;letter-spacing:-.02em}",
+        "  .meta{font-size:11.5px;fill:#64748b;font-family:ui-sans-serif,system-ui,sans-serif}",
+        "  .lane{font-size:10.5px;font-weight:700;letter-spacing:1.7px;fill:#94a3b8}",
+        "  .card{fill:#ffffff;stroke:#e2e8f0;stroke-width:1}",
+        "  .group{font-size:10.5px;font-weight:700;letter-spacing:1.4px;fill:#475569}",
+        "  .count{font-size:10px;fill:#94a3b8}",
+        "  .row{fill:#ffffff;stroke:#e8edf4;stroke-width:1}",
+        "  .path{font-size:12.5px;font-weight:600;fill:#0f172a}",
+        "  .handler{font-size:10px;fill:#94a3b8}",
+        "  .sub{font-size:10px;fill:#64748b}",
+        "  .chip-text{font-size:10.5px;font-weight:700}",
+        "  .pill-text{font-size:10px;font-weight:600}",
+        "  .auth-text{font-size:9px;font-weight:700}",
+        "  .dep-name{font-size:11.5px;font-weight:600;fill:#312e81}",
+        "  .schema-name{font-size:11.5px;font-weight:600;fill:#065f46}",
+        "  .rail-row{fill:#eef2ff;stroke:#e0e7ff}",
+        "  .rail-row.auth{fill:#fff1f2;stroke:#fecdd3}",
+        "  .rail-row.schema{fill:#ecfdf5;stroke:#d1fae5}",
+        "  .edge{stroke:#94a3b8;stroke-width:1.2;fill:none}",
+        "  .dim{opacity:.12}",
+        "</style>",
     ]
-    for kind, color in _EDGE_COLORS.items():
-        out.append(
-            f'<marker id="arrow-{kind}" viewBox="0 0 10 10" refX="9" refY="5" '
-            f'markerWidth="6" markerHeight="6" orient="auto-start-reverse">'
-            f'<path d="M 0 0 L 10 5 L 0 10 z" fill="{color}"/></marker>'
+
+    if chrome:
+        out.append(f'<text class="title" x="{left}" y="38">{_esc(graph.title)}</text>')
+        c = graph.counts
+        meta = (
+            f"{c.get('routes', 0)} routes  |  {c.get('groups', 0)} groups  |  "
+            f"{c.get('dependencies', 0)} dependencies  |  {c.get('middleware', 0)} middleware  |  "
+            f"{c.get('auth_routes', 0)} auth"
         )
-    out.extend(
-        [
-            "</defs>",
-            "<style>",
-            "  text{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}",
-            "  .node .box{stroke-width:1.2}",
-            "  .edge{fill:none;stroke-width:1.2;opacity:.55}",
-            "  .edge-nested{stroke-dasharray:4 3}",
-            "  .edge-body{opacity:.45}",
-            "  .edge-pipeline{opacity:.8;stroke-width:1.6}",
-            "  .group-box{fill:#94a3b8;fill-opacity:.05;stroke:#94a3b8;stroke-dasharray:5 4}",
-            "  .group-label{fill:#64748b;font-size:10px;letter-spacing:1.4px;font-weight:700}",
-            "  .method{font-size:10.5px;font-weight:700}",
-            "  .path{fill:#0f172a;font-size:12px;font-weight:600}",
-            "  .handler{fill:#64748b;font-size:11px}",
-            "  .badge{font-size:9.5px;font-weight:700}",
-            "  .sub{fill:#64748b;font-size:9.5px}",
-            "  .dim{opacity:.12}",
-            "</style>",
-        ]
+        out.append(f'<text class="meta" x="{left}" y="60">{_esc(meta)}</text>')
+        lane_y = 92
+        pipe_y = 106
+    else:
+        lane_y = 22
+        pipe_y = 36
+
+    out.append(f'<text class="lane" x="{left}" y="{lane_y}">PIPELINE</text>')
+
+    chips: list[tuple[str, str, str, str]] = [("client", "entry", "client", "HTTP client")]
+    for n in mw:
+        chips.append((n.label, "mw", n.id, n.label))
+    chips.append(("router", "hub", "hub", "HTTP router"))
+    available = width - 2 * _PAD
+    rows: list[list[tuple[str, str, str, str]]] = []
+    row: list[tuple[str, str, str, str]] = []
+    used = 0.0
+    for chip in chips:
+        cw = _chip_width(chip[0])
+        need = cw + (_CHIP_GAP if row else 0)
+        if row and used + need > available:
+            rows.append(row)
+            row = []
+            used = 0
+            need = cw
+        row.append(chip)
+        used += need
+    if row:
+        rows.append(row)
+
+    for ridx, prow in enumerate(rows):
+        x = left
+        prev_end: float | None = None
+        prev_id: str | None = None
+        for label, kind, node_id, title in prow:
+            cw = _chip_width(label)
+            if prev_end is not None:
+                out.append(
+                    f'<path class="edge" data-src="{prev_id}" data-dst="{node_id}" '
+                    f'd="M {prev_end + 4:.0f} {pipe_y + _CHIP_H / 2:.0f} '
+                    f'L {x - 6:.0f} {pipe_y + _CHIP_H / 2:.0f}" marker-end="url(#arrow-flow)"/>'
+                )
+            fill, stroke, color = _chip_style(kind)
+            out.append(
+                f'<g class="node {kind}" id="{node_id}" data-search="{_esc(label.lower())}">'
+                f"<title>{_esc(title)}</title>"
+                f'<rect x="{x:.0f}" y="{pipe_y}" width="{cw:.0f}" height="{_CHIP_H}" rx="7" '
+                f'fill="{fill}" stroke="{stroke}"/>'
+                f'<text class="chip-text" x="{x + cw / 2:.0f}" y="{pipe_y + 19}" '
+                f'fill="{color}" text-anchor="middle">{_esc(_clip(label, 26))}</text></g>'
+            )
+            prev_end = x + cw
+            prev_id = node_id
+            x += cw + _CHIP_GAP
+        if ridx + 1 < len(rows) and prev_end is not None:
+            # Wrapped pipeline: elbow from the end of this row to the next row's
+            # first chip, so the onion still reads as one continuous flow.
+            mid = pipe_y + _CHIP_H / 2
+            gap_y = pipe_y + _CHIP_H + 10
+            next_mid = pipe_y + _CHIP_H + 20 + _CHIP_H / 2
+            out.append(
+                f'<path class="edge" data-src="{prev_id}" data-dst="{rows[ridx + 1][0][2]}" '
+                f'd="M {prev_end + 4:.0f} {mid:.0f} H {prev_end + 16:.0f} V {gap_y:.0f} '
+                f'H {left - 10:.0f} V {next_mid:.0f} H {left - 2:.0f}" '
+                'marker-end="url(#arrow-flow)"/>'
+            )
+        pipe_y += _CHIP_H + 20
+
+    if any(n.kind == "ws" for n in graph.nodes):
+        out.append(
+            f'<text class="meta" x="{left}" y="{pipe_y + 2}">'
+            "WS   client &#8658; ws router &#8212; WebSocket routes bypass the HTTP middleware onion"
+            "</text>"
+        )
+        pipe_y += 26
+
+    content_top = pipe_y + 24
+    c = graph.counts
+    out.append(
+        f'<text class="lane" x="{left}" y="{content_top}">'
+        f"ROUTES &#183; {c.get('routes', 0)} HTTP + {c.get('websockets', 0)} WS</text>"
     )
+    grid_top = content_top + 16
 
-    out.append('<g class="edges">')
-    for e in graph.edges:
-        src, dst = graph.node(e.src), graph.node(e.dst)
-        if src is None or dst is None:
-            continue
-        if src.id in route_y:
-            x1 = x_routes + route_w
-            y1 = route_y[src.id] + _ROUTE_H / 2
-        elif src.id in pipe_pos:
-            x1 = x_client + pipeline_w
-            y1 = pipe_pos[src.id] + 21
+    specs: list[tuple[str, str, Any, int]] = []
+    for group in graph.groups:
+        nodes = groups.get(group, [])
+        if nodes:
+            h = 54 + len(nodes) * (_ROW_H + _ROW_GAP)
+            specs.append(("group", group, nodes, h))
+    if deps:
+        specs.append(("deps", "", deps, 48 + len({n.label for n in deps}) * 50))
+    if schemas:
+        specs.append(("schemas", "", schemas, 48 + len(schemas) * 50))
+
+    col_y = [grid_top, grid_top]
+    placed: list[tuple[int, int, str, str, Any, int]] = []
+    for kind, name, payload, h in specs:
+        idx = 0 if col_y[0] <= col_y[1] else 1
+        placed.append((idx, col_y[idx], kind, name, payload, h))
+        col_y[idx] += h + _CARD_GAP
+
+    for idx, y, kind, name, payload, h in placed:
+        x = left + idx * (col_w + _COL_GAP)
+        if kind == "group":
+            _svg_group_card(out, name, payload, x, y, col_w, direct, body_of)
+        elif kind == "deps":
+            _svg_dep_card(out, payload, x, y, col_w, children)
         else:
-            continue
-        if dst.id in route_y:
-            x2 = x_routes
-            y2 = route_y[dst.id] + _ROUTE_H / 2
-        elif dst.id in side_pos:
-            x2 = x_side
-            y2 = side_pos[dst.id] + _SMALL_H / 2
-        elif dst.id in pipe_pos:
-            x2 = x_client
-            y2 = pipe_pos[dst.id] + 21
-        else:
-            continue
-        color = _EDGE_COLORS.get(e.kind, "#94a3b8")
-        dash = ' stroke-dasharray="4 3"' if e.kind == "nested" else ""
-        path = _curve(x1, y1, x2, y2)
-        out.append(
-            f'<path class="edge edge-{e.kind}" data-src="{src.id}" data-dst="{dst.id}" '
-            f'd="{path}" stroke="{color}"{dash} marker-end="url(#arrow-{e.kind})"/>'
-        )
-    out.append("</g>")
+            _svg_schema_card(out, payload, x, y, col_w)
 
-    out.append('<g class="groups">')
-    for group, gy, gw, gh in group_boxes:
-        out.append(
-            f'<rect class="group-box" x="{x_routes - 12}" y="{gy}" width="{gw:.0f}" '
-            f'height="{gh:.0f}" rx="10"/>'
-        )
-        out.append(f'<text class="group-label" x="{x_routes}" y="{gy + 17}">{_esc(group)}</text>')
-    out.append("</g>")
-
-    out.append('<g class="nodes">')
-    for n in graph.nodes:
-        if n.kind in ("route", "ws"):
-            out.append(_svg_route(n, x_routes, route_y[n.id], route_w, path_text, handler_text))
-        elif n.kind == "dep":
-            out.append(_svg_dep(n, x_side, side_pos[n.id], side_w))
-        elif n.kind == "schema":
-            out.append(_svg_schema(n, x_side, side_pos[n.id], side_w))
-    for n in graph.nodes:
-        if n.kind in ("entry", "middleware", "hub"):
-            out.append(_svg_pipe(n, x_client, pipe_pos[n.id], pipeline_w))
-    out.append("</g>")
-
-    out.append(_svg_legend(graph, width, height))
+    height = int(max(col_y) + _LEGEND_H + _PAD)
+    out.append(_svg_legend(graph, left, height - _LEGEND_H + 10, width - 2 * _PAD))
     return "\n".join(out), width, height
 
 
-def _curve(x1: float, y1: float, x2: float, y2: float) -> str:
-    dx = max(30.0, abs(x2 - x1) * 0.45)
-    return f"M {x1:.1f} {y1:.1f} C {x1 + dx:.1f} {y1:.1f}, {x2 - dx:.1f} {y2:.1f}, {x2:.1f} {y2:.1f}"
+def _chip_width(label: str) -> float:
+    return min(220.0, max(64.0, _tw(label, 10.5) + 26))
 
 
-def _svg_route(
-    n: Node,
+def _chip_style(kind: str) -> tuple[str, str, str]:
+    if kind == "entry":
+        return "#0f172a", "#0f172a", "#ffffff"
+    if kind == "hub":
+        return "#1e293b", "#1e293b", "#ffffff"
+    return "#fef3c7", "#f59e0b", "#78350f"
+
+
+def _svg_group_card(
+    out: list[str],
+    group: str,
+    nodes: list[Node],
     x: float,
     y: float,
     w: float,
-    path_text: dict[str, str],
-    handler_text: dict[str, str],
-) -> str:
-    method_color = _METHOD_COLORS.get(n.method.split(",")[0], "#475569")
-    fill = "#fff1f2" if n.auth else ("#f5f3ff" if n.kind == "ws" else "#ffffff")
-    stroke = "#be123c" if n.auth else ("#6d28d9" if n.kind == "ws" else ("#dc2626" if n.error else "#cbd5e1"))
+    direct: dict[str, list[Node]],
+    body_of: dict[str, Node],
+) -> None:
+    h = 54 + len(nodes) * (_ROW_H + _ROW_GAP)
+    out.append(f'<rect class="card" x="{x}" y="{y}" width="{w}" height="{h}" rx="12"/>')
+    out.append(f'<rect x="{x}" y="{y}" width="{w}" height="44" rx="12" fill="#f8fafc"/>')
+    out.append(f'<rect x="{x}" y="{y + 22}" width="{w}" height="22" fill="#f8fafc"/>')
+    out.append(f'<line x1="{x}" y1="{y + 44}" x2="{x + w}" y2="{y + 44}" stroke="#eef2f6"/>')
+    out.append(f'<text class="group" x="{x + 18}" y="{y + 27}">{_esc(group.upper())}</text>')
+    out.append(f'<text class="count" x="{x + w - 18}" y="{y + 27}" text-anchor="end">{len(nodes)}</text>')
+    ry = y + 50
+    for n in nodes:
+        out.append(_svg_row(n, x + 10, ry, w - 20, direct.get(n.id, []), body_of.get(n.id)))
+        ry += _ROW_H + _ROW_GAP
+
+
+def _svg_row(n: Node, x: float, y: float, w: float, deps: list[Node], body: Node | None) -> str:
+    """Two clean lines per route: identity/auth on top, handler + pills below.
+
+    Pills are right-aligned as one block so they never crowd the handler name,
+    and repeated labels (the same dependency injected twice) collapse.
+    """
+    right = x + w
+    method = n.method or "HTTP"
+    method_w = min(96.0, max(42.0, _tw(method, 10) + 16))
+    method_color = _METHOD_COLORS.get(method.split(",")[0], "#475569")
+    stroke = "#fecdd3" if n.auth else ("#ddd6fe" if n.kind == "ws" else "#e8edf4")
+
+    auth_text = ""
+    auth_w = 0.0
+    if n.auth:
+        auth_text = f"auth:{_clip(n.auth_detail, 20)}"
+        auth_w = _tw(auth_text, 9) + 18
+    path_x = x + 11 + method_w + 10
+    path_room = right - 11 - auth_w - path_x - 8
+    path_text = _clip(n.path, max(8, int(path_room / 7.6)))
+
+    handler = _clip(n.handler, 26)
+    handler_w = _tw(handler, 10)
+
+    pills: list[tuple[str, str]] = []
+    seen: set[str] = set()
+    for d in deps:
+        if d.auth or d.label in seen:
+            continue
+        seen.add(d.label)
+        pills.append((d.label, "dep"))
+    if body is not None:
+        pills.append((f"body {body.label}", "body"))
+
+    budget = (right - 11 - handler_w - 18) - (x + 12)
+    sized: list[tuple[str, str, float]] = []
+    used = 0.0
+    for label, kind in pills:
+        label = _clip(label, 18)
+        pw = _tw(label, 10) + 16
+        need = pw + (6 if sized else 0)
+        if used + need > budget:
+            break
+        sized.append((label, kind, pw))
+        used += need
+    hidden = len(pills) - len(sized)
+    if hidden:
+        more = f"+{hidden}"
+        sized.append((more, "more", _tw(more, 10) + 16))
+        used += 6 + _tw(more, 10) + 16
+
+    pill_svg: list[str] = []
+    px = right - 12 - used
+    for label, kind, pw in sized:
+        pill_svg.append(_pill(px, y + 33, label, kind))
+        px += pw + 6
+
+    search = " ".join(
+        [
+            method.lower(),
+            n.path.lower(),
+            n.handler.lower(),
+            n.auth_detail.lower(),
+            *(d.label.lower() for d in deps),
+            *([body.label.lower()] if body is not None else []),
+        ]
+    )
     parts = [
-        f'<g class="node route" id="{n.id}" data-search="{_esc((n.method + " " + n.path + " " + n.handler + " " + n.auth_detail).lower())}">',
+        f'<g class="node route" id="{n.id}" data-search="{_esc(search)}">',
         f"<title>{_esc(n.detail)}</title>",
-        f'<rect class="box" x="{x:.0f}" y="{y:.0f}" width="{w:.0f}" height="{_ROUTE_H}" rx="8" fill="{fill}" stroke="{stroke}"/>',
-        f'<rect x="{x:.0f}" y="{y + 1:.0f}" width="4" height="{_ROUTE_H - 2}" rx="2" fill="{method_color}"/>',
-        f'<text class="method" x="{x + 18:.0f}" y="{y + 20:.0f}" fill="{method_color}">{_esc(n.method)}</text>',
-        f'<text class="path" x="{x + 20 + _tw(n.method, 10.5):.0f}" y="{y + 20:.0f}">{_esc(path_text[n.id])}</text>',
-        f'<text class="handler" x="{x + 18:.0f}" y="{y + 37:.0f}">{_esc(handler_text[n.id])}</text>',
+        f'<rect class="row" x="{x}" y="{y}" width="{w}" height="{_ROW_H}" rx="8" stroke="{stroke}"/>',
+        f'<rect x="{x + 11}" y="{y + 9}" width="{method_w:.0f}" height="19" rx="4" fill="{method_color}"/>',
+        f'<text class="pill-text" x="{x + 11 + method_w / 2:.0f}" y="{y + 22.5}" fill="#ffffff" '
+        f'text-anchor="middle">{_esc(_clip(method, 12))}</text>',
+        f'<text class="path" x="{path_x:.0f}" y="{y + 23}">{_esc(path_text)}</text>',
     ]
     if n.auth:
+        ax = right - 11 - auth_w
         parts.append(
-            f'<text class="badge" x="{x + w - 10:.0f}" y="{y + 20:.0f}" fill="#be123c" '
-            f'text-anchor="end">auth:{_esc(_clip(n.auth_detail, 20))}</text>'
+            f'<rect x="{ax:.0f}" y="{y + 8}" width="{auth_w:.0f}" height="19" rx="9.5" '
+            'fill="#fff1f2" stroke="#fecdd3"/>'
         )
+        parts.append(
+            f'<text class="auth-text" x="{ax + auth_w / 2:.0f}" y="{y + 21}" fill="#be123c" '
+            f'text-anchor="middle">{_esc(auth_text)}</text>'
+        )
+    parts.append(f'<text class="handler" x="{x + 12}" y="{y + 47}">{_esc(handler)}</text>')
+    parts.extend(pill_svg)
     if n.error:
         parts.append(
-            f'<text class="badge" x="{x + w - 10:.0f}" y="{y + 37:.0f}" fill="#dc2626" '
+            f'<text class="auth-text" x="{right - 11:.0f}" y="{y + 21}" fill="#dc2626" '
             f'text-anchor="end">ERROR</text>'
         )
     parts.append("</g>")
     return "\n".join(parts)
 
 
-def _svg_dep(n: Node, x: float, y: float, w: float) -> str:
-    fill = "#fff1f2" if n.auth else "#eef2ff"
-    stroke = "#be123c" if n.auth else "#818cf8"
-    sub = f"used by {n.refs}" if n.refs > 1 else n.sub
-    parts = [
-        f'<g class="node dep" id="{n.id}" data-search="{_esc((n.label + " " + n.sub).lower())}">',
-        f"<title>{_esc(n.detail)}</title>",
-        f'<rect class="box" x="{x:.0f}" y="{y:.0f}" width="{w:.0f}" height="{_SMALL_H}" rx="12" fill="{fill}" stroke="{stroke}"/>',
-        f'<text class="path" x="{x + 14:.0f}" y="{y + 18:.0f}" fill="#312e81">{_esc(_clip(n.label, 30))}</text>',
-        f'<text class="sub" x="{x + 14:.0f}" y="{y + 32:.0f}">{_esc(sub)}</text>',
-    ]
-    if n.auth:
-        parts.append(
-            f'<text class="badge" x="{x + w - 12:.0f}" y="{y + 18:.0f}" fill="#be123c" '
-            f'text-anchor="end">AUTH</text>'
-        )
-    parts.append("</g>")
-    return "\n".join(parts)
+def _pill(x: float, y: float, label: str, kind: str) -> str:
+    styles = {
+        "dep": ("#eef2ff", "#c7d2fe", "#3730a3"),
+        "body": ("#ecfdf5", "#a7f3d0", "#047857"),
+        "more": ("#f1f5f9", "#e2e8f0", "#64748b"),
+    }
+    fill, stroke, color = styles.get(kind, styles["more"])
+    w = _tw(label, 10) + 16
+    return (
+        f'<g class="pill"><rect x="{x:.0f}" y="{y}" width="{w:.0f}" height="18" rx="9" '
+        f'fill="{fill}" stroke="{stroke}"/>'
+        f'<text class="pill-text" x="{x + w / 2:.0f}" y="{y + 12.5}" fill="{color}" '
+        f'text-anchor="middle">{_esc(label)}</text></g>'
+    )
 
 
-def _svg_schema(n: Node, x: float, y: float, w: float) -> str:
+def _svg_dep_card(
+    out: list[str],
+    deps: list[Node],
+    x: float,
+    y: float,
+    w: float,
+    children: dict[str, list[str]],
+) -> None:
+    ordered = sorted(deps, key=lambda n: (-n.refs, n.id))
+    merged: dict[str, list[Node]] = {}
+    for n in ordered:
+        merged.setdefault(n.label, []).append(n)
+    h = 48 + len(merged) * 50
+    out.append(f'<rect class="card" x="{x}" y="{y}" width="{w}" height="{h}" rx="12"/>')
+    out.append(f'<text class="group" x="{x + 18}" y="{y + 25}">DEPENDENCIES &#183; {len(ordered)}</text>')
+    ry = y + 44
+    for label, nodes in merged.items():
+        kids: list[str] = []
+        for n in nodes:
+            for kid in children.get(n.id, []):
+                if kid not in kids:
+                    kids.append(kid)
+        out.append(_svg_dep_row(label, nodes, x + 8, ry, w - 16, kids))
+        ry += 50
+
+
+def _svg_dep_row(label: str, nodes: list[Node], x: float, y: float, w: float, kids: list[str]) -> str:
+    """One row per distinct dependency label (the same guard can compile twice)."""
+    auth = any(n.auth for n in nodes)
+    cls = "rail-row auth" if auth else "rail-row"
+    refs = sum(n.refs for n in nodes)
+    bits = [nodes[0].auth_detail] if auth and nodes[0].auth_detail else []
+    bits.append(f"used by {refs}")
+    sub = " &#183; ".join(bits)
+    if kids:
+        sub += " &#8594; " + ", ".join(kids[:3])
+    dot = "#e11d48" if auth else "#6366f1"
+    search = " ".join([label, *(n.sub for n in nodes)]).lower()
+    return "\n".join(
+        [
+            f'<g class="node dep" id="{nodes[0].id}" data-search="{_esc(search)}">',
+            f"<title>{_esc(nodes[0].detail)}</title>",
+            f'<rect class="{cls}" x="{x}" y="{y}" width="{w}" height="44" rx="8"/>',
+            f'<circle cx="{x + 15}" cy="{y + 15}" r="3" fill="{dot}"/>',
+            f'<text class="dep-name" x="{x + 26}" y="{y + 18}">{_esc(_clip(label, 30))}'
+            f"{f' &#215;{len(nodes)}' if len(nodes) > 1 else ''}</text>",
+            f'<text class="sub" x="{x + 26}" y="{y + 35}">{_esc(_clip(sub, 54))}</text>',
+            "</g>",
+        ]
+    )
+
+
+def _svg_schema_card(out: list[str], schemas: list[Node], x: float, y: float, w: float) -> None:
+    h = 48 + len(schemas) * 50
+    out.append(f'<rect class="card" x="{x}" y="{y}" width="{w}" height="{h}" rx="12"/>')
+    out.append(f'<text class="group" x="{x + 18}" y="{y + 25}">REQUEST BODIES &#183; {len(schemas)}</text>')
+    ry = y + 44
+    for s in schemas:
+        out.append(_svg_schema_row(s, x + 8, ry, w - 16))
+        ry += 50
+
+
+def _svg_schema_row(n: Node, x: float, y: float, w: float) -> str:
     return "\n".join(
         [
             f'<g class="node schema" id="{n.id}" data-search="{_esc((n.label + " " + n.sub).lower())}">',
             f"<title>{_esc(n.detail)}</title>",
-            f'<rect class="box" x="{x:.0f}" y="{y:.0f}" width="{w:.0f}" height="{_SMALL_H}" rx="8" fill="#ecfdf5" stroke="#34d399"/>',
-            f'<text class="path" x="{x + 14:.0f}" y="{y + 18:.0f}" fill="#065f46">{_esc(_clip(n.label, 26))}</text>',
-            f'<text class="sub" x="{x + 14:.0f}" y="{y + 32:.0f}">{_esc(_clip(n.sub, 30))}</text>',
+            f'<rect class="rail-row schema" x="{x}" y="{y}" width="{w}" height="44" rx="8"/>',
+            f'<circle cx="{x + 15}" cy="{y + 15}" r="3" fill="#059669"/>',
+            f'<text class="schema-name" x="{x + 26}" y="{y + 18}">{_esc(_clip(n.label, 32))}</text>',
+            f'<text class="sub" x="{x + 26}" y="{y + 35}">{_esc(_clip(n.sub, 54))}</text>',
             "</g>",
         ]
     )
 
 
-def _svg_pipe(n: Node, x: float, y: float, w: float) -> str:
-    if n.kind == "entry":
-        fill, stroke, color = "#0f172a", "#0f172a", "#ffffff"
-    elif n.kind == "hub":
-        fill, stroke, color = "#1e293b", "#1e293b", "#ffffff"
-    else:
-        fill, stroke, color = "#fef3c7", "#f59e0b", "#78350f"
-    h = 42
-    return "\n".join(
-        [
-            f'<g class="node {n.kind}" id="{n.id}" data-search="{_esc(n.label.lower())}">',
-            f"<title>{_esc(n.detail)}</title>",
-            f'<rect class="box" x="{x:.0f}" y="{y:.0f}" width="{w:.0f}" height="{h}" rx="9" fill="{fill}" stroke="{stroke}"/>',
-            f'<text class="path" x="{x + 14:.0f}" y="{y + 18:.0f}" fill="{color}">{_esc(_clip(n.label, 28))}</text>',
-            (
-                f'<text class="sub" x="{x + 14:.0f}" y="{y + 32:.0f}" fill="#cbd5e1">{_esc(n.sub)}</text>'
-                if n.sub
-                else ""
-            ),
-            "</g>",
-        ]
-    )
-
-
-def _svg_legend(graph: Diagram, width: int, height: int) -> str:
-    y = height - _LEGEND_H + 12
-    x = _PAD
-    parts = [f'<g class="legend" transform="translate(0,{y})">']
-    parts.append(
-        f'<text x="{x}" y="12" class="sub" fill="#475569">'
-        f"{_esc(graph.counts.get('routes', 0))} routes | "
-        f"{_esc(graph.counts.get('dependencies', 0))} deps | "
-        f"{_esc(graph.counts.get('middleware', 0))} middleware | "
-        f"{_esc(graph.counts.get('auth_routes', 0))} auth</text>"
-    )
-    x += 300
+def _svg_legend(graph: Diagram, x: float, y: float, width: float) -> str:
+    parts = ['<g class="legend">']
+    parts.append(f'<line x1="{x}" y1="{y - 14}" x2="{x + width}" y2="{y - 14}" stroke="#e2e8f0"/>')
+    cx = x
     for method, color in _METHOD_COLORS.items():
         if method in ("HEAD", "OPTIONS"):
             continue
-        parts.append(f'<rect x="{x}" y="3" width="8" height="8" rx="2" fill="{color}"/>')
-        parts.append(f'<text x="{x + 12}" y="12" class="sub">{method}</text>')
-        x += 70
+        parts.append(f'<rect x="{cx}" y="{y}" width="8" height="8" rx="2" fill="{color}"/>')
+        parts.append(f'<text class="sub" x="{cx + 12}" y="{y + 8}">{method}</text>')
+        cx += 64
+    cx += 10
+    parts.append(_pill(cx, y - 6, "dependency", "dep"))
+    cx += _tw("dependency", 10) + 16 + 10
+    parts.append(_pill(cx, y - 6, "body", "body"))
+    cx += _tw("body", 10) + 16 + 12
     parts.append(
-        f'<path d="M {x} 8 L {x + 22} 8" stroke="#64748b" stroke-width="1.4" stroke-dasharray="4 3" marker-end="url(#arrow-nested)"/>'
+        f'<text class="sub" x="{cx}" y="{y + 8}">'
+        "pills = what each route uses &#183; full graph: ikarem diagram -f mermaid</text>"
     )
-    parts.append(f'<text x="{x + 28}" y="12" class="sub">nested dep</text>')
     parts.append("</g>")
     return "\n".join(parts)
 
@@ -1075,13 +1209,15 @@ def _svg_legend(graph: Diagram, width: int, height: int) -> str:
 
 def render_html(graph: Diagram) -> str:
     """Self-contained page: inline SVG, instant filter, zoom. No network."""
-    body, width, height = _svg_markup(graph)
+    body, width, height = _svg_markup(graph, chrome=False)
     title = _esc(graph.title)
     c = graph.counts
     meta = (
         f"{c.get('routes', 0)} routes &middot; {c.get('dependencies', 0)} dependencies &middot; "
         f"{c.get('middleware', 0)} middleware &middot; {c.get('auth_routes', 0)} auth"
     )
+    if c.get("websockets"):
+        meta += f" &middot; {c['websockets']} WebSocket"
     svg = (
         f'<svg id="diagram" xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" '
         f'viewBox="0 0 {width} {height}" role="img" aria-label="{title}">\n{body}</svg>'
@@ -1110,8 +1246,8 @@ def render_html(graph: Diagram) -> str:
             font: inherit; font-size: 12px; cursor: pointer; }}
   button:hover {{ background: #f1f5f9; }}
   .hint {{ color: #94a3b8; font-size: 12px; }}
-  #wrap {{ overflow: auto; padding: 10px 20px 30px; }}
-  #diagram {{ display: block; transform-origin: 0 0; }}
+  #wrap {{ overflow: auto; padding: 18px 20px 30px; }}
+  #diagram {{ display: block; margin: 0 auto; transform-origin: 0 0; }}
   footer {{ padding: 0 30px 24px; color: #94a3b8; font-size: 12px; }}
   code {{ font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }}
 </style>
@@ -1126,7 +1262,7 @@ def render_html(graph: Diagram) -> str:
   <button type="button" data-zoom="0.15">+</button>
   <button type="button" data-zoom="-0.15">&minus;</button>
   <button type="button" data-zoom="0">reset</button>
-  <span class="hint">dashed edge = nested dependency</span>
+  <span class="hint">pills show what each route uses &middot; full graph: <code>ikarem diagram -f mermaid</code></span>
 </div>
 <div id="wrap">
 {svg}
