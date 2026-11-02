@@ -20,11 +20,11 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install (dev extras + extensions)
-        run: pip install -e ".[dev]" "ruff==0.16.10" -e ./extensions/ikarem-pentest -e ./extensions/ikarem-oauth -e ./extensions/ikarem-backup
+        run: pip install -e ".[dev]" "ruff==0.16.10" -e ./extensions/ikarem-pentest -e ./extensions/ikarem-oauth -e ./extensions/ikarem-backup -e ./extensions/ikarem-haproxy
       - name: Lint
         run: ruff check . && ruff format --check .
       - name: Tests (framework + showcases + extensions)
-        run: python -m pytest tests/ ledger/tests cadence/tests forge/tests relay/tests market/tests agent/tests extensions/ikarem-pentest/tests extensions/ikarem-oauth/tests extensions/ikarem-backup/tests -q
+        run: python -m pytest tests/ ledger/tests cadence/tests forge/tests relay/tests market/tests agent/tests extensions/ikarem-pentest/tests extensions/ikarem-oauth/tests extensions/ikarem-backup/tests extensions/ikarem-haproxy/tests -q
       - name: Static handler audit
         run: python -m ikarem.cli check ledger.app:app
 

@@ -7,6 +7,20 @@ All notable changes to this project are documented here. Format follows
 ## [Unreleased]
 
 ### Added
+- `ikarem-haproxy` extension (`extensions/ikarem-haproxy`, stdlib only):
+  generates a complete HAProxy 3.0 `haproxy.cfg` from the same compiled
+  plans that serve traffic — one backend per IKAREM blueprint with its real
+  `path_beg` prefixes (multiple prefixes per group supported), the group
+  owning `/` as `default_backend`, `/healthz` HTTP checks, `timeout tunnel
+  1h` when WebSocket routes exist, and `X-Forwarded-For`/`X-Real-IP`
+  **overwritten** from `%[src]` so `RateLimitMiddleware`'s per-IP buckets
+  cannot be spoofed. Optional TLS (308 redirect + HSTS), an edge 429 that
+  mirrors IKAREM's body and `Retry-After`, `/static` `Cache-Control`, stats
+  page, and `roundrobin` across several upstream workers. CLI
+  (`ikarem-haproxy config|check|run|zones`, also `python -m
+  ikarem_haproxy`) shells out to the real binary for `-c`/run and names the
+  install remedy when it is missing; auth is never re-implemented at the
+  edge. 30 tests in `extensions/ikarem-haproxy/tests`.
 - `ikarem diagram` + `app.diagram()` (`ikarem/diagram.py`, stdlib only):
   architecture map from the same compiled plans that serve traffic —
   routes grouped by blueprint/prefix, the middleware onion, dependency

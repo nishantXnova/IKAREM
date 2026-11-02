@@ -21,7 +21,7 @@ and LLM tool servers — one package from prototype to production.
   [Production web apps](#production-web-apps) ·
   [Flask's best, taken](#flasks-best-taken) ·
   [Ops batch](#ops-batch-migrations-queues-cron-api-keys) · [NISH Mode](#nish-mode-one-switch) ·
-  [Extensions](#extensions-self-pentest--oauth2) ·
+  [Extensions](#extensions-self-pentest--oauth2--haproxy-edge) ·
   [Stronger](#stronger-timeouts-bulkheads-idempotency-rooms) ·
   [Switching](#switching-bring-your-routes) ·
   [Why IKAREM](#why-ikarem) · [Verification](#verification) ·
@@ -298,7 +298,7 @@ uploads, CSV export, JSON API); [`cadence/`](cadence/) — a habit tracker
 crew chat, ledger, habits, NISH-first API). All running on stock IKAREM
 + uvicorn.
 
-## Extensions: self-pentest + OAuth2
+## Extensions: self-pentest + OAuth2 + HAProxy edge
 
 Basics are built in (`ikarem audit` grades your deployment, core JWT
 covers service auth). The heavy tools install separately — outside
@@ -332,6 +332,23 @@ rotation, replay kills the chain, revocation, RFC 6749 errors, `jti` +
 `scopes` in access JWTs. Stdlib only.
 [OAuth page →](https://ikarem.vercel.app/extensions/oauth)
 
+**ikarem-haproxy** writes the edge for you. One command reads the compiled
+plans that already serve traffic and emits a complete, deterministic
+`haproxy.cfg`: one backend per blueprint with the real `path_beg` ACLs, the
+group owning `/` as `default_backend`, `/healthz` checks that prove the app
+answers, `timeout tunnel 1h` for the WebSocket routes it found, an
+overwritten `X-Forwarded-For` (so IKAREM's per-IP limiter cannot be spoofed
+into someone else's bucket), and optional TLS + a matching 429 at the edge.
+Auth is never re-implemented in HAProxy — the file says so.
+**Zero Python dependencies; HAProxy 3.0+ is an external binary.**
+
+```bash
+pip install -e ./extensions/ikarem-haproxy
+ikarem-haproxy zones myapp:app              # the routing table it will emit
+ikarem-haproxy config myapp:app --verify    # generate + haproxy -c
+ikarem-haproxy run myapp:app                # foreground edge, Ctrl-C stops
+```
+
 ## Switching? Bring your routes
 
 Meraki (5 minutes):
@@ -353,8 +370,9 @@ IKAREM engine — then migrate handler-by-handler. From anywhere else:
 
 Plus honest benchmarks: [`bench/RESULTS.md`](bench/RESULTS.md) ·
 installable extensions: **self-pentest scanner** (`pip install ./extensions/ikarem-pentest` — auth bypass, XSS, SQLi probes),
-**OAuth2 login** (`pip install ./extensions/ikarem-oauth` — Google/GitHub + refresh rotation) and
-**verified backups** (`pip install ./extensions/ikarem-backup` — online dumps, restore drills) —
+**OAuth2 login** (`pip install ./extensions/ikarem-oauth` — Google/GitHub + refresh rotation),
+**verified backups** (`pip install ./extensions/ikarem-backup` — online dumps, restore drills) and
+**a generated HAProxy edge** (`pip install ./extensions/ikarem-haproxy` — per-blueprint backends, WS tunnels, TLS) —
 [hub](https://ikarem.vercel.app/extensions) ·
 extension registry: [`docs/ECOSYSTEM.md`](docs/ECOSYSTEM.md) ·
 20 runnable recipes: [`docs/COOKBOOK.md`](docs/COOKBOOK.md) ·

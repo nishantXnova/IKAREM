@@ -55,6 +55,7 @@ First installable extension (lives in `extensions/`, not `ikarem/`):
 | Extension | Interface | Install |
 |---|---|---|
 | `ikarem-pentest` | active probes over `TestClient` (auth-bypass, XSS, SQLi, redirects, body caps, tracebacks) | `pip install ./extensions/ikarem-pentest` |
+| `ikarem-haproxy` | config generator over the compiled plans (per-blueprint backends, WS tunnels, TLS, edge 429) + CLI; never imported by your app | `pip install ./extensions/ikarem-haproxy` |
 
 In-core proofs (stay built in forever):
 

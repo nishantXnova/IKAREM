@@ -23,6 +23,7 @@ forever. Everything here **actively attacks your own app** in-process via
 | `ikarem-pentest` | Active self-pentest: fires auth-bypass, XSS, SQLi, open-redirect, body-cap, traceback probes at your routes over `TestClient` | `pip install ./extensions/ikarem-pentest` |
 | `ikarem-oauth` | Refresh tokens (rotation, reuse kills chain, revocation) + OAuth2 code-flow login (Google/GitHub presets) | `pip install ./extensions/ikarem-oauth` |
 | `ikarem-backup` | SQLite online dumps, restore drills, retention, pluggable upload | `pip install ./extensions/ikarem-backup` |
+| `ikarem-haproxy` | Generates a complete HAProxy 3.0 edge from your compiled plans: per-blueprint backends, `/healthz` checks, trustworthy `X-Forwarded-For`, WS tunnels, optional TLS + edge 429s | `pip install ./extensions/ikarem-haproxy` |
 
 ## Roadmap (claim one)
 
